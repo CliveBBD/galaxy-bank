@@ -1,0 +1,84 @@
+@startuml
+title POST /interest/accrue-daily - Trigger Daily Interest Accrual (Admin Only)
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "SystemAdminController" as SAC
+participant "IInterestService" as ISvc
+participant "ILoanRepository" as LR
+participant "ILoanInterestRepository" as LIR
+participant "[DB]" as DB
+
+C -> Auth: POST /interest/accrue-daily \nAuthorization: Bearer <token>
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> Auth: Check Admin Role
+Auth -> SAC: Forward Request
+deactivate Auth
+activate SAC
+SAC -> ISvc: AccrueDailyInterest()
+activate ISvc
+ISvc -> ISvc: Check if already run today (e.g., query LIR for today`s date)
+alt Already Run Today
+    ISvc --> SAC: Error Result (ConflictException)
+    deactivate ISvc
+    SAC -> C: 409 Conflict \nContent: ErrorDto (Already run)
+    deactivate SAC
+else Not Run Today
+    ISvc -> LR: FindActiveLoansForInterestAccrual() 
+    ' Loans where both approved=true, balance > 0
+    activate LR
+    LR -> DB: Execute SELECT Loan query (filtered)
+    activate DB
+    DB --> LR: List of active Loan Records
+    deactivate DB
+    LR --> ISvc: List<LoanModel> activeLoans
+    deactivate LR
+
+    loop for each activeLoan in activeLoans
+        ISvc -> ISvc: Calculate Interest(activeLoan.remainingBalance, activeLoan.interestRate)
+        ISvc -> ISvc: newInterestAmount = result
+        ISvc -> ISvc: newRemainingBalance = activeLoan.remainingBalance + newInterestAmount
+
+        note over ISvc, LIR: Begin DB Transaction (per loan or batch?)
+
+        ISvc -> LR: UpdateLoanBalance(activeLoan.loanId, newRemainingBalance)
+        activate LR
+        LR -> DB: Execute UPDATE Loan query (remaining_balance)
+        activate DB
+        DB --> LR: Update Success
+        deactivate DB
+        LR --> ISvc: Success
+        deactivate LR
+
+        ISvc -> ISvc: Create LoanInterestAccrualHistoryModel(loanId, newInterestAmount, now)
+        ISvc -> LIR: CreateInterestAccrualRecord(historyModel)
+        activate LIR
+        LIR -> DB: Execute INSERT loans_interest_accrual_history query
+        activate DB
+        DB --> LIR: Insert Success
+        deactivate DB
+        LIR --> ISvc: Success
+        deactivate LIR
+
+         note over ISvc, LIR: Commit DB Transaction (per loan or batch?)
+         alt Transaction Fails
+            note over ISvc, LIR: Rollback DB Transaction
+            ' Log error, potentially continue with next loan or abort all?
+         end
+    end
+    ISvc -> ISvc: affectedCount = number of successful accruals
+    ISvc --> SAC: AccrualResult(affectedCount)
+    deactivate ISvc
+    SAC -> C: 202 Accepted \nContent: { message: "...", loansAffected: count }
+    deactivate SAC
+end
+
+alt Auth Error
+  Auth --> C: 401/403 Unauthorized/Forbidden
+end
+alt Server Error
+  SAC --> C: 500 Internal Server Error
+end
+
+@enduml

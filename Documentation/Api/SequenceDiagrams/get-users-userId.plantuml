@@ -1,0 +1,50 @@
+@startuml
+title GET /users/{userId} - Get User Details
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "UserController" as UC
+participant "IUserService" as US
+participant "IUserRepository" as UR
+participant "[DB]" as DB
+
+C -> Auth: GET /users/{userId} \nAuthorization: Bearer <token>
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> UC: Forward Request (with authenticatedUserId)
+deactivate Auth
+activate UC
+UC -> US: GetUserById(userId, authenticatedUserId) ' Pass auth user for permission check
+activate US
+US -> US: Check Permission (Is Admin or Is Self?)
+alt Permission Denied
+  US --> UC: Error Result (e.g., ForbiddenException)
+  deactivate US
+  UC -> C: 403 Forbidden \nContent: ErrorDto
+  deactivate UC
+else Permission Granted
+  US -> UR: FindUserById(userId)
+  activate UR
+  UR -> DB: Execute SELECT query for User (join Role)
+  activate DB
+  DB --> UR: User Record (or null)
+  deactivate DB
+  alt User Not Found
+    UR --> US: null
+    deactivate UR
+    US --> UC: Error Result (e.g., NotFoundException)
+    deactivate US
+    UC -> C: 404 Not Found \nContent: ErrorDto
+    deactivate UC
+  else User Found
+    UR --> US: UserModel
+    deactivate UR
+    US -> US: Map UserModel to UserDto
+    US --> UC: UserDto
+    deactivate US
+    UC -> C: 200 OK \nContent: UserDto
+    deactivate UC
+  end
+end
+
+@enduml

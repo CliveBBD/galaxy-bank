@@ -1,0 +1,112 @@
+@startuml
+title POST /loans/{loanId}/payments - Make Loan Payment
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "LoanController" as LC
+participant "ILoanService" as LS
+participant "ILoanRepository" as LR
+participant "IAccountRepository" as AR
+participant "ITransactionService" as TS
+participant "[DB]" as DB
+
+C -> Auth: POST /loans/{loanId}/payments \nAuthorization: Bearer <token> \nContent: LoanPaymentRequestDto
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> LC: Forward Request (with authenticatedUserId)
+deactivate Auth
+activate LC
+LC -> LS: MakeLoanPayment(loanId, LoanPaymentRequestDto, authenticatedUserId)
+activate LS
+LS -> LR: FindLoanById(loanId)
+activate LR
+LR -> DB: Execute SELECT Loan query
+activate DB
+DB --> LR: Loan Record (or null)
+deactivate DB
+alt Loan Not Found
+  LR --> LS: null
+  deactivate LR
+  LS --> LC: Error Result (NotFoundException)
+  deactivate LS
+  LC -> C: 404 Not Found \nContent: ErrorDto (Loan)
+  deactivate LC
+else Loan Found
+  LR --> LS: LoanModel
+  deactivate LR
+  LS -> LS: Check Loan Status (Is Active? Both approved?)
+  alt Loan Not Active
+    LS --> LC: Error Result (ValidationException / Conflict)
+    deactivate LS
+    LC -> C: 400 Bad Request / 409 Conflict \nContent: ErrorDto (Loan not active)
+    deactivate LC
+  else Loan Active
+    LS -> AR: FindAccountById(loanModel.toAccountId) ' Borrower account
+    activate AR
+    AR -> DB: Execute SELECT Account query (with User info)
+    activate DB
+    DB --> AR: Borrower Account Record (or null)
+    deactivate DB
+    alt Borrower Account Not Found
+        AR --> LS: null
+        deactivate AR
+        LS --> LC: Error Result (NotFoundException) ' Should not happen if loan is valid
+        deactivate LS
+        LC -> C: 404 Not Found \nContent: ErrorDto (Account)
+        deactivate LC
+    else Borrower Account Found
+        AR --> LS: Borrower AccountModel
+        deactivate AR
+        LS -> LS: Check Permission (Is authenticatedUser the Borrower?)
+        alt Permission Denied
+            LS --> LC: Error Result (ForbiddenException)
+            deactivate LS
+            LC -> C: 403 Forbidden \nContent: ErrorDto
+            deactivate LC
+        else Permission Granted
+            LS -> LS: Validate Payment Amount (Positive? <= Remaining Balance + tolerance?)
+            LS -> LS: Check Borrower Funds (Available Balance >= payment amount?)
+            alt Invalid Amount / Insufficient Funds
+                LS --> LC: Error Result (ValidationException / InsufficientFunds)
+                deactivate LS
+                LC -> C: 400 Bad Request \nContent: ErrorDto
+                deactivate LC
+            else Payment Valid
+                ref over LS, TS: Perform Transfer(loan.toAccountId, loan.fromAccountId, paymentAmount, "Loan Payment")
+                alt Transfer Fails
+                    LS --> LC: Error Result (BadRequest/InternalServerError)
+                    deactivate LS
+                    LC -> C: 400/500 Error \nContent: ErrorDto
+                    deactivate LC
+                else Transfer Succeeds (returns transactionReferenceId)
+                    LS -> LS: transactionReferenceId = result
+                    LS -> LS: Update Loan Remaining Balance (-= paymentAmount)
+                    LS -> LR: UpdateLoan(loanModel)
+                    activate LR
+                    LR -> DB: Execute UPDATE Loan query (remaining_balance)
+                    activate DB
+                    DB --> LR: Update Success
+                    deactivate DB
+                    LR --> LS: Updated LoanModel
+                    deactivate LR
+                    LS -> LR: AddLoanTransactionHistory(loanId, transactionReferenceId)
+                    activate LR
+                    LR -> DB: Execute INSERT loan_transactions_history
+                    activate DB
+                    DB --> LR: Insert Success
+                    deactivate DB
+                    LR --> LS: Success
+                    deactivate LR
+                    LS -> LS: Create TransactionReferenceIdResponseDto(transactionReferenceId)
+                    LS --> LC: TransactionReferenceIdResponseDto
+                    deactivate LS
+                    LC -> C: 201 Created \nContent: TransactionReferenceIdResponseDto
+                    deactivate LC
+                end
+            end
+        end
+    end
+  end
+end
+
+@enduml

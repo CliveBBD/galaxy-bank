@@ -1,0 +1,31 @@
+@startuml
+title GET /planets - List Planets
+
+participant "Client" as C
+participant "ReferenceDataController" as RDC
+participant "IReferenceDataService" as RDS
+participant "IPlanetRepository" as PR
+participant "[DB]" as DB
+
+C -> RDC: GET /planets
+activate RDC
+RDC -> RDS: ListPlanets()
+activate RDS
+RDS -> PR: FindAllPlanets()
+activate PR
+PR -> DB: Execute SELECT query
+activate DB
+DB --> PR: Planet Records
+deactivate DB
+PR --> RDS: List<PlanetModel>
+deactivate PR
+RDS -> RDS: Map Models to List<PlanetDto>
+RDS --> RDC: List<PlanetDto>
+deactivate RDS
+RDC -> C: 200 OK \nContent: List<PlanetDto>
+deactivate RDC
+
+alt Error
+    RDC -> C: 500 Internal Server Error
+end
+@enduml

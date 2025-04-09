@@ -1,0 +1,66 @@
+Project BankingSchema {
+  database_type: "PostgreSQL"
+  note: "Schema derived from provided ER diagram."
+}
+
+Table Users {
+  userId int [pk, not null, note: "Primary key"]
+  email varchar [not null]
+  roleId int [not null, note: "FK to Roles"]
+  googleId uuid [note: "External provider ID"]
+  
+  Note: "Holds user account information"
+}
+
+Table Roles {
+  roleId int [pk, not null]
+  roleName varchar [not null]
+  description varchar [note: "Optional descriptive info"]
+  
+  Note: "Defines user roles"
+}
+
+Table BankAccounts {
+  accountNumber varchar [pk, not null, note: "Unique identifier for bank account"]
+  userId int [not null, note: "FK to Users"]
+  balance decimal [default: 0.0, note: "Current account balance"]
+  accountTypeId int [not null, note: "FK to AccountTypes"]
+  
+  Note: "Stores information about each bank account"
+}
+
+Table AccountTypes {
+  accountTypeId int [pk, not null]
+  name varchar [not null]
+  interestRate decimal
+  monthlyFee decimal
+  
+  Note: "Specifies types of bank accounts and associated fees/rates"
+}
+
+Table TransactionTypes {
+  transactionTypeId int [pk, not null]
+  transactionType varchar [not null]
+  
+  Note: "Categorizes transactions (e.g., deposit, withdrawal)"
+}
+
+Table Transactions {
+  transactionId int [pk, not null]
+  dateTime datetime [not null, note: "Timestamp of the transaction"]
+  openingBalance decimal [note: "Balance of the originating account prior to this transaction"]
+  fromAccount varchar [note: "FK to BankAccounts.accountNumber"]
+  toAccount varchar [note: "FK to BankAccounts.accountNumber"]
+  amount decimal [not null]
+  reference varchar [note: "Optional reference or memo"]
+  transactionTypeId int [not null, note: "FK to TransactionTypes"]
+  
+  Note: "Records every transaction taking place between accounts"
+}
+
+Ref: Users.roleId > Roles.roleId
+Ref: BankAccounts.userId > Users.userId
+Ref: BankAccounts.accountTypeId > AccountTypes.accountTypeId
+Ref: Transactions.fromAccount > BankAccounts.accountNumber
+Ref: Transactions.toAccount > BankAccounts.accountNumber
+Ref: Transactions.transactionTypeId > TransactionTypes.transactionTypeId

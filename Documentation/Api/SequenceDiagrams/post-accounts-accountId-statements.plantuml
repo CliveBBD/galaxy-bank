@@ -1,0 +1,79 @@
+@startuml
+title POST /accounts/{accountId}/statements - Generate Account Statement (CSV)
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "StatementReportController" as SRC
+participant "IStatementService" as SS
+participant "IAccountRepository" as AR
+participant "ITransactionRepository" as TR
+participant "[DB]" as DB
+participant "CSV Generator" as CSVUtil 
+' Represents CSV generation logic/library
+
+C -> Auth: POST /accounts/{accountId}/statements \nAuthorization: Bearer <token> \nContent: StatementRequestDto
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> SRC: Forward Request (with authenticatedUserId, isAdmin flag)
+deactivate Auth
+activate SRC
+SRC -> SS: GenerateStatement(accountId, StatementRequestDto, authenticatedUserId, isAdmin)
+activate SS
+SS -> AR: FindAccountById(accountId)
+activate AR
+AR -> DB: Execute SELECT Account query (with User)
+activate DB
+DB --> AR: Account Record (or null)
+deactivate DB
+alt Account Not Found
+    AR --> SS: null
+    deactivate AR
+    SS --> SRC: Error Result (NotFoundException)
+    deactivate SS
+    SRC -> C: 404 Not Found \nContent: ErrorDto
+    deactivate SRC
+else Account Found
+    AR --> SS: AccountModel
+    deactivate AR
+    SS -> SS: Check Permission (Is Admin or Owner?)
+    alt Permission Denied
+        SS --> SRC: Error Result (ForbiddenException)
+        deactivate SS
+        SRC -> C: 403 Forbidden \nContent: ErrorDto
+        deactivate SRC
+    else Permission Granted
+        SS -> SS: Validate Date Range (startDate <= endDate)
+        alt Invalid Date Range
+            SS --> SRC: Error Result (ValidationException)
+            deactivate SS
+            SRC -> C: 400 Bad Request \nContent: ErrorDto
+            deactivate SRC
+        else Date Range Valid
+            SS -> TR: FindTransactionsByAccountAndDateRange(accountId, startDate, endDate)
+            activate TR
+            TR -> DB: Execute SELECT Transactions query (filtered by accountId, createdAt range)
+            activate DB
+            DB --> TR: Transaction Records
+            deactivate DB
+            TR --> SS: List<TransactionModel>
+            deactivate TR
+            SS -> CSVUtil: GenerateCsv(accountModel, transactions)
+            activate CSVUtil
+            CSVUtil --> SS: CSV Data Stream / String
+            deactivate CSVUtil
+            SS --> SRC: CsvStreamResult
+            deactivate SS
+            SRC -> C: 200 OK \nContent-Type: text/csv \nBody: <CSV Data>
+            deactivate SRC
+        end
+    end
+end
+
+alt Auth Error
+  Auth --> C: 401 Unauthorized
+end
+alt Server Error
+  SRC --> C: 500 Internal Server Error
+end
+
+@enduml

@@ -1,0 +1,46 @@
+@startuml
+title GET /transactions - Search Transactions
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "TransactionController" as TC
+participant "ITransactionService" as TS
+participant "ITransactionRepository" as TR
+participant "[DB]" as DB
+
+C -> Auth: GET /transactions?accountId=X&startDate=Y&endDate=Z&type=T&limit=N&offset=M \nAuthorization: Bearer <token>
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> TC: Forward Request (with authenticatedUserId, isAdmin flag)
+deactivate Auth
+activate TC
+TC -> TS: SearchTransactions(accountIdFilter, startDate, endDate, typeFilter, limit, offset, authenticatedUserId, isAdmin)
+activate TS
+TS -> TS: Determine accessible accountIds (filter if admin, else user's own accounts)
+alt User attempts to view unauthorized account
+    TS --> TC: Error Result (ForbiddenException)
+    deactivate TS
+    TC -> C: 403 Forbidden \nContent: ErrorDto
+    deactivate TC
+else Permission OK
+    TS -> TR: FindTransactions(accessibleAccountIds, startDate, endDate, typeId, limit, offset)
+    activate TR
+    TR -> DB: Execute SELECT query (filtered, join Type)
+    activate DB
+    DB --> TR: Transaction Records
+    deactivate DB
+    TR -> TR: Map Records to List<TransactionModel>
+    TR --> TS: List<TransactionModel>
+    deactivate TR
+    TS -> TS: Map List<TransactionModel> to List<TransactionDto>
+    TS --> TC: List<TransactionDto>
+    deactivate TS
+    TC -> C: 200 OK \nContent: List<TransactionDto>
+    deactivate TC
+end
+
+alt Error (e.g., Bad Date Format, DB Error)
+  TC --> C: 400 Bad Request / 500 Internal Server Error
+end
+
+@enduml

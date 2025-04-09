@@ -1,0 +1,58 @@
+
+@startuml
+title POST /roles - Create Role (Admin Only)
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "RoleController" as RC
+participant "IRoleService" as RS
+participant "IRoleRepository" as RR
+participant "[DB]" as DB
+
+C -> Auth: POST /roles \nAuthorization: Bearer <token> \nContent: RoleCreateRequestDto
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> Auth: Check Admin Role
+Auth -> RC: Forward Request
+deactivate Auth
+activate RC
+RC -> RS: CreateRole(RoleCreateRequestDto)
+activate RS
+RS -> RR: FindRoleByName(roleName from DTO)
+activate RR
+RR -> DB: Execute SELECT query for role by name
+activate DB
+DB --> RR: Existing Role Record (or null)
+deactivate DB
+RR --> RS: Existing RoleModel (or null)
+deactivate RR
+alt Role Name Exists
+    RS --> RC: Error Result (ConflictException / BadRequest)
+    deactivate RS
+    RC -> C: 400 Bad Request \nContent: ErrorDto (Name exists)
+    deactivate RC
+else Role Name Unique
+    RS -> RS: Create RoleModel from DTO
+    RS -> RR: CreateRole(newRoleModel)
+    activate RR
+    RR -> DB: Execute INSERT query for Role
+    activate DB
+    DB --> RR: Inserted Role Record (with roleId)
+    deactivate DB
+    RR --> RS: Created RoleModel (with roleId)
+    deactivate RR
+    RS -> RS: Map RoleModel to RoleDto
+    RS --> RC: RoleDto
+    deactivate RS
+    RC -> C: 201 Created \nLocation: /roles/{roleId} \nContent: RoleDto
+    deactivate RC
+end
+
+alt Auth Error
+  Auth --> C: 401/403 Unauthorized/Forbidden
+end
+alt Server Error
+  RC --> C: 500 Internal Server Error
+end
+
+@enduml

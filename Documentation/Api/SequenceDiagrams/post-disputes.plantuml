@@ -1,0 +1,134 @@
+@startuml
+title POST /disputes - Create New Dispute
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "DisputeController" as DC
+participant "IDisputeService" as DS
+participant "ITransactionRefRepository" as TRR
+participant "ITransactionRepository" as TR
+participant "IAccountRepository" as AR
+participant "IDisputeRepository" as DR
+participant "IDisputeHistoryRepository" as DHR
+participant "IDisputeStatusRepository" as DSR
+participant "[DB]" as DB
+
+C -> Auth: POST /disputes \nAuthorization: Bearer <token> \nContent: DisputeCreateRequestDto
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> DC: Forward Request (with authenticatedUserId)
+deactivate Auth
+activate DC
+DC -> DS: CreateDispute(DisputeCreateRequestDto, authenticatedUserId)
+activate DS
+DS -> TRR: FindTransactionReferenceById(dto.disputedTransactionReferenceId)
+activate TRR
+TRR -> DB: Execute SELECT TransactionReference query
+activate DB
+DB --> TRR: Tx Ref Record (or null)
+deactivate DB
+alt Transaction Reference Not Found
+  TRR --> DS: null
+  deactivate TRR
+  DS --> DC: Error Result (NotFoundException / BadRequest)
+  deactivate DS
+  DC -> C: 404 Not Found / 400 Bad Request \nContent: ErrorDto (Ref ID)
+  deactivate DC
+else Transaction Reference Found
+  TRR --> DS: TransactionReferenceModel
+  deactivate TRR
+  DS -> TR: FindTransactionsByReferenceId(refId) ' Get actual transactions
+  activate TR
+  TR -> DB: Execute SELECT Transactions query
+  activate DB
+  DB --> TR: Transaction Records
+  deactivate DB
+  TR --> DS: List<TransactionModel> transactions
+  deactivate TR
+  DS -> DS: Check if transactions are disputable (e.g., not reversals)
+  alt Cannot Dispute Transaction Type
+    DS --> DC: Error Result (ValidationException / BadRequest)
+    deactivate DS
+    DC -> C: 400 Bad Request \nContent: ErrorDto (Cannot dispute type)
+    deactivate DC
+  else Transaction Type OK
+    DS -> DR: FindActiveDisputeByReferenceId(refId)
+    activate DR
+    DR -> DB: Execute SELECT Dispute query (where status != resolved/rejected)
+    activate DB
+    DB --> DR: Existing Dispute Record (or null)
+    deactivate DB
+    alt Dispute Already Exists
+        DR --> DS: Existing DisputeModel
+        deactivate DR
+        DS --> DC: Error Result (ConflictException)
+        deactivate DS
+        DC -> C: 409 Conflict \nContent: ErrorDto (Dispute exists)
+        deactivate DC
+    else No Active Dispute Exists
+        DR --> DS: null
+        deactivate DR
+        DS -> DS: Get involved accountIds from transactions
+        DS -> AR: FindAccountsByIds(involvedAccountIds) ' For ownership check
+        activate AR
+        AR -> DB: Execute SELECT Account query (with User info)
+        activate DB
+        DB --> AR: Account Records
+        deactivate DB
+        AR --> DS: List<AccountModel>
+        deactivate AR
+        DS -> DS: Check Permission (User owns at least one involved account?)
+        alt Permission Denied
+            DS --> DC: Error Result (ForbiddenException)
+            deactivate DS
+            DC -> C: 403 Forbidden \nContent: ErrorDto
+            deactivate DC
+        else Permission Granted
+            DS -> DSR: FindDisputeStatusByDescription("open") ' Get initial status ID
+            activate DSR
+            DSR -> DB: Execute SELECT DisputeStatus query
+            activate DB
+            DB --> DSR: DisputeStatusModel (Open)
+            deactivate DB
+            DSR --> DS: openStatusModel
+            deactivate DSR
+            DS -> DS: Create DisputeModel (reason, refId, currentStatusId=open)
+            DS -> DR: CreateDispute(newDisputeModel)
+            activate DR
+            note over DR, DHR: Begin DB Transaction
+            DR -> DB: Execute INSERT Dispute query
+            activate DB
+            DB --> DR: Inserted Dispute Record (with disputeId)
+            deactivate DB
+            DR --> DS: Created DisputeModel (with disputeId)
+            deactivate DR
+            DS -> DS: Create DisputeHistoryModel (disputeId, statusId=open, updatedById=authUserId)
+            DS -> DHR: CreateDisputeHistory(newHistoryModel)
+            activate DHR
+            DHR -> DB: Execute INSERT DisputeHistory query
+            activate DB
+            DB --> DHR: Insert Success
+            deactivate DB
+            DHR --> DS: Success
+            deactivate DHR
+            note over DR, DHR: Commit DB Transaction
+
+            DS -> DS: Map DisputeModel to DisputeDto (include currentStatus object)
+            DS --> DC: DisputeDto
+            deactivate DS
+            DC -> C: 201 Created \nLocation: /disputes/{disputeId} \nContent: DisputeDto
+            deactivate DC
+
+            alt DB Transaction Fails
+                note over DR, DHR: Rollback DB Transaction
+                DS --> DC: Error Result (InternalServerError)
+                deactivate DS
+                DC -> C: 500 Internal Server Error \nContent: ErrorDto
+                deactivate DC
+            end
+        end
+    end
+  end
+end
+
+@enduml

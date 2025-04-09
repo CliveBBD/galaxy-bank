@@ -1,0 +1,39 @@
+@startuml
+title GET /roles - List Roles
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "RoleController" as RC
+participant "IRoleService" as RS
+participant "IRoleRepository" as RR
+participant "[DB]" as DB
+
+C -> Auth: GET /roles \nAuthorization: Bearer <token>
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> RC: Forward Request
+deactivate Auth
+activate RC
+RC -> RS: ListRoles()
+activate RS
+RS -> RR: FindAllRoles()
+activate RR
+RR -> DB: Execute SELECT query for all roles
+activate DB
+DB --> RR: Role Records
+deactivate DB
+RR -> RR: Map Records to List<RoleModel>
+RR --> RS: List<RoleModel>
+deactivate RR
+RS -> RS: Map List<RoleModel> to List<RoleDto>
+RS --> RC: List<RoleDto>
+deactivate RS
+RC -> C: 200 OK \nContent: List<RoleDto>
+deactivate RC
+
+alt Error (e.g., Auth Failed, DB Error)
+  Auth --> C: 401/403 Unauthorized/Forbidden
+  RC --> C: 500 Internal Server Error
+end
+
+@enduml

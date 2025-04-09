@@ -1,0 +1,53 @@
+@startuml
+title POST /loans - Create Loan Proposal
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "LoanController" as LC
+participant "ILoanService" as LS
+participant "IAccountRepository" as AR
+participant "ILoanRepository" as LR
+participant "[DB]" as DB
+
+C -> Auth: POST /loans \nAuthorization: Bearer <token> \nContent: LoanCreateRequestDto
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> LC: Forward Request (with authenticatedUserId)
+deactivate Auth
+activate LC
+LC -> LS: CreateLoanProposal(LoanCreateRequestDto, authenticatedUserId)
+activate LS
+
+ref over LS, AR: GetAndValidateLoanAccounts(dto.fromAccountId, dto.toAccountId, authenticatedUserId)
+
+alt Validation Failed (Accounts not found/closed, Same Account, Permission Denied on FromAccount)
+    LS --> LC: Error Result (NotFound/Forbidden/Validation)
+    deactivate LS
+    LC -> C: 404/403/400 Bad Request \nContent: ErrorDto
+    deactivate LC
+else Accounts Valid (fromAccount, toAccount models retrieved)
+    LS -> LS: Validate Interest Rate (Non-negative?)
+    alt Invalid Rate
+        LS --> LC: Error Result (ValidationException)
+        deactivate LS
+        LC -> C: 400 Bad Request \nContent: ErrorDto
+        deactivate LC
+    else Rate Valid
+        LS -> LS: Create LoanModel (pending state: approvals=false, remainingBalance=principal)
+        LS -> LR: CreateLoan(newLoanModel)
+        activate LR
+        LR -> DB: Execute INSERT query for Loan
+        activate DB
+        DB --> LR: Inserted Loan Record (with loanId)
+        deactivate DB
+        LR --> LS: Created LoanModel (with loanId)
+        deactivate LR
+        LS -> LS: Map LoanModel to LoanDto
+        LS --> LC: LoanDto
+        deactivate LS
+        LC -> C: 201 Created \nLocation: /loans/{loanId} \nContent: LoanDto
+        deactivate LC
+    end
+end
+
+@enduml

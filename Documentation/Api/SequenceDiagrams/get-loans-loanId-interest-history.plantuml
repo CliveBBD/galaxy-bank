@@ -1,0 +1,46 @@
+@startuml
+title GET /loans/{loanId}/interest-history - Loan Interest History
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "LoanController" as LC
+participant "ILoanService" as LS
+participant "ILoanRepository" as LR
+participant "ILoanInterestRepository" as LIR
+participant "IAccountRepository" as AR
+participant "[DB]" as DB
+
+C -> Auth: GET /loans/{loanId}/interest-history?limit=N&offset=M \nAuthorization: Bearer <token>
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> LC: Forward Request (with authenticatedUserId, isAdmin flag)
+deactivate Auth
+activate LC
+LC -> LS: GetLoanInterestHistory(loanId, limit, offset, authenticatedUserId, isAdmin)
+activate LS
+
+ref over LS, LR, AR: GetLoanAndCheckAccess(loanId, authenticatedUserId, isAdmin)
+
+alt Loan Not Found or Access Denied
+  LS --> LC: Error Result (NotFound / Forbidden)
+  deactivate LS
+  LC -> C: 404 Not Found / 403 Forbidden \nContent: ErrorDto
+  deactivate LC
+else Loan Found and Access Granted
+  LS -> LIR: FindInterestHistoryByLoanId(loanId, limit, offset)
+  activate LIR
+  LIR -> DB: Execute SELECT query on loans_interest_accrual_history
+  activate DB
+  DB --> LIR: Interest History Records
+  deactivate DB
+  LIR -> LIR: Map Records to List<LoanInterestAccrualHistoryModel>
+  LIR --> LS: List<LoanInterestAccrualHistoryModel>
+  deactivate LIR
+  LS -> LS: Map List<Model> to List<LoanInterestAccrualDto>
+  LS --> LC: List<LoanInterestAccrualDto>
+  deactivate LS
+  LC -> C: 200 OK \nContent: List<LoanInterestAccrualDto>
+  deactivate LC
+end
+
+@enduml

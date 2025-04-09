@@ -1,0 +1,55 @@
+@startuml
+title GET /loans/{loanId}/transactions - Loan Payment History
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "LoanController" as LC
+participant "ILoanService" as LS
+participant "ILoanRepository" as LR
+participant "ILoanHistoryRepository" as LHR
+participant "ITransactionRepository" as TR
+participant "IAccountRepository" as AR
+participant "[DB]" as DB
+
+C -> Auth: GET /loans/{loanId}/transactions?limit=N&offset=M \nAuthorization: Bearer <token>
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> LC: Forward Request (with authenticatedUserId, isAdmin flag)
+deactivate Auth
+activate LC
+LC -> LS: GetLoanTransactionHistory(loanId, limit, offset, authenticatedUserId, isAdmin)
+activate LS
+
+ref over LS, LR, AR: GetLoanAndCheckAccess(loanId, authenticatedUserId, isAdmin)
+
+alt Loan Not Found or Access Denied
+  LS --> LC: Error Result (NotFound / Forbidden)
+  deactivate LS
+  LC -> C: 404 Not Found / 403 Forbidden \nContent: ErrorDto
+  deactivate LC
+else Loan Found and Access Granted
+  LS -> LHR: FindTransactionIdsByLoanId(loanId, limit, offset)
+  activate LHR
+  LHR -> DB: Execute SELECT query on loan_transactions_history
+  activate DB
+  DB --> LHR: List of transaction_ids
+  deactivate DB
+  LHR --> LS: List<int> transactionIds
+  deactivate LHR
+  LS -> TR: FindTransactionsByIds(transactionIds)
+  activate TR
+  TR -> DB: Execute SELECT query on Transactions where id IN (...)
+  activate DB
+  DB --> TR: Transaction Records
+  deactivate DB
+  TR -> TR: Map Records to List<TransactionModel>
+  TR --> LS: List<TransactionModel>
+  deactivate TR
+  LS -> LS: Map List<TransactionModel> to List<TransactionDto>
+  LS --> LC: List<TransactionDto>
+  deactivate LS
+  LC -> C: 200 OK \nContent: List<TransactionDto>
+  deactivate LC
+end
+
+@enduml

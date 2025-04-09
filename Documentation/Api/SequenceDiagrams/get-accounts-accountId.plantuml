@@ -1,0 +1,51 @@
+
+@startuml
+title GET /accounts/{accountId} - Get Account Details
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "AccountController" as AC
+participant "IAccountService" as ASvc
+participant "IAccountRepository" as AR
+participant "[DB]" as DB
+
+C -> Auth: GET /accounts/{accountId} \nAuthorization: Bearer <token>
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> AC: Forward Request (with authenticatedUserId, isAdmin flag)
+deactivate Auth
+activate AC
+AC -> ASvc: GetAccountById(accountId, authenticatedUserId, isAdmin)
+activate ASvc
+ASvc -> AR: FindAccountById(accountId) ' Includes joins
+activate AR
+AR -> DB: Execute SELECT query (join User, Type, Planet)
+activate DB
+DB --> AR: Account Record (or null)
+deactivate DB
+alt Account Not Found
+  AR --> ASvc: null
+  deactivate AR
+  ASvc --> AC: Error Result (NotFoundException)
+  deactivate ASvc
+  AC -> C: 404 Not Found \nContent: ErrorDto
+  deactivate AC
+else Account Found
+  AR --> ASvc: AccountModel
+  deactivate AR
+  ASvc -> ASvc: Check Permission (Is Admin or Owner?)
+  alt Permission Denied
+    ASvc --> AC: Error Result (ForbiddenException)
+    deactivate ASvc
+    AC -> C: 403 Forbidden \nContent: ErrorDto
+    deactivate AC
+  else Permission Granted
+    ASvc -> ASvc: Map AccountModel to AccountDetailDto
+    ASvc --> AC: AccountDetailDto
+    deactivate ASvc
+    AC -> C: 200 OK \nContent: AccountDetailDto
+    deactivate AC
+  end
+end
+
+@enduml

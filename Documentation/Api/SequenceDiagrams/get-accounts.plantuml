@@ -1,0 +1,48 @@
+
+@startuml
+title GET /accounts - List Accounts
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "AccountController" as AC
+participant "IAccountService" as ASvc
+participant "IAccountRepository" as AR
+participant "[DB]" as DB
+
+C -> Auth: GET /accounts?userId=X&type=Y&status=Z&limit=N&offset=M \nAuthorization: Bearer <token>
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> AC: Forward Request (with authenticatedUserId, isAdmin flag)
+deactivate Auth
+activate AC
+AC -> ASvc: ListAccounts(userIdFilter, typeFilter, statusFilter, limit, offset, authenticatedUserId, isAdmin)
+activate ASvc
+ASvc -> ASvc: Determine effective userId (apply filter if admin, else use authenticatedUserId)
+ASvc -> ASvc: Check Permission (Admin can query any userId, user only self)
+alt Permission Denied
+  ASvc --> AC: Error Result (ForbiddenException)
+  deactivate ASvc
+  AC -> C: 403 Forbidden \nContent: ErrorDto
+  deactivate AC
+else Permission Granted
+  ASvc -> AR: FindAccounts(effectiveUserId, typeId, status, limit, offset)
+  activate AR
+  AR -> DB: Execute SELECT query (filtered, join Types, Planets)
+  activate DB
+  DB --> AR: Account Records
+  deactivate DB
+  AR -> AR: Map Records to List<AccountModel>
+  AR --> ASvc: List<AccountModel>
+  deactivate AR
+  ASvc -> ASvc: Map List<AccountModel> to List<AccountDto>
+  ASvc --> AC: List<AccountDto>
+  deactivate ASvc
+  AC -> C: 200 OK \nContent: List<AccountDto>
+  deactivate AC
+end
+
+alt Error (e.g., Bad Filter Param, DB Error)
+  AC --> C: 400 Bad Request / 500 Internal Server Error
+end
+
+@enduml

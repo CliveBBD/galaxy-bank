@@ -1,0 +1,97 @@
+
+@startuml
+title POST /transactions/transfer - Create Transfer
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "TransactionController" as TC
+participant "ITransactionService" as TS
+participant "IAccountRepository" as AR
+participant "ITransactionRepository" as TR
+participant "ITransactionRefRepository" as TRR
+participant "[DB]" as DB
+
+C -> Auth: POST /transactions/transfer \nAuthorization: Bearer <token> \nContent: TransferRequestDto
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> TC: Forward Request (with authenticatedUserId)
+deactivate Auth
+activate TC
+TC -> TS: CreateTransfer(TransferRequestDto, authenticatedUserId)
+activate TS
+
+ref over TS, AR: GetAndValidateTransferAccounts(dto, authenticatedUserId)
+
+alt Validation Failed (Accounts not found/closed, Permission Denied, Self-Transfer, Insufficient Funds)
+    TS --> TC: Error Result (NotFound/Forbidden/Validation/InsufficientFunds)
+    deactivate TS
+    TC -> C: 404/403/400 Bad Request \nContent: ErrorDto
+    deactivate TC
+else Validation Passed (fromAccount, toAccount models retrieved)
+    TS -> TRR: CreateTransactionReference()
+    activate TRR
+    TRR -> DB: Execute INSERT TransactionReference, get ID
+    activate DB
+    DB --> TRR: New transactionReferenceId
+    deactivate DB
+    TRR --> TS: transactionReferenceId
+    deactivate TRR
+
+    note over TS, TR: Begin Database Transaction
+
+    TS -> AR: UpdateAccountBalance(fromAccountId, -amount) ' Decrease sender balance
+    activate AR
+    AR -> DB: Execute UPDATE FromAccount query
+    activate DB
+    DB --> AR: Update Success, New Sender Balance
+    deactivate DB
+    AR --> TS: Updated FromAccount Model
+    deactivate AR
+
+    TS -> AR: UpdateAccountBalance(toAccountId, amount) ' Increase receiver balance
+    activate AR
+    AR -> DB: Execute UPDATE ToAccount query
+    activate DB
+    DB --> AR: Update Success, New Receiver Balance
+    deactivate DB
+    AR --> TS: Updated ToAccount Model
+    deactivate AR
+
+    TS -> TS: Create Debit TransactionModel (for FromAccount, cleared=true)
+    TS -> TR: CreateTransaction(debitTransactionModel)
+    activate TR
+    TR -> DB: Execute INSERT Debit Transaction query
+    activate DB
+    DB --> TR: Inserted Debit Transaction Record
+    deactivate DB
+    TR --> TS: Created Debit TransactionModel
+    deactivate TR
+
+    TS -> TS: Create Credit TransactionModel (for ToAccount, cleared=true)
+    TS -> TR: CreateTransaction(creditTransactionModel)
+    activate TR
+    TR -> DB: Execute INSERT Credit Transaction query
+    activate DB
+    DB --> TR: Inserted Credit Transaction Record
+    deactivate DB
+    TR --> TS: Created Credit TransactionModel
+    deactivate TR
+
+    note over TS, TR: Commit Database Transaction
+
+    TS -> TS: Create TransactionReferenceIdResponseDto(transactionReferenceId)
+    TS --> TC: TransactionReferenceIdResponseDto
+    deactivate TS
+    TC -> C: 201 Created \nContent: TransactionReferenceIdResponseDto
+    deactivate TC
+
+    alt Database Transaction Fails
+        note over TS, TR: Rollback Database Transaction
+        TS --> TC: Error Result (e.g., InternalServerError)
+        deactivate TS
+        TC -> C: 500 Internal Server Error \nContent: ErrorDto
+        deactivate TC
+    end
+end
+
+@enduml
