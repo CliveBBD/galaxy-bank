@@ -55,3 +55,4 @@ nunit-*.xml
 
 #VS-code
 .vscode/*
+.vs/*
