@@ -36,4 +36,14 @@ namespace Cli.Commands
             return 0;
         }
     }
+
+    public class GetAllTransactionsCommand : Command
+    {
+        public override int Execute(CommandContext context)
+        {
+            // Placeholder for getting all transactions logic
+            AnsiConsole.MarkupLine("[green]Getting all transactions...[/]");
+            return 0;
+        }
+    }
 }

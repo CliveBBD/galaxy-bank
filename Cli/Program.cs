@@ -34,13 +34,23 @@ class Program
             config.AddCommand<HelpCommand>("help");
             config.AddCommand<AboutCommand>("about");
             config.AddCommand<ClearCommand>("clear");
+
             config.AddCommand<PrintCommand>("print");
+
             config.AddCommand<LoginCommand>("login");
             config.AddCommand<LogoutCommand>("logout");
             config.AddCommand<WhoAmICommand>("whoami");
-            config.AddCommand<TransferCommand>("transfer");
+
             config.AddCommand<DisputeCommand>("dispute");
+            config.AddCommand<GetDisputeByIdCommand>("get-dispute-by-id");
+            config.AddCommand<ResolveDisputeCommand>("resolve-dispute");
+
+            config.AddCommand<TransferCommand>("transfer");
             config.AddCommand<BalanceCommand>("show-balance");
+            config.AddCommand<ListAccountsCommand>("show-accounts");
+            config.AddCommand<ListDisputesCommand>("create-account");
+            config.AddCommand<GetAccountDetailsCommand>("get-account-details");
+
         });
 
         // If arguments are provided, run the command directly
