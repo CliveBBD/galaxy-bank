@@ -1,24 +1,6 @@
-﻿using Spectre.Console;
-using Spectre.Console.Cli;
-using System.Diagnostics.CodeAnalysis;
-using Cli.Commands;
+﻿using Spectre.Console.Cli;
 using Cli.Shell;
-
-// Command to print a custom message
-public class PrintCommand : Command<PrintCommand.Settings>
-{
-    public class Settings : CommandSettings
-    {
-        [CommandArgument(0, "<message>")]
-        public string Message { get; set; } = string.Empty;
-    }
-
-    public override int Execute([NotNull] CommandContext context, [NotNull] Settings settings)
-    {
-        AnsiConsole.MarkupLine($"[cyan]You entered:[/] {settings.Message}");
-        return 0;
-    }
-}
+using Cli.Helpers;
 
 // Application entry point
 
@@ -27,30 +9,31 @@ class Program
     static int Main(string[] args)
     {
         var app = new CommandApp();
+        var commandList = CommandConfig.Commands.ToList();
 
         // Register commands
         app.Configure(config =>
         {
-            config.AddCommand<HelpCommand>("help");
-            config.AddCommand<AboutCommand>("about");
-            config.AddCommand<ClearCommand>("clear");
+            commandList.ForEach(
+                command =>
+                {
+                    var commandName = command.Name;
+                    var commandType = command.CommandType;
 
-            config.AddCommand<PrintCommand>("print");
+                    try
+                    {
+                        var addCommandMethod = typeof(IConfigurator)
+                        .GetMethod("AddCommand")
+                        .MakeGenericMethod(commandType);
 
-            config.AddCommand<LoginCommand>("login");
-            config.AddCommand<LogoutCommand>("logout");
-            config.AddCommand<WhoAmICommand>("whoami");
-
-            config.AddCommand<DisputeCommand>("dispute");
-            config.AddCommand<GetDisputeByIdCommand>("get-dispute-by-id");
-            config.AddCommand<ResolveDisputeCommand>("resolve-dispute");
-
-            config.AddCommand<TransferCommand>("transfer");
-            config.AddCommand<BalanceCommand>("show-balance");
-            config.AddCommand<ListAccountsCommand>("show-accounts");
-            config.AddCommand<ListDisputesCommand>("create-account");
-            config.AddCommand<GetAccountDetailsCommand>("get-account-details");
-
+                        addCommandMethod.Invoke(config, [commandName]);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new InvalidOperationException($"Failed to register command '{commandName}': {ex.Message}", ex);
+                    }
+                }
+            );
         });
 
         // If arguments are provided, run the command directly
