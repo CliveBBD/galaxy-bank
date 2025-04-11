@@ -1,5 +1,6 @@
 using Google.Apis.Auth.AspNetCore3;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Api.Services;
 
 namespace  Api
 {
@@ -20,18 +21,41 @@ namespace  Api
 
         public static void ConfigureServices(IServiceCollection services, IConfigurationRoot configuration)
         {
+
+            // Configure CORS to allow CLI client
+            services.AddCors(options =>
+            {
+                options.AddPolicy("AllowLocalhost", policy =>
+                {
+                    policy.WithOrigins("http://localhost:*")
+                        .AllowAnyHeader()
+                        .AllowAnyMethod();
+                });
+            });
+
+            services.AddHttpClient<GoogleAuthService>();
+            services.AddSingleton<TokenService>();
+            services.AddScoped<GoogleAuthService>();
+
             services.AddAuthentication(o =>
             {
                 o.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
                 o.DefaultChallengeScheme = GoogleOpenIdConnectDefaults.AuthenticationScheme;
                 o.DefaultForbidScheme = GoogleOpenIdConnectDefaults.AuthenticationScheme;
             })
-            .AddCookie()
+            .AddCookie(options => {
+                options.Cookie.Name = "galaxy";
+                options.ExpireTimeSpan = TimeSpan.FromHours(1);
+                options.LoginPath = "/login";
+
+            })
             .AddGoogleOpenIdConnect(options =>
             {   
                 options.ClientId = configuration["Authentication:Google:ClientId"];
                 options.ClientSecret = configuration["Authentication:Google:ClientSecret"];
+                // options.CallbackPath = ;
             });
+
             services.AddControllers();
             services.AddOpenApi();
         }

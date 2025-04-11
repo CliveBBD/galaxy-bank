@@ -1,20 +1,19 @@
-using Cli.Commands;
 using Spectre.Console;
-using System.Diagnostics;
-using Cli.Models;
 using System.Net;
 using System.Text;
-using System.Threading.Tasks;
+using Google.Apis.Auth.OAuth2;
+using Google.Apis.Util.Store;
+using System.Diagnostics;
+using Cli.Models;
 
 namespace Cli.Services
 {
     public class AuthService
     {
 
-        public static int Login()
+        public static async Task<int> Login()
         {
-            StartListener();
-            string url = "https://accounts.google.com/o/oauth2/v2/auth?scope=https://www.googleapis.com/auth/userinfo.profile&response_type=code&redirect_uri=http://localhost:8080/oauth2callback&client_id=438794123703-9aqbuhmv0asuhr074hqd5o2lf7c7rpap.apps.googleusercontent.com";
+            string url = "https://accounts.google.com/o/oauth2/auth/client_id=438794123703-9aqbuhmv0asuhr074hqd5o2lf7c7rpap.apps.googleusercontent.com&redirect_uri=https://localhost:7059/signin-google&response_type=code&scope=openid%20email%20profile";
             AnsiConsole.MarkupLine($"[green]Open the following URL to login: {url}[/]");
 
             try
@@ -26,7 +25,7 @@ namespace Cli.Services
                     UseShellExecute = true
                 });
 
-                User.SetUserDetails("Kong", "kong@gmail.com", "1", "jwt");
+                // User.SetUserDetails("Kong", "kong@gmail.com", "1", "jwt");
             }
             catch (Exception ex)
             {
@@ -40,20 +39,48 @@ namespace Cli.Services
         {
             try
             {
+                Console.WriteLine("Starting up local listener.....");
                 int port = 8080;
-                string prefix = $"http://localhost:{port}/"; 
+                string prefix = $"http://localhost:{port}/signin-google"; 
 
                 HttpListener listener = new HttpListener();
                 listener.Prefixes.Add(prefix);
-
-                listener.Start();
                 return listener;
             }
-            catch(Exception e)
+            catch(Exception)
             {
-                new HttpListener();
+                // run default logic in here
             }
             return new HttpListener();
+        }
+
+        static async Task HandleRequestsAsync(HttpListener listener)
+        {
+            while (listener.IsListening)
+            {
+                HttpListenerContext context = await listener.GetContextAsync();
+                _ = HandleRequestAsync(context);
+            }
+        }
+
+        static async Task HandleRequestAsync(HttpListenerContext context)
+        {
+            try
+            {
+                string responseString = "<html><body>Hello, World!</body></html>";
+                byte[] buffer = Encoding.UTF8.GetBytes(responseString);
+
+                context.Response.ContentLength64 = buffer.Length;
+                await context.Response.OutputStream.WriteAsync(buffer, 0, buffer.Length);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error handling request: {ex.Message}");
+            }
+            finally
+            {
+                context.Response.OutputStream.Close();
+            }
         }
     }
 }

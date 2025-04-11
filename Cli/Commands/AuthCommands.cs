@@ -2,17 +2,45 @@ using Spectre.Console;
 using Spectre.Console.Cli;
 using Cli.Models;
 using Cli.Services;
+using System.Threading.Tasks;
+
 
 namespace Cli.Commands
 {
-    public class LoginCommand : Command
+    public class LoginCommand : AsyncCommand
     {
-        public override int Execute(CommandContext context)
+        public override async Task<int> ExecuteAsync(CommandContext context)
         {
-            AuthService.Login();
-            return 0;
+           try
+            {
+                var tokenManager = new TokenManager();
+                var apiClient = new ApiClient(tokenManager);
+    
+                Console.WriteLine("Initiating Google authentication...");
+    
+                var result = await apiClient.LoginAsync();
+    
+                if (result.Success)
+                {
+                    await tokenManager.SaveTokenAsync(result.Token);
+                    Console.WriteLine("Authentication successful!");
+                }
+                else
+                {
+                    Console.WriteLine("Authentication failed or timed out.");
+                }
+
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+                return 1;
+            }
         }
     }
+
+    
 
     public class LogoutCommand : Command
     {

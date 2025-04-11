@@ -3,6 +3,7 @@ using Spectre.Console.Cli;
 using System.Diagnostics.CodeAnalysis;
 using Cli.Commands;
 using Cli.Shell;
+using Cli.Services;
 
 // Command to print a custom message
 public class PrintCommand : Command<PrintCommand.Settings>
@@ -24,7 +25,7 @@ public class PrintCommand : Command<PrintCommand.Settings>
 
 class Program
 {
-    static int Main(string[] args)
+    static async Task<int> Main(string[] args)
     {
         var app = new CommandApp();
 
