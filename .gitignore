@@ -55,3 +55,7 @@ nunit-*.xml
 
 #VS-code
 .vscode/*
+
+#Sensitive Env Files
+.env.production
+.env
