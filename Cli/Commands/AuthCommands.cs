@@ -14,7 +14,7 @@ namespace Cli.Commands
            try
             {
                 var tokenManager = new TokenManager();
-                var apiClient = new ApiClient(tokenManager);
+                var apiClient = new AuthService(tokenManager);
     
                 Console.WriteLine("Initiating Google authentication...");
     

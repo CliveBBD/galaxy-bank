@@ -4,7 +4,7 @@ using System.Net.Http.Headers;
  
 namespace Cli.Services;
  
-public class ApiClient
+public class AuthService
 {
     private readonly HttpClient _httpClient;
     private readonly TokenManager _tokenManager;
@@ -12,7 +12,7 @@ public class ApiClient
     // API base URL (this should match your Web API's address)
     private readonly string _apiBaseUrl = "https://localhost:7059";
  
-    public ApiClient(TokenManager tokenManager)
+    public AuthService(TokenManager tokenManager)
     {
         _httpClient = new HttpClient();
         _tokenManager = tokenManager;

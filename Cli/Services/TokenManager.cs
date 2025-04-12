@@ -65,7 +65,7 @@ public class TokenManager
 
     }
  
-    public async Task<Token> GetTokenAsync()
+    public async Task<Token?> GetTokenAsync()
 
     {
 
