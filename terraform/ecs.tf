@@ -80,26 +80,22 @@ resource "aws_ecs_task_definition" "ecs_task_definition" {
   ])
 }
 
-# -----------------------------------------------------------------------------
-# 4. ECS Service (to run and maintain the task)
-# -----------------------------------------------------------------------------
-
 resource "aws_ecs_service" "ecs_service" {
   name            = "galaxybank-service"
   cluster         = aws_ecs_cluster.ecs_cluster.id
   task_definition = aws_ecs_task_definition.ecs_task_definition.arn
-  desired_count   = 1         #  Start with one task
-  launch_type     = "FARGATE" #  Use Fargate
+  desired_count   = 1
+  launch_type     = "FARGATE"
   network_configuration {
-    subnets          = [for subnet in aws_subnet.private_subnets : subnet.id] #  Place in private subnets
+    subnets          = [for subnet in aws_subnet.private_subnets : subnet.id]
     security_groups  = [aws_security_group.ecs_sg.id]
-    assign_public_ip = false #  Fargate in private subnet
+    assign_public_ip = false
   }
 
-  load_balancer { # Attach to the Application Load Balancer
+  load_balancer {
     target_group_arn = aws_lb_target_group.alb_target_group.arn
-    container_name   = "galaxybank-api" #  The name of the container in the task definition
+    container_name   = "galaxybank-api"
     container_port   = 80
   }
-  depends_on = [aws_lb_listener.alb_listener] #  Make sure the ALB is created first.
+  depends_on = [aws_lb_listener.alb_listener]
 }
