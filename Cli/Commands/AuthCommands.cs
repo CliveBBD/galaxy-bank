@@ -3,7 +3,6 @@ using Spectre.Console.Cli;
 using Cli.Models;
 using Cli.Services;
 
-
 namespace Cli.Commands
 {
     public class LoginCommand : AsyncCommand
