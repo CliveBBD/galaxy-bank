@@ -39,7 +39,6 @@ namespace Cli.Commands
     }
 
     
-
     public class LogoutCommand : Command
     {
         public override int Execute(CommandContext context)

@@ -1,0 +1,35 @@
+using Cli.Commands;
+
+//This is just a configuration file, if it helps, consider it a json
+namespace Cli.Helpers
+{
+    public static class CommandConfig
+    {
+        // Store command names and descriptions in static properties or methods
+        private static readonly List<CommandInfo> commands = new List<CommandInfo>
+        {
+            new() { Name = "help", Description = "Show available commands", CommandType = typeof(HelpCommand) },
+            new() { Name = "about", Description = "Information about Galaxy Bank", CommandType = typeof(AboutCommand) },
+            new() { Name = "clear", Description = "Clear the screen", CommandType = typeof(ClearCommand) },
+            new() { Name = "login", Description = "Log in to your account", CommandType = typeof(LoginCommand) },
+            new() { Name = "logout", Description = "Log out of your account", CommandType = typeof(LogoutCommand) },
+            new() { Name = "whoami", Description = "Show the currently logged-in user", CommandType = typeof(WhoAmICommand) },
+            new() { Name = "dispute", Description = "Create a new dispute", CommandType = typeof(DisputeCommand) },
+            new() { Name = "get-dispute-by-id", Description = "Retrieve a dispute by its ID", CommandType = typeof(GetDisputeByIdCommand) },
+            new() { Name = "resolve-dispute", Description = "Resolve an existing dispute", CommandType = typeof(ResolveDisputeCommand) },
+            new() { Name = "transfer", Description = "Transfer money between accounts", CommandType = typeof(TransferCommand) },
+            new() { Name = "show-balance", Description = "Display the current account balance", CommandType = typeof(BalanceCommand) },
+            new() { Name = "show-accounts", Description = "List all accounts", CommandType = typeof(ListAccountsCommand) },
+            new() { Name = "create-account", Description = "Create a new account", CommandType = typeof(CreateAccountCommand) },
+            new() { Name = "get-account-details", Description = "Get details of a specific account", CommandType = typeof(GetAccountDetailsCommand) },
+        };
+        public static IReadOnlyList<CommandInfo> Commands => commands;
+    }
+
+    public class CommandInfo
+    {
+        public required string Name { get; set; }
+        public required string Description { get; set; }
+        public required Type CommandType { get; set; }
+    }
+}
