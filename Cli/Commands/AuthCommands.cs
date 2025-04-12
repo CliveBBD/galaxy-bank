@@ -2,7 +2,6 @@ using Spectre.Console;
 using Spectre.Console.Cli;
 using Cli.Models;
 using Cli.Services;
-using System.Threading.Tasks;
 
 
 namespace Cli.Commands

@@ -61,9 +61,9 @@ public class GoogleAuthService
         var tokenRequest = new FormUrlEncodedContent(new Dictionary<string, string>
         {
             ["code"] = code,
-            ["client_id"] = _clientId,
-            ["client_secret"] = _clientSecret,
-            ["redirect_uri"] = _redirectUri,
+            ["client_id"] = !IsNull(_clientId) ? _clientId : "",
+            ["client_secret"] = !IsNull(_clientSecret) ? _clientSecret : "",
+            ["redirect_uri"] = !IsNull(_redirectUri) ? _redirectUri : "",
             ["grant_type"] = "authorization_code",
         });
  
@@ -77,7 +77,7 @@ public class GoogleAuthService
  
         var token = new StoredToken
         {
-            IdToken= tokenResponse.IdToken,
+            IdToken = tokenResponse.IdToken,
             AccessToken = tokenResponse.AccessToken,
             RefreshToken = tokenResponse.RefreshToken,
             ExpiresAt = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresInSeconds.GetValueOrDefault())

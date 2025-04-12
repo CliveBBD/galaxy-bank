@@ -22,7 +22,6 @@ namespace  Api
             services.AddHttpClient<GoogleAuthService>();
             services.AddSingleton<TokenService>();
             services.AddScoped<GoogleAuthService>();
-            services.AddAuthentication();
             services.AddControllers();
             services.AddOpenApi();
         }
@@ -37,11 +36,13 @@ namespace  Api
                     options.DocumentPath = "/openapi/v1.json";
                 });
             }
+
             app.UseCors();
             app.UseHttpsRedirection();
-            app.UseAuthentication();
             app.UseAuthorization();
+
             app.MapControllers();
+
             app.Run();
         }
       
