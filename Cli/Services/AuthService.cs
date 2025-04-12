@@ -10,8 +10,7 @@ public class AuthService
     private readonly TokenManager _tokenManager;
  
     // API base URL (this should match your Web API's address)
-    private readonly string _apiBaseUrl = "https://localhost:7059";
- 
+    private readonly string _apiBaseUrl = "https://localhost:7059"; 
     public AuthService(TokenManager tokenManager)
     {
         _httpClient = new HttpClient();
