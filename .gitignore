@@ -55,3 +55,8 @@ nunit-*.xml
 
 #VS-code
 .vscode/*
+.vs/
+
+.terraform
+*.tfstate
+*.tfstate.backup
