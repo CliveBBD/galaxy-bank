@@ -55,8 +55,12 @@ nunit-*.xml
 
 #VS-code
 .vscode/*
-.vs/
+.vs/*
 
 .terraform
 *.tfstate
 *.tfstate.backup
+
+#Sensitive Env Files
+.env.production
+.env
