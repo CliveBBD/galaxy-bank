@@ -8,9 +8,9 @@ public class GoogleAuthService
     private readonly IConfiguration _configuration;
     private readonly HttpClient _httpClient;
     private readonly TokenService _tokenService;
-    private readonly string _clientId;
-    private readonly string _clientSecret;
-    private readonly string _redirectUri;
+    private readonly string? _clientId;
+    private readonly string? _clientSecret;
+    private readonly string? _redirectUri;
  
     // Define the Google OAuth endpoints
     private const string AuthorizationEndpoint = "https://accounts.google.com/o/oauth2/auth";
@@ -55,7 +55,7 @@ public class GoogleAuthService
         return authorizationUrl;
     }
  
-    public async Task<StoredToken> ExchangeCodeForTokenAsync(string code)
+    public async Task<StoredToken?> ExchangeCodeForTokenAsync(string code)
     {
         // Set up the token request parameters
         var tokenRequest = new FormUrlEncodedContent(new Dictionary<string, string>
@@ -92,8 +92,8 @@ public class GoogleAuthService
         var refreshRequest = new FormUrlEncodedContent(new Dictionary<string, string>
         {
             ["refresh_token"] = refreshToken,
-            ["client_id"] = _clientId,
-            ["client_secret"] = _clientSecret,
+            ["client_id"] = !IsNull(_clientId) ? _clientId : "",
+            ["client_secret"] = !IsNull(_clientSecret) ? _clientSecret : "",
             ["grant_type"] = "refresh_token"
         });
  
@@ -122,5 +122,10 @@ public class GoogleAuthService
         var bytes = new byte[32];
         rng.GetBytes(bytes);
         return Convert.ToBase64String(bytes).Replace("+", "-").Replace("/", "_").Replace("=", "");
+    }
+
+    public bool IsNull(string parameter)
+    {
+        return parameter == null;
     }
 }

@@ -28,7 +28,7 @@ public class TokenService
 
     }
  
-    public StoredToken GetToken(string userKey)
+    public StoredToken? GetToken(string userKey)
 
     {
 
@@ -56,11 +56,11 @@ public class StoredToken
 
 {
 
-    public string AccessToken { get; set; }
+    public string? AccessToken { get; set; }
 
-    public string RefreshToken { get; set; }
+    public string? RefreshToken { get; set; }
 
-    public string IdToken { get; set; }
+    public string? IdToken { get; set; }
 
     public DateTime ExpiresAt { get; set; }
 

@@ -38,7 +38,7 @@ public class AuthService
         return token;
     }
  
-    private async Task<Token> RefreshTokenAsync(string sessionId)
+    private async Task<Token?> RefreshTokenAsync(string sessionId)
     {
         var response = await _httpClient.PostAsync($"{_apiBaseUrl}/refresh/{sessionId}", null);
         response.EnsureSuccessStatusCode();
@@ -157,27 +157,27 @@ public class AuthService
  
     private class LoginResponse
     {
-        public string AuthUrl { get; set; }
-        public string SessionId { get; set; }
+        public string? AuthUrl { get; set; }
+        public string? SessionId { get; set; }
     }
  
     private class TokenResponse
     {
-        public string AccessToken { get; set; }
+        public string? AccessToken { get; set; }
         public DateTime ExpiresAt { get; set; }
-        public string IdToken { get; set; }
+        public string? IdToken { get; set; }
     }
  
     private class RefreshResponse
     {
-        public string AccessToken { get; set; }
+        public string? AccessToken { get; set; }
         public DateTime ExpiresAt { get; set; }
-        public string IdToken { get; set; }
+        public string? IdToken { get; set; }
     }
 }
  
 public class LoginResult
 {
     public bool Success { get; set; }
-    public Token Token { get; set; }
+    public Token? Token { get; set; }
 }
