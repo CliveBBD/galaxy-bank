@@ -106,9 +106,9 @@ public class AuthService
         }
     }
  
-    private async Task<Token> PollForTokenAsync(string sessionId)
+    private async Task<Token?> PollForTokenAsync(string sessionId)
     {
-        int maxAttempts = 30;
+        int maxAttempts = 5;
         int attempts = 0;
  
         while (attempts < maxAttempts)
