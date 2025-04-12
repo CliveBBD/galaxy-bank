@@ -143,18 +143,6 @@ public class AuthService
         return null;
     }
  
-    public async Task<string> GetProfileAsync()
-    {
-        var token = await GetValidTokenAsync();
- 
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.AccessToken);
-        var response = await _httpClient.GetAsync($"{_apiBaseUrl}/api/profile");
-        response.EnsureSuccessStatusCode();
- 
-        var content = await response.Content.ReadAsStringAsync();
-        return content;
-    }
- 
     private class LoginResponse
     {
         public string? AuthUrl { get; set; }
