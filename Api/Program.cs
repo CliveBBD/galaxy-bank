@@ -1,5 +1,6 @@
 using Api.Services;
 using Api.Repositories;
+using Microsoft.AspNetCore.Builder;
 
 namespace  Api;
 
@@ -12,9 +13,8 @@ public class Program
         configurationBuilder.SetBasePath(Directory.GetCurrentDirectory()).AddUserSecrets<Program>();
         var configuration = configurationBuilder.Build();
         ConfigureServices(builder.Services, configuration);
-        var app = builder.Build();
-        
-        Configure(app);            
+        WebApplication app = ConfigureApp(builder);
+        app.Run();            
     }
 
     public static void ConfigureServices(IServiceCollection services, IConfigurationRoot configuration)
@@ -28,8 +28,9 @@ public class Program
         services.AddOpenApi();
     }
 
-    public static void Configure(WebApplication app)
+    public static WebApplication ConfigureApp(WebApplicationBuilder builder)
     {
+        var app = builder.Build();
         if (app.Environment.IsDevelopment())
         {
             app.MapOpenApi();
@@ -42,10 +43,9 @@ public class Program
         app.UseCors();
         app.UseHttpsRedirection();
         app.UseAuthorization();
-
         app.MapControllers();
 
-        app.Run();
+        return app;
     }
     
         
