@@ -56,3 +56,6 @@ nunit-*.xml
 #VS-code
 .vscode/*
 .vs/*
+
+#Secrets
+*/client_secrets.*
