@@ -1,12 +1,5 @@
-using Google.Apis.Auth.AspNetCore3;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Api.Services;
-using System.Threading.Tasks;
-using System.Text.Json;
 
 namespace Api.Controllers
 {
@@ -16,37 +9,20 @@ namespace Api.Controllers
         private readonly TokenService _tokenService;
  
         public AccountController(
-            // ILogger<AuthController> logger,
             GoogleAuthService googleAuthService,
             TokenService tokenService)
         {
-            // _logger = logger;
             _googleAuthService = googleAuthService;
             _tokenService = tokenService;
         }
 
         [Route("signin-google")]
-        public IActionResult GoogleLogin()
+        public async Task<IActionResult> GoogleLogin([FromQuery] string code, [FromQuery] string state)
         {
-            // var token = _googleAuthService.ExchangeCodeForTokenAsync(accessCode);
-            var properties = new AuthenticationProperties { RedirectUri = "https://localhost:7059/signin-google" };
-            return Challenge(properties, GoogleOpenIdConnectDefaults.AuthenticationScheme);
+            var token = await _googleAuthService.ExchangeCodeForTokenAsync(code);
+            _tokenService.StoreToken(state, token);
+            return Ok(token);
         }
-
-        [Route("google-response")]
-        public async Task<IActionResult> GoogleResponse()
-        {
-            var result = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            var claims = result.Principal?.Identities.FirstOrDefault()?.Claims.Select(claim => new {
-                claim.Issuer,
-                claim.OriginalIssuer,
-                claim.Type,
-                claim.Value,
-            });
-            return new JsonResult(claims);
-        }
-
-
 
         [Route("login")]
         public IActionResult Login()
@@ -66,11 +42,21 @@ namespace Api.Controllers
             });
         }
 
-        [Route("token/{sessionId}")]
-        public async Task<IActionResult> Token(string sessionId)
+        [HttpGet("token/{sessionId}")]
+        public IActionResult GetToken(string sessionId)
         {
-            var token = await _googleAuthService.ExchangeCodeForTokenAsync(sessionId);
-            return Ok(token);
+            var token = _tokenService.GetToken(sessionId);
+
+            if (token == null)
+            {
+                return NotFound("No token found for this session.");
+            }
+
+            return Ok(new
+            {
+                accessToken = token.AccessToken,
+                expiresAt = token.ExpiresAt
+            });
         }
     }
 }

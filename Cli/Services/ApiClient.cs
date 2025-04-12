@@ -56,20 +56,16 @@ public class ApiClient
  
     public async Task<LoginResult> LoginAsync()
     {
-        // Initiate login flow
         var response = await _httpClient.GetAsync($"{_apiBaseUrl}/login");
         response.EnsureSuccessStatusCode();
  
         var responseContent = await response.Content.ReadAsStringAsync();
         var loginResponse = JsonConvert.DeserializeObject<LoginResponse>(responseContent);
- 
-        // Open the browser with the auth URL
         OpenBrowser(loginResponse.AuthUrl);
  
         Console.WriteLine("A browser window has been opened. Please complete the authentication process there.");
         Console.WriteLine("Waiting for authentication to complete...");
  
-        // Poll for token until it becomes available or timeout
         var token = await PollForTokenAsync(loginResponse.SessionId);
  
         return new LoginResult
@@ -91,7 +87,6 @@ public class ApiClient
         }
         catch
         {
-            // For Linux and macOS
             try
             {
                 Process.Start("xdg-open", url); // Linux
@@ -112,14 +107,14 @@ public class ApiClient
  
     private async Task<Token> PollForTokenAsync(string sessionId)
     {
-        int maxAttempts = 30; // 30 * 2 seconds = 60 seconds timeout
+        int maxAttempts = 30;
         int attempts = 0;
  
         while (attempts < maxAttempts)
         {
             try
             {
-                var response = await _httpClient.GetAsync($"{_apiBaseUrl}/google-response");
+                var response = await _httpClient.GetAsync($"{_apiBaseUrl}/token/{sessionId}");
  
                 if (response.IsSuccessStatusCode)
                 {
@@ -140,10 +135,10 @@ public class ApiClient
             }
  
             attempts++;
-            await Task.Delay(2000); // Wait 2 seconds between attempts
+            await Task.Delay(2000);
         }
  
-        return null; // Timeout or error
+        return null;
     }
  
     public async Task<string> GetProfileAsync()

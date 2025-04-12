@@ -69,8 +69,6 @@ public class TokenManager
 
     {
 
-        // Return cached token if available
-
         if (_cachedToken != null)
 
         {
@@ -78,8 +76,6 @@ public class TokenManager
             return _cachedToken;
 
         }
- 
-        // Check if token file exists
 
         if (!File.Exists(_configPath))
 
