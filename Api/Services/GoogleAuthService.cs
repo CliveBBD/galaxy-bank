@@ -1,8 +1,5 @@
-using Google.Apis.Auth.OAuth2;
-using Google.Apis.Auth.OAuth2.Flows;
 using Google.Apis.Auth.OAuth2.Responses;
 using System.Security.Cryptography;
-using System.Text;
  
 namespace Api.Services;
  
@@ -20,11 +17,11 @@ public class GoogleAuthService
     private const string TokenEndpoint = "https://oauth2.googleapis.com/token";
  
     // Define the required scopes
-    private readonly string[] _scopes = new[]
-    {
+    private readonly string[] _scopes =
+    [
         "https://www.googleapis.com/auth/userinfo.email",
         "https://www.googleapis.com/auth/userinfo.profile"
-    };
+    ];
  
     public GoogleAuthService(
         IConfiguration configuration,
@@ -67,7 +64,7 @@ public class GoogleAuthService
             ["client_id"] = _clientId,
             ["client_secret"] = _clientSecret,
             ["redirect_uri"] = _redirectUri,
-            ["grant_type"] = "authorization_code"
+            ["grant_type"] = "authorization_code",
         });
  
         // Make the token request
@@ -80,6 +77,7 @@ public class GoogleAuthService
  
         var token = new StoredToken
         {
+            IdToken= tokenResponse.IdToken,
             AccessToken = tokenResponse.AccessToken,
             RefreshToken = tokenResponse.RefreshToken,
             ExpiresAt = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresInSeconds.GetValueOrDefault())
@@ -108,7 +106,8 @@ public class GoogleAuthService
         var tokenResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<TokenResponse>(responseContent);
  
         var token = new StoredToken
-        {
+        {   
+            IdToken = tokenResponse.IdToken,
             AccessToken = tokenResponse.AccessToken,
             RefreshToken = refreshToken, // The refresh token doesn't change
             ExpiresAt = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresInSeconds.GetValueOrDefault())

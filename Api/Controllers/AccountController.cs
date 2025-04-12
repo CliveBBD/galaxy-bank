@@ -19,6 +19,7 @@ namespace Api.Controllers
         [Route("signin-google")]
         public async Task<IActionResult> GoogleLogin([FromQuery] string code, [FromQuery] string state)
         {
+
             var token = await _googleAuthService.ExchangeCodeForTokenAsync(code);
             _tokenService.StoreToken(state, token);
             return Ok(token);

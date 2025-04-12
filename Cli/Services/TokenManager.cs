@@ -7,6 +7,8 @@ public class Token
 
     public string AccessToken { get; set; }
 
+    public string IdToken { get; set;}
+
     public DateTime ExpiresAt { get; set; }
 
     public string SessionId { get; set; }

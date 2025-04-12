@@ -48,6 +48,7 @@ public class AuthService
  
         return new Token
         {
+            IdToken = refreshResponse.IdToken,
             AccessToken = refreshResponse.AccessToken,
             ExpiresAt = refreshResponse.ExpiresAt,
             SessionId = sessionId
@@ -123,6 +124,7 @@ public class AuthService
  
                     return new Token
                     {
+                        IdToken = tokenResponse.IdToken,
                         AccessToken = tokenResponse.AccessToken,
                         ExpiresAt = tokenResponse.ExpiresAt,
                         SessionId = sessionId
@@ -163,12 +165,14 @@ public class AuthService
     {
         public string AccessToken { get; set; }
         public DateTime ExpiresAt { get; set; }
+        public string IdToken { get; set; }
     }
  
     private class RefreshResponse
     {
         public string AccessToken { get; set; }
         public DateTime ExpiresAt { get; set; }
+        public string IdToken { get; set; }
     }
 }
  
