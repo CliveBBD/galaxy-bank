@@ -1,0 +1,5 @@
+ALTER TABLE allowed_dispute_progressions
+RENAME COLUMN from_dispute_id TO from_dispute_status_id;
+
+ALTER TABLE allowed_dispute_progressions
+RENAME COLUMN to_dispute_id TO to_dispute_status_id;

@@ -11,9 +11,11 @@ builder.Services.AddOpenApi();
 
 // Add repositories here
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
+builder.Services.AddScoped<IDisputeRepository, DisputeRepository>();
 
 // Add services here
 builder.Services.AddScoped<IRoleService, RoleService>();
+builder.Services.AddScoped<IDisputeService, DisputeService>();
 
 var app = builder.Build();
 
