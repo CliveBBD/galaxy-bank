@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using Api.Services;
-using YamlDotNet.Core.Tokens;
 
 namespace Api.Controllers
 {
@@ -61,8 +60,10 @@ namespace Api.Controllers
             });
         }
 
+
+
         [HttpGet("refresh/{sessionId}")]
-        public async Task<IActionResult> refreshToken(string sessionId)
+        public async Task<IActionResult> refreshToken(string sessionId, [FromQuery] string state)
         {
             var token = await _googleAuthService.RefreshTokenAsync(sessionId);
 
@@ -70,6 +71,8 @@ namespace Api.Controllers
             {
                 return NotFound("Failed to refresh token, please login again.");
             }
+
+            _tokenService.StoreToken(state, token);
 
             return Ok(new StoredToken
             {
