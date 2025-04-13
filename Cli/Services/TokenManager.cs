@@ -1,25 +1,13 @@
 using Newtonsoft.Json;
-namespace Cli.Services;
- 
-public class Token
+using Cli.Models;
 
-{
-    public string AccessToken { get; set; }
-
-    public string IdToken { get; set;}
-
-    public DateTime ExpiresAt { get; set; }
-
-    public string SessionId { get; set; }
- 
-    public bool IsExpired => DateTime.UtcNow >= ExpiresAt;
-}
+namespace Cli.Services; 
  
 public class TokenManager
 {
 
     private readonly string _configPath;
-    private Token _cachedToken;
+    private Token? _cachedToken;
  
     public TokenManager()
     {

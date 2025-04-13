@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Api.Services;
+using YamlDotNet.Core.Tokens;
 
 namespace Api.Controllers
 {
@@ -52,10 +53,29 @@ namespace Api.Controllers
                 return NotFound("No token found for this session.");
             }
 
-            return Ok(new
+            return Ok(new StoredToken
+            {   
+                IdToken = token.IdToken,
+                AccessToken = token.AccessToken,
+                ExpiresAt = token.ExpiresAt
+            });
+        }
+
+        [HttpGet("refresh/{sessionId}")]
+        public async Task<IActionResult> refreshToken(string sessionId)
+        {
+            var token = await _googleAuthService.RefreshTokenAsync(sessionId);
+
+            if (token == null)
             {
-                accessToken = token.AccessToken,
-                expiresAt = token.ExpiresAt
+                return NotFound("Failed to refresh token, please login again.");
+            }
+
+            return Ok(new StoredToken
+            {
+                IdToken = token.IdToken,
+                AccessToken = token.AccessToken,
+                ExpiresAt = token.ExpiresAt
             });
         }
     }

@@ -1,5 +1,6 @@
 using Newtonsoft.Json;
 using System.Diagnostics;
+using Cli.Models;
 using System.Net.Http.Headers;
  
 namespace Cli.Services;
@@ -56,6 +57,9 @@ public class AuthService
  
     public async Task<LoginResult> LoginAsync()
     {
+        var savedToken = await GetValidTokenAsync();
+        Console.WriteLine(savedToken);
+
         var response = await _httpClient.GetAsync($"{_apiBaseUrl}/login");
         response.EnsureSuccessStatusCode();
  
@@ -140,31 +144,5 @@ public class AuthService
         }
  
         return null;
-    }
- 
-    private class LoginResponse
-    {
-        public string? AuthUrl { get; set; }
-        public string? SessionId { get; set; }
-    }
- 
-    private class TokenResponse
-    {
-        public string? AccessToken { get; set; }
-        public DateTime ExpiresAt { get; set; }
-        public string? IdToken { get; set; }
-    }
- 
-    private class RefreshResponse
-    {
-        public string? AccessToken { get; set; }
-        public DateTime ExpiresAt { get; set; }
-        public string? IdToken { get; set; }
-    }
-}
- 
-public class LoginResult
-{
-    public bool Success { get; set; }
-    public Token? Token { get; set; }
+    }    
 }
