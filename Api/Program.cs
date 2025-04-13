@@ -11,6 +11,7 @@ public class Program
         var builder = WebApplication.CreateBuilder(args);
         var configurationBuilder = new ConfigurationBuilder();
         configurationBuilder.SetBasePath(Directory.GetCurrentDirectory()).AddUserSecrets<Program>();
+        configurationBuilder.AddJsonFile("appsettings.json").AddEnvironmentVariables();
         var configuration = configurationBuilder.Build();
         ConfigureServices(builder.Services, configuration);
         WebApplication app = ConfigureApp(builder);
