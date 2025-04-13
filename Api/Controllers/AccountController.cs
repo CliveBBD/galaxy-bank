@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Api.Services;
+using Api.Models;
+using System.Threading.Tasks;
 
 namespace Api.Controllers
 {
@@ -43,7 +45,7 @@ namespace Api.Controllers
         }
 
         [HttpGet("token/{sessionId}")]
-        public IActionResult GetToken(string sessionId)
+        public async Task<IActionResult> GetToken(string sessionId)
         {
             var token = _tokenService.GetToken(sessionId);
 
@@ -62,10 +64,11 @@ namespace Api.Controllers
 
 
 
-        [HttpGet("refresh/{sessionId}")]
-        public async Task<IActionResult> refreshToken(string sessionId)
+        [HttpPost("refresh/{sessionId}")]
+        public async Task<IActionResult> RefreshToken(string sessionId)
         {
-            var token = await _googleAuthService.RefreshTokenAsync(sessionId);
+            var refreshToken = _tokenService.GetToken(sessionId);
+            var token = await _googleAuthService.RefreshTokenAsync(refreshToken.RefreshToken);
 
             if (token == null)
             {

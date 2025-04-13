@@ -1,3 +1,5 @@
+namespace Api.Models;
+
 public class StoredToken
 
 {

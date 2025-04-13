@@ -1,9 +1,9 @@
+using Api.Models;
+
 namespace Api.Services;
  
 public class TokenService
-
 {
-
     private readonly Dictionary<string, StoredToken> _tokenStore = new();
  
     public void StoreToken(string userKey, StoredToken token)
@@ -18,7 +18,7 @@ public class TokenService
         }
     }
  
-    public StoredToken? GetToken(string userKey)
+    public StoredToken GetToken(string userKey)
     {
         return _tokenStore.TryGetValue(userKey, out var token) ? token : null;
     }

@@ -12,13 +12,13 @@ public class Program
         var configurationBuilder = new ConfigurationBuilder();
         configurationBuilder.SetBasePath(Directory.GetCurrentDirectory()).AddUserSecrets<Program>();
         configurationBuilder.AddJsonFile("appsettings.json").AddEnvironmentVariables();
-        var configuration = configurationBuilder.Build();
-        ConfigureServices(builder.Services, configuration);
+        configurationBuilder.Build();
+        ConfigureServices(builder.Services);
         WebApplication app = ConfigureApp(builder);
         app.Run();            
     }
 
-    public static void ConfigureServices(IServiceCollection services, IConfigurationRoot configuration)
+    public static void ConfigureServices(IServiceCollection services)
     {
         services.AddHttpClient<GoogleAuthService>();
         services.AddSingleton<TokenService>();

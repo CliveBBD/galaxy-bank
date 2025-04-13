@@ -1,6 +1,9 @@
 using Google.Apis.Auth.OAuth2.Responses;
 using System.Security.Cryptography;
- 
+using Api.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http.HttpResults;
+
 namespace Api.Services;
  
 public class GoogleAuthService
@@ -13,15 +16,12 @@ public class GoogleAuthService
     private readonly string? _redirectUri;
  
     // Define the Google OAuth endpoints
-    private const string AuthorizationEndpoint = "https://accounts.google.com/o/oauth2/auth";
-    private const string TokenEndpoint = "https://oauth2.googleapis.com/token";
+    private readonly string? AuthorizationEndpoint;
+    private readonly string? TokenEndpoint;
+    private readonly string? TokenInfoEndpoint;
  
     // Define the required scopes
-    private readonly string[] _scopes =
-    [
-        "https://www.googleapis.com/auth/userinfo.email",
-        "https://www.googleapis.com/auth/userinfo.profile"
-    ];
+    private readonly string[]? _scopes;
  
     public GoogleAuthService(
         IConfiguration configuration,
@@ -35,6 +35,14 @@ public class GoogleAuthService
         _clientId = _configuration["Authentication:Google:ClientId"];
         _clientSecret = _configuration["Authentication:Google:ClientSecret"];
         _redirectUri = _configuration["Authentication:Google:RedirectUri"];
+        _scopes = [
+            "https://www.googleapis.com/auth/userinfo.email",
+            "https://www.googleapis.com/auth/userinfo.profile"
+            ];
+
+        AuthorizationEndpoint = _configuration["Authentication:AuthorizationEndpoint"];
+        TokenEndpoint = _configuration["Authentication:TokenEndpoint"];
+        TokenInfoEndpoint = _configuration["Authentication:TokenInfoEndpoint"];
     }
  
     public string GenerateAuthUrl(string sessionId)
@@ -127,5 +135,12 @@ public class GoogleAuthService
     public bool IsNull(string parameter)
     {
         return parameter == null;
+    }
+
+    public async Task<bool> IsValidToken(string jwt)
+    {
+        string Endpoint = TokenInfoEndpoint + $"?id_token={jwt}";
+        var tokenVerification = await _httpClient.GetAsync(Endpoint);
+        return false;
     }
 }

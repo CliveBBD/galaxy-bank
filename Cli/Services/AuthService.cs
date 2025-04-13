@@ -2,6 +2,7 @@ using Newtonsoft.Json;
 using System.Diagnostics;
 using Cli.Models;
 using System.Net.Http.Headers;
+using Microsoft.Extensions.Configuration;
  
 namespace Cli.Services;
  
@@ -57,9 +58,6 @@ public class AuthService
  
     public async Task<LoginResult> LoginAsync()
     {
-        var savedToken = await GetValidTokenAsync();
-        Console.WriteLine(savedToken);
-
         var response = await _httpClient.GetAsync($"{_apiBaseUrl}/login");
         response.EnsureSuccessStatusCode();
  
