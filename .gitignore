@@ -56,6 +56,11 @@ nunit-*.xml
 #VS-code
 .vscode/*
 .vs/*
+.idea/*
+
+.terraform
+*.tfstate
+*.tfstate.backup
 
 #Secrets
 */client_secrets.*
