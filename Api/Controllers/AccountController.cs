@@ -63,7 +63,7 @@ namespace Api.Controllers
 
 
         [HttpGet("refresh/{sessionId}")]
-        public async Task<IActionResult> refreshToken(string sessionId, [FromQuery] string state)
+        public async Task<IActionResult> refreshToken(string sessionId)
         {
             var token = await _googleAuthService.RefreshTokenAsync(sessionId);
 
@@ -72,7 +72,7 @@ namespace Api.Controllers
                 return NotFound("Failed to refresh token, please login again.");
             }
 
-            _tokenService.StoreToken(state, token);
+            _tokenService.StoreToken(sessionId, token);
 
             return Ok(new StoredToken
             {
