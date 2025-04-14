@@ -1,5 +1,8 @@
 using Spectre.Console;
 using Spectre.Console.Cli;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
 
 namespace Cli.Commands
 {
@@ -36,6 +39,142 @@ namespace Cli.Commands
             return 0;
         }
     }
+
+    public class DepositCommand : Command<DepositCommand.Settings>
+    {
+        public class Settings : CommandSettings
+        {
+            [CommandOption("-a|--amount <Amount>")]
+            public decimal Amount { get; set; }
+
+            [CommandOption("-r|--reference <Reference>")]
+            public string Reference { get; set; } = string.Empty;
+        }
+
+        public override int Execute(CommandContext context, Settings settings)
+        {
+            if (string.IsNullOrEmpty(settings.Reference))
+            {
+                AnsiConsole.MarkupLine("[red]Reference must be specified.[/]");
+                return 1;
+            }
+
+            if (settings.Amount <= 0)
+            {
+                AnsiConsole.MarkupLine("[red]Amount must be greater than zero.[/]");
+                return 1;
+            }
+
+            // Prompt user to select an account
+            var accountID = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title("Select an [green]account[/] to deposit into:")
+                    .PageSize(10)
+                    .AddChoices(new[] { "Check", "Savings", "Credit" }) // Fake account IDs
+            );
+
+            var depositPayload = new
+            {
+                AccountID = 1,
+                Amount = settings.Amount,
+                Reference = settings.Reference
+            };
+
+            var jsonPayload = JsonSerializer.Serialize(depositPayload);
+            var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+            using var httpClient = new HttpClient();
+            try
+            {
+                var response = httpClient.PostAsync("https://localhost:7059/deposit", content).Result;
+
+                if (response.IsSuccessStatusCode)
+                {
+                    AnsiConsole.MarkupLine($"[green]Deposited Q {settings.Amount:n0} to account {accountID} with reference {settings.Reference}[/]");
+                    return 0;
+                }
+                else
+                {
+                    AnsiConsole.MarkupLine($"[red]Failed to deposit: {response.StatusCode} - {response.ReasonPhrase}[/]");
+                    return 1;
+                }
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[red]An error occurred: {ex.Message}[/]");
+                return 1;
+            }
+        }
+    }
+
+
+    public class WithdrawCommand : Command<WithdrawCommand.Settings>
+    {
+        public class Settings : CommandSettings
+        {
+            [CommandOption("-a|--amount <Amount>")]
+            public decimal Amount { get; set; }
+
+            [CommandOption("-r|--reference <Reference>")]
+            public string Reference { get; set; } = string.Empty;
+        }
+
+        public override int Execute(CommandContext context, Settings settings)
+        {
+            if (string.IsNullOrEmpty(settings.Reference))
+            {
+                AnsiConsole.MarkupLine("[red]Reference must be specified.[/]");
+                return 1;
+            }
+
+            if (settings.Amount <= 0)
+            {
+                AnsiConsole.MarkupLine("[red]Amount must be greater than zero.[/]");
+                return 1;
+            }
+
+            // Prompt user to select an account
+            var accountID = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title("Select an [green]account[/] to deposit into:")
+                    .PageSize(10)
+                    .AddChoices(new[] { "Check", "Savings", "Credit" }) // Fake account IDs
+            );
+
+            var depositPayload = new
+            {
+                AccountID = 1,
+                Amount = settings.Amount,
+                Reference = settings.Reference
+            };
+
+            var jsonPayload = JsonSerializer.Serialize(depositPayload);
+            var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+            using var httpClient = new HttpClient();
+            try
+            {
+                var response = httpClient.PostAsync("https://localhost:7059/withdraw", content).Result;
+
+                if (response.IsSuccessStatusCode)
+                {
+                    AnsiConsole.MarkupLine($"[green]Withdrawed Q {settings.Amount:n0} from account {accountID} with reference {settings.Reference}[/]");
+                    return 0;
+                }
+                else
+                {
+                    AnsiConsole.MarkupLine($"[red]Failed to deposit: {response.StatusCode} - {response.ReasonPhrase}[/]");
+                    return 1;
+                }
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[red]An error occurred: {ex.Message}[/]");
+                return 1;
+            }
+        }
+    }
+
 
     public class GetAllTransactionsCommand : Command
     {
