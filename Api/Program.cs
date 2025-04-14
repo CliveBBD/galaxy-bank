@@ -27,12 +27,14 @@ builder.Services.AddScoped<IRoleRepository, RoleRepository>();
 builder.Services.AddScoped<IDepositRepository, DepositRepository>();
 builder.Services.AddScoped<IWithdrawRepository, WithdrawRepository>();
 builder.Services.AddScoped<ITransactionTypeRepository, TransactionTypeRepository>();
+builder.Services.AddScoped<ITransferRepository, TransferRepository>();
 
 // Add services here
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IDepositService, DepositService>();
 builder.Services.AddScoped<IWithdrawService, WithdrawService>();
 builder.Services.AddScoped<ITransactionTypeService, TransactionTypeService>();
+builder.Services.AddScoped<ITransferService, TransferService>();
 
 var app = builder.Build();
 

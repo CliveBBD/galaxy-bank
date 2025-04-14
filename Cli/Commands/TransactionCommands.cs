@@ -35,9 +35,45 @@ namespace Cli.Commands
                 return 1;
             }
 
-            // Simulate transfer logic here
-            AnsiConsole.MarkupLine($"[green]Transferred Q {settings.Amount:n0} from {settings.FromAccount} to {settings.ToAccount}[/]");
-            return 0;
+            // Prompt user for FromReference and ToReference
+            AnsiConsole.Markup("Enter a [green]reference[/] for the [blue]from account[/]:");
+            var fromReference = ReadLine.Read();
+            AnsiConsole.Markup("Enter a [green]reference[/] for the [blue]to account[/]:");
+            var toReference = ReadLine.Read();
+
+            var transferPayload = new
+            {
+                FromAccountID = settings.FromAccount,
+                ToAccountID = settings.ToAccount,
+                Amount = settings.Amount,
+                FromReference = fromReference,
+                ToReference = toReference
+            };
+
+            var jsonPayload = JsonSerializer.Serialize(transferPayload);
+            var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+            using var httpClient = new HttpClient();
+            try
+            {
+                var response = httpClient.PostAsync("https://localhost:7059/transfer", content).Result;
+
+                if (response.IsSuccessStatusCode)
+                {
+                    AnsiConsole.MarkupLine($"[green]Successfully transferred Q {settings.Amount:n0} from {settings.FromAccount} to {settings.ToAccount}[/]");
+                    return 0;
+                }
+                else
+                {
+                    AnsiConsole.MarkupLine($"[red]Failed to transfer: {response.StatusCode} - {response.ReasonPhrase}[/]");
+                    return 1;
+                }
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[red]An error occurred: {ex.Message}[/]");
+                return 1;
+            }
         }
     }
 
