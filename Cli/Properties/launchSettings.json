@@ -5,7 +5,6 @@
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": false,
-      "applicationUrl": "https://localhost:8080/signin-goole",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
