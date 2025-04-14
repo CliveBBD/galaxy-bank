@@ -141,9 +141,9 @@ public class AuthService
  
                     return new Token
                     {
-                        IdToken = tokenResponse.IdToken,
-                        AccessToken = tokenResponse.AccessToken,
-                        ExpiresAt = tokenResponse.ExpiresAt,
+                        IdToken = tokenResponse != null ? tokenResponse.IdToken : "",
+                        AccessToken = tokenResponse != null ? tokenResponse.AccessToken : "",
+                        ExpiresAt = tokenResponse != null ? tokenResponse.ExpiresAt : DateTime.Now,
                         SessionId = sessionId
                     };
                 }
