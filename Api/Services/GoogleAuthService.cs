@@ -1,8 +1,8 @@
 using Google.Apis.Auth.OAuth2.Responses;
 using System.Security.Cryptography;
 using Api.Models;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Http.HttpResults;
+using Newtonsoft.Json;
+using Namotion.Reflection;
 
 namespace Api.Services;
  
@@ -53,9 +53,9 @@ public class GoogleAuthService
         // Build the authorization URL
         var authorizationUrl = $"{AuthorizationEndpoint}?" +
             $"client_id={_clientId}&" +
-            $"redirect_uri={Uri.EscapeDataString(_redirectUri)}&" +
+            $"redirect_uri={Uri.EscapeDataString(_redirectUri ?? "")}&" +
             $"response_type=code&" +
-            $"scope={Uri.EscapeDataString(string.Join(" ", _scopes))}&" +
+            $"scope={Uri.EscapeDataString(string.Join(" ", _scopes ?? []))}&" +
             $"access_type=offline&" +
             $"state={state}&" +
             $"prompt=consent";
@@ -69,9 +69,9 @@ public class GoogleAuthService
         var tokenRequest = new FormUrlEncodedContent(new Dictionary<string, string>
         {
             ["code"] = code,
-            ["client_id"] = !IsNull(_clientId) ? _clientId : "",
-            ["client_secret"] = !IsNull(_clientSecret) ? _clientSecret : "",
-            ["redirect_uri"] = !IsNull(_redirectUri) ? _redirectUri : "",
+            ["client_id"] = _clientId ?? "",
+            ["client_secret"] = _clientSecret ?? "",
+            ["redirect_uri"] = _redirectUri ?? "",
             ["grant_type"] = "authorization_code",
         });
  
@@ -81,13 +81,13 @@ public class GoogleAuthService
  
         // Parse the token response
         var responseContent = await response.Content.ReadAsStringAsync();
-        var tokenResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<TokenResponse>(responseContent);
+        var tokenResponse = JsonConvert.DeserializeObject<TokenResponse>(responseContent);
  
         var token = new StoredToken
         {
-            IdToken = tokenResponse.IdToken,
-            AccessToken = tokenResponse.AccessToken,
-            RefreshToken = tokenResponse.RefreshToken,
+            IdToken = tokenResponse != null ? tokenResponse.IdToken: "",
+            AccessToken = tokenResponse != null ? tokenResponse.AccessToken : "",
+            RefreshToken = tokenResponse != null ? tokenResponse.RefreshToken : "",
             ExpiresAt = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresInSeconds.GetValueOrDefault())
         };
  
@@ -100,8 +100,8 @@ public class GoogleAuthService
         var refreshRequest = new FormUrlEncodedContent(new Dictionary<string, string>
         {
             ["refresh_token"] = refreshToken,
-            ["client_id"] = !IsNull(_clientId) ? _clientId : "",
-            ["client_secret"] = !IsNull(_clientSecret) ? _clientSecret : "",
+            ["client_id"] = _clientId ?? "",
+            ["client_secret"] = _clientSecret ?? "",
             ["grant_type"] = "refresh_token"
         });
  
@@ -111,12 +111,12 @@ public class GoogleAuthService
  
         // Parse the token response
         var responseContent = await response.Content.ReadAsStringAsync();
-        var tokenResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<TokenResponse>(responseContent);
+        var tokenResponse = JsonConvert.DeserializeObject<TokenResponse>(responseContent);
  
         var token = new StoredToken
         {   
-            IdToken = tokenResponse.IdToken,
-            AccessToken = tokenResponse.AccessToken,
+            IdToken = tokenResponse != null ? tokenResponse.IdToken : "",
+            AccessToken = tokenResponse != null ? tokenResponse.AccessToken : "",
             RefreshToken = refreshToken, // The refresh token doesn't change
             ExpiresAt = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresInSeconds.GetValueOrDefault())
         };
@@ -126,21 +126,24 @@ public class GoogleAuthService
  
     public string GenerateSessionId()
     {
-        using var rng = RandomNumberGenerator.Create();
+        using var randomNumberGenerated = RandomNumberGenerator.Create();
         var bytes = new byte[32];
-        rng.GetBytes(bytes);
+        randomNumberGenerated.GetBytes(bytes);
         return Convert.ToBase64String(bytes).Replace("+", "-").Replace("/", "_").Replace("=", "");
     }
 
-    public bool IsNull(string parameter)
+    public bool IsNotNull(object obj)
     {
-        return parameter == null;
+        return obj != null;
     }
 
     public async Task<bool> IsValidToken(string jwt)
     {
-        string Endpoint = TokenInfoEndpoint + $"?id_token={jwt}";
-        var tokenVerification = await _httpClient.GetAsync(Endpoint);
-        return false;
+        string verifyRequestUrl = $"{TokenInfoEndpoint}?id_token={jwt}";
+        var tokenVerification = await _httpClient.GetAsync(verifyRequestUrl);
+        tokenVerification.EnsureSuccessStatusCode();
+        var tokenVerificationContent = await tokenVerification.Content.ReadAsStringAsync();
+        var json = JsonConvert.DeserializeObject(tokenVerificationContent);
+        return !json.HasProperty("error");
     }
 }

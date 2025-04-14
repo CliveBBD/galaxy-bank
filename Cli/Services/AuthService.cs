@@ -1,8 +1,6 @@
 using Newtonsoft.Json;
 using System.Diagnostics;
 using Cli.Models;
-using System.Net.Http.Headers;
-using Microsoft.Extensions.Configuration;
  
 namespace Cli.Services;
  
@@ -49,14 +47,32 @@ public class AuthService
  
         return new Token
         {
-            IdToken = refreshResponse.IdToken,
-            AccessToken = refreshResponse.AccessToken,
-            ExpiresAt = refreshResponse.ExpiresAt,
+            IdToken = refreshResponse != null ? refreshResponse.IdToken : "",
+            AccessToken = refreshResponse != null ? refreshResponse.AccessToken : "",
+            ExpiresAt = refreshResponse != null ? refreshResponse.ExpiresAt : DateTime.Now,
             SessionId = sessionId
         };
     }
  
     public async Task<LoginResult> LoginAsync()
+    {
+        try 
+        {
+            var savedToken = await GetValidTokenAsync();
+            return new LoginResult
+            {
+                Success = savedToken != null,
+                Token = savedToken
+            };
+        }
+        catch (InvalidOperationException)
+        {
+            var token = await PollForToken();
+            return token;
+        }
+    }
+
+    public async Task<LoginResult> PollForToken()
     {
         var response = await _httpClient.GetAsync($"{_apiBaseUrl}/login");
         response.EnsureSuccessStatusCode();
@@ -139,8 +155,7 @@ public class AuthService
  
             attempts++;
             await Task.Delay(2000);
-        }
- 
+        } 
         return null;
     }    
 }

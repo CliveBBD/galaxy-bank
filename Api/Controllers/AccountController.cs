@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Api.Services;
 using Api.Models;
-using System.Threading.Tasks;
 
 namespace Api.Controllers
 {
@@ -45,7 +44,7 @@ namespace Api.Controllers
         }
 
         [HttpGet("token/{sessionId}")]
-        public async Task<IActionResult> GetToken(string sessionId)
+        public IActionResult GetToken(string sessionId)
         {
             var token = _tokenService.GetToken(sessionId);
 
@@ -58,6 +57,7 @@ namespace Api.Controllers
             {   
                 IdToken = token.IdToken,
                 AccessToken = token.AccessToken,
+                RefreshToken = token.RefreshToken,
                 ExpiresAt = token.ExpiresAt
             });
         }
@@ -81,6 +81,7 @@ namespace Api.Controllers
             {
                 IdToken = token.IdToken,
                 AccessToken = token.AccessToken,
+                RefreshToken = token.RefreshToken,
                 ExpiresAt = token.ExpiresAt
             });
         }
