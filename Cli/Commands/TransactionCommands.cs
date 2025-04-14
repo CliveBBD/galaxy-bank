@@ -1,3 +1,4 @@
+using Cli.Models;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using System.Net.Http;
@@ -183,6 +184,50 @@ namespace Cli.Commands
             // Placeholder for getting all transactions logic
             AnsiConsole.MarkupLine("[green]Getting all transactions...[/]");
             return 0;
+        }
+    }
+
+    public class GetAllTransactionTypesCommand : Command
+    {
+        public override int Execute(CommandContext context)
+        {
+            using var httpClient = new HttpClient();
+            try
+            {
+                // Replace with the actual API endpoint
+                var response = httpClient.GetAsync("https://localhost:7059/transaction-types").Result;
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var jsonResponse = response.Content.ReadAsStringAsync().Result;
+                    var transactionTypes = JsonSerializer.Deserialize<List<TransactionType>>(jsonResponse);
+
+                    if (transactionTypes != null && transactionTypes.Any())
+                    {
+                        AnsiConsole.MarkupLine("[green]Transaction Types:[/]");
+                        foreach (var type in transactionTypes)
+                        {
+                            AnsiConsole.MarkupLine($"- [yellow]{type.TransactionTypeID}[/]: {type.Name}");
+                        }
+                    }
+                    else
+                    {
+                        AnsiConsole.MarkupLine("[yellow]No transaction types found.[/]");
+                    }
+
+                    return 0;
+                }
+                else
+                {
+                    AnsiConsole.MarkupLine($"[red]Failed to fetch transaction types: {response.StatusCode} - {response.ReasonPhrase}[/]");
+                    return 1;
+                }
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[red]An error occurred: {ex.Message}[/]");
+                return 1;
+            }
         }
     }
 }

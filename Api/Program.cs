@@ -11,7 +11,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.PropertyNamingPolicy = null; // Preserve original property names
+});
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
@@ -23,11 +26,13 @@ builder.Services.AddScoped<IDbConnection>(sp =>
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
 builder.Services.AddScoped<IDepositRepository, DepositRepository>();
 builder.Services.AddScoped<IWithdrawRepository, WithdrawRepository>();
+builder.Services.AddScoped<ITransactionTypeRepository, TransactionTypeRepository>();
 
 // Add services here
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IDepositService, DepositService>();
 builder.Services.AddScoped<IWithdrawService, WithdrawService>();
+builder.Services.AddScoped<ITransactionTypeService, TransactionTypeService>();
 
 var app = builder.Build();
 
