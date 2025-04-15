@@ -1,32 +1,53 @@
-using Api.Repositories;
 using Api.Services;
+using Api.Repositories;
+using Microsoft.AspNetCore.Builder;
 
-var builder = WebApplication.CreateBuilder(args);
+namespace  Api;
 
-// Add services to the container.
-
-builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
-
-// Add repositories here
-builder.Services.AddScoped<IRoleRepository, RoleRepository>();
-
-// Add services here
-builder.Services.AddScoped<IRoleService, RoleService>();
-
-var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+public class Program
 {
-    app.MapOpenApi();
+    public static void Main(string[] args)
+    {
+        var builder = WebApplication.CreateBuilder(args);
+        var configurationBuilder = new ConfigurationBuilder();
+        configurationBuilder.SetBasePath(Directory.GetCurrentDirectory()).AddUserSecrets<Program>();
+        configurationBuilder.AddJsonFile("appsettings.json").AddEnvironmentVariables();
+        configurationBuilder.Build();
+        ConfigureServices(builder.Services);
+        WebApplication app = ConfigureApp(builder);
+        app.Run();            
+    }
+
+    public static void ConfigureServices(IServiceCollection services)
+    {
+        services.AddHttpClient<GoogleAuthService>();
+        services.AddSingleton<TokenService>();
+        services.AddScoped<GoogleAuthService>();
+        services.AddScoped<IRoleRepository, RoleRepository>();
+        services.AddScoped<IRoleService, RoleService>();
+        services.AddControllers();
+        services.AddOpenApi();
+    }
+
+    public static WebApplication ConfigureApp(WebApplicationBuilder builder)
+    {
+        var app = builder.Build();
+        if (app.Environment.IsDevelopment())
+        {
+            app.MapOpenApi();
+            app.UseSwaggerUi(options =>
+            {
+                options.DocumentPath = "/openapi/v1.json";
+            });
+        }
+
+        app.UseCors();
+        app.UseHttpsRedirection();
+        app.UseAuthorization();
+        app.MapControllers();
+
+        return app;
+    }
+    
+        
 }
-
-app.UseHttpsRedirection();
-
-app.UseAuthorization();
-
-app.MapControllers();
-
-app.Run();
