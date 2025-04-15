@@ -31,7 +31,7 @@ jobs:
         id: build-image
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          REPOSITORY: galaxybank-api
+          REPOSITORY: v1o5t6h9/galaxybank-api
           IMAGE_TAG: latest
         run: |
           cd Api/
