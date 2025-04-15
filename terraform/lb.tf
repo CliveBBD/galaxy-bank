@@ -50,6 +50,6 @@ output "alb_dns_name" {
 }
 
 output "ecr_repository_url" {
-  value       = aws_ecr_repository.ecr_repository.repository_url
-  description = "The URL of the ECR repository"
+  value       = aws_ecrpublic_repository.ecr_repository.repository_uri
+  description = "The URI of the public ECR repository"
 }

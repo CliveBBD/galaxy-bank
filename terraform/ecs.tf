@@ -22,8 +22,17 @@ resource "aws_security_group" "ecs_sg" {
   }
 }
 
-resource "aws_ecr_repository" "ecr_repository" {
-  name = "galaxybank-api"
+resource "aws_ecrpublic_repository" "ecr_repository" {
+  provider        = aws.us_east_1
+  repository_name = "galaxybank-api"
+
+  catalog_data {
+    description = "Public repository for GalaxyBank API"
+    about_text  = "GalaxyBank API container images"
+    usage_text  = "Pull using docker pull public.ecr.aws/galaxybank-api"
+    architectures     = ["x86_64"]
+    operating_systems = ["Linux"]
+  }
 }
 
 resource "aws_ecs_task_definition" "ecs_task_definition" {
@@ -37,8 +46,8 @@ resource "aws_ecs_task_definition" "ecs_task_definition" {
   container_definitions = jsonencode([
     {
       name  = "galaxybank-api",
-      image = "${aws_ecr_repository.ecr_repository.repository_url}:latest",
-      #command   = ["/app/GalaxyBank.dll"], #  Corrected command.
+      image = "${aws_ecrpublic_repository.ecr_repository.repository_uri}:latest"
+       #command   = ["/app/GalaxyBank.dll"], #  Corrected command.
       portMappings = [
         {
           containerPort = 80
