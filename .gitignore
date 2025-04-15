@@ -62,6 +62,8 @@ nunit-*.xml
 *.tfstate
 *.tfstate.backup
 
+#Secrets
+*/client_secrets.*
 #Sensitive Env Files
 .env.production
 .env
