@@ -3,6 +3,7 @@ using Spectre.Console.Cli;
 using Cli.Models;
 using Cli.Helpers;
 using System.Text.RegularExpressions;
+// using Spectre.Console.ImageSharp;
 
 namespace Cli.Shell
 {
@@ -16,7 +17,23 @@ namespace Cli.Shell
                 .Centered()
                 .Color(Color.Cyan1);
 
+
             AnsiConsole.Clear();
+
+            // Load an image
+            // var image = new CanvasImage("planet.png");
+            // image.MaxWidth(5);
+            // // image;
+
+            // // Set a sampler that will be used when scaling the image.
+            // image.BilinearResampler();
+
+            // Mutate the image using ImageSharp
+            // image.Mutate(ctx => ctx.Rotate(-45).EntropyCrop());
+
+            // Render the image to the console
+            // AnsiConsole.Write(image);
+
             AnsiConsole.Write(banner);
             AnsiConsole.MarkupLine("[bold green]Welcome to the Galaxy Bank CLI Shell![/]");
             AnsiConsole.MarkupLine("[grey]Type 'help' to see available commands or 'exit' to quit.[/]\n");
