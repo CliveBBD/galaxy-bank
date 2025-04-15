@@ -22,6 +22,11 @@ namespace Cli.Helpers
             new() { Name = "show-accounts", Description = "List all accounts", CommandType = typeof(ListAccountsCommand) },
             new() { Name = "create-account", Description = "Create a new account", CommandType = typeof(CreateAccountCommand) },
             new() { Name = "get-account-details", Description = "Get details of a specific account", CommandType = typeof(GetAccountDetailsCommand) },
+            new() {Name = "deposit", Description = "Deposit money into an account", CommandType = typeof(DepositCommand) },
+            new() { Name = "withdraw", Description = "Withdraw money from an account", CommandType = typeof(WithdrawCommand) },
+            new() {Name="transaction-types", Description="List all transaction types", CommandType = typeof(GetAllTransactionTypesCommand) },
+            new() {Name="Transfer", Description="Transfer money between accounts", CommandType = typeof(TransferCommand) },
+            new() {Name="get-transactions", Description="Get all transactions", CommandType = typeof(GetAllTransactionsCommand) },
         };
         public static IReadOnlyList<CommandInfo> Commands => commands;
     }
