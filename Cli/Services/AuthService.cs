@@ -1,35 +1,165 @@
-using Cli.Commands;
-using Spectre.Console;
+using Newtonsoft.Json;
 using System.Diagnostics;
 using Cli.Models;
-
-namespace Cli.Services
+using Microsoft.Extensions.Configuration;
+ 
+namespace Cli.Services;
+ 
+public class AuthService
 {
-    public class AuthService
+    private readonly HttpClient _httpClient;
+    private readonly TokenManager _tokenManager;
+    // API base URL (this should match your Web API's address)
+    private readonly string _apiBaseUrl; 
+    public AuthService(TokenManager tokenManager)
     {
-
-        public static int Login()
+        _httpClient = new HttpClient();
+        _tokenManager = tokenManager;
+        var config = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true).Build();
+        _apiBaseUrl = config["ApiBaseUrl"] ?? "";
+    }
+ 
+    private async Task<Token> GetValidTokenAsync()
+    {
+        var token = await _tokenManager.GetTokenAsync();
+ 
+        if (token == null)
         {
-            string url = "https://example.com";
-            AnsiConsole.MarkupLine($"[green]Open the following URL to login: {url}[/]");
+            throw new InvalidOperationException("Not authenticated. Please run 'login' command first.");
+        }
+ 
+        // Check if token is expired
+        if (token.IsExpired)
+        {
+            // Refresh the token
+            token = await RefreshTokenAsync(token.SessionId);
+            await _tokenManager.SaveTokenAsync(token);
+        }
+ 
+        return token;
+    }
+ 
+    private async Task<Token?> RefreshTokenAsync(string sessionId)
+    {
+        var response = await _httpClient.PostAsync($"{_apiBaseUrl}/refresh/{sessionId}", null);
+        response.EnsureSuccessStatusCode();
+ 
+        var responseContent = await response.Content.ReadAsStringAsync();
+        var refreshResponse = JsonConvert.DeserializeObject<RefreshResponse>(responseContent);
+ 
+        return new Token
+        {
+            IdToken = refreshResponse != null ? refreshResponse.IdToken : "",
+            AccessToken = refreshResponse != null ? refreshResponse.AccessToken : "",
+            ExpiresAt = refreshResponse != null ? refreshResponse.ExpiresAt : DateTime.Now,
+            SessionId = sessionId
+        };
+    }
+ 
+    public async Task<LoginResult> LoginAsync()
+    {
+        try 
+        {
+            var savedToken = await GetValidTokenAsync();
+            return new LoginResult
+            {
+                Success = savedToken != null,
+                Token = savedToken
+            };
+        }
+        catch (InvalidOperationException)
+        {
+            var token = await PollForToken();
+            return token;
+        }
+    }
 
+    public async Task<LoginResult> PollForToken()
+    {
+        var response = await _httpClient.GetAsync($"{_apiBaseUrl}/login");
+        response.EnsureSuccessStatusCode();
+ 
+        var responseContent = await response.Content.ReadAsStringAsync();
+        var loginResponse = JsonConvert.DeserializeObject<LoginResponse>(responseContent);
+        OpenBrowser(loginResponse.AuthUrl);
+ 
+        Console.WriteLine("A browser window has been opened. Please complete the authentication process there.");
+        Console.WriteLine("Waiting for authentication to complete...");
+ 
+        var token = await PollForTokenAsync(loginResponse.SessionId);
+ 
+        return new LoginResult
+        {
+            Success = token != null,
+            Token = token
+        };
+    }
+ 
+    private void OpenBrowser(string url)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true
+            });
+        }
+        catch
+        {
             try
             {
-                // Open the URL in the default web browser
-                Process.Start(new ProcessStartInfo
+                Process.Start("xdg-open", url); // Linux
+            }
+            catch
+            {
+                try
                 {
-                    FileName = url,
-                    UseShellExecute = true
-                });
-
-                User.SetUserDetails("Kong", "kong@gmail.com", "1", "jwt");
+                    Process.Start("open", url); // macOS
+                }
+                catch
+                {
+                    Console.WriteLine($"Could not open browser automatically. Please open this URL manually: {url}");
+                }
+            }
+        }
+    }
+ 
+    private async Task<Token?> PollForTokenAsync(string sessionId)
+    {
+        int maxAttempts = 30;
+        int attempts = 0;
+ 
+        while (attempts < maxAttempts)
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync($"{_apiBaseUrl}/token/{sessionId}");
+ 
+                if (response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    var tokenResponse = JsonConvert.DeserializeObject<TokenResponse>(content);
+ 
+                    return new Token
+                    {
+                        IdToken = tokenResponse != null ? tokenResponse.IdToken : "",
+                        AccessToken = tokenResponse != null ? tokenResponse.AccessToken : "",
+                        ExpiresAt = tokenResponse != null ? tokenResponse.ExpiresAt : DateTime.Now,
+                        SessionId = sessionId
+                    };
+                }
             }
             catch (Exception ex)
             {
-                AnsiConsole.MarkupLine($"[red]Failed to open the URL: {ex.Message}[/]");
-                return 1; // Return non-zero to indicate an error
+                Console.WriteLine($"Error polling for token: {ex.Message}");
             }
-            return 0; // Return zero to indicate success
-        }
-    }
+ 
+            attempts++;
+            await Task.Delay(2000);
+        } 
+        return null;
+    }   
 }
