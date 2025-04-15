@@ -29,6 +29,7 @@ builder.Services.AddScoped<IWithdrawRepository, WithdrawRepository>();
 builder.Services.AddScoped<ITransactionTypeRepository, TransactionTypeRepository>();
 builder.Services.AddScoped<ITransferRepository, TransferRepository>();
 builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
+builder.Services.AddScoped<ITransactionReferenceRepository, TransactionReferenceRepository>();
 
 // Add services here
 builder.Services.AddScoped<IRoleService, RoleService>();
@@ -37,6 +38,7 @@ builder.Services.AddScoped<IWithdrawService, WithdrawService>();
 builder.Services.AddScoped<ITransactionTypeService, TransactionTypeService>();
 builder.Services.AddScoped<ITransferService, TransferService>();
 builder.Services.AddScoped<ITransactionService, TransactionService>();
+builder.Services.AddScoped<ITransactionReferenceService, TransactionReferenceService>();
 
 var app = builder.Build();
 

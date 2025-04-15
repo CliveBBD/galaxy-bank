@@ -213,15 +213,27 @@ namespace Cli.Commands
     }
 
 
-    public class GetAllTransactionsCommand : Command
+    public class GetAllTransactionsCommand : Command<GetAllTransactionsCommand.Settings>
     {
-        public override int Execute(CommandContext context)
+        public class Settings : CommandSettings
+        {
+            [CommandOption("-t|--top <Top>")]
+            public int? Top { get; set; }
+
+            [CommandOption("-i|--id <AccountID>")]
+            public int? AccountID { get; set; }
+        }
+
+        public override int Execute(CommandContext context, Settings settings)
         {
             using var httpClient = new HttpClient();
             try
             {
-                // Call the transactions API endpoint
-                var response = httpClient.GetAsync("https://localhost:7059/transactions").Result;
+                string endpoint = settings.AccountID.HasValue
+                    ? $"https://localhost:7059/transactions/account/{settings.AccountID}"
+                    : "https://localhost:7059/transactions";
+
+                var response = httpClient.GetAsync(endpoint).Result;
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -230,9 +242,19 @@ namespace Cli.Commands
 
                     if (transactions != null && transactions.Any())
                     {
+                        // Apply the "Top" filter if specified
+                        if (settings.Top.HasValue)
+                        {
+                            transactions = transactions
+                                .OrderByDescending(t => t.CreatedAt)
+                                .Take(settings.Top.Value)
+                                .ToList();
+                        }
+
                         // Display transactions in a table
                         var table = new Table();
                         table.AddColumn("Transaction ID");
+                        table.AddColumn("Transaction Reference ID");
                         table.AddColumn("Reference");
                         table.AddColumn("Account ID");
                         table.AddColumn("Amount");
@@ -242,10 +264,9 @@ namespace Cli.Commands
 
                         foreach (var transaction in transactions)
                         {
-                            // Use a custom currency symbol "Q"
                             string formattedAmount = transaction.Amount < 0
-                                ? $"[red]-Q {Math.Abs(transaction.Amount)}[/]" // Format negative values with parentheses and red color
-                                : $"[green]Q {transaction.Amount}[/]"; // Format positive values with green color
+                                ? $"[red]-Q {Math.Abs(transaction.Amount)}[/]"
+                                : $"[green]Q {transaction.Amount}[/]";
 
                             string formattedBalance = transaction.BalanceAfterTransaction < 0
                                 ? $"[red]-Q {Math.Abs(transaction.BalanceAfterTransaction)}[/]"
@@ -253,6 +274,7 @@ namespace Cli.Commands
 
                             table.AddRow(
                                 transaction.TransactionID.ToString(),
+                                transaction.TransactionReferenceID.ToString(),
                                 transaction.Reference,
                                 transaction.AccountID.ToString(),
                                 formattedAmount,
