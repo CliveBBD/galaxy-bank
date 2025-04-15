@@ -43,7 +43,7 @@ public class Program
         services.AddScoped<IDbConnection>(sp =>
         {
             var configuration = sp.GetRequiredService<IConfiguration>();
-            var connectionString = configuration.GetConnectionString("DbConnection");
+            var connectionString = Constants.ConnectionString;
 
             if (string.IsNullOrWhiteSpace(connectionString))
             {
