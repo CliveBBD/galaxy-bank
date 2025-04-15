@@ -8,92 +8,57 @@ namespace Cli.Services;
 public class AuthService
 {
     private readonly HttpClient _httpClient;
-    private readonly TokenManager _tokenManager;
     // API base URL (this should match your Web API's address)
     private readonly string _apiBaseUrl; 
-    public AuthService(TokenManager tokenManager)
+    public AuthService()
     {
         _httpClient = new HttpClient();
-        _tokenManager = tokenManager;
         var config = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true).Build();
         _apiBaseUrl = config["ApiBaseUrl"] ?? "";
     }
  
-    private async Task<Token> GetValidTokenAsync()
-    {
-        var token = await _tokenManager.GetTokenAsync();
- 
-        if (token == null)
-        {
-            throw new InvalidOperationException("Not authenticated. Please run 'login' command first.");
-        }
- 
-        // Check if token is expired
-        if (token.IsExpired)
-        {
-            // Refresh the token
-            token = await RefreshTokenAsync(token.SessionId);
-            await _tokenManager.SaveTokenAsync(token);
-        }
- 
-        return token;
-    }
- 
-    private async Task<Token?> RefreshTokenAsync(string sessionId)
-    {
-        var response = await _httpClient.PostAsync($"{_apiBaseUrl}/refresh/{sessionId}", null);
-        response.EnsureSuccessStatusCode();
- 
-        var responseContent = await response.Content.ReadAsStringAsync();
-        var refreshResponse = JsonConvert.DeserializeObject<RefreshResponse>(responseContent);
- 
-        return new Token
-        {
-            IdToken = refreshResponse != null ? refreshResponse.IdToken : "",
-            AccessToken = refreshResponse != null ? refreshResponse.AccessToken : "",
-            ExpiresAt = refreshResponse != null ? refreshResponse.ExpiresAt : DateTime.Now,
-            SessionId = sessionId
-        };
-    }
- 
     public async Task<LoginResult> LoginAsync()
     {
         try 
         {
-            var savedToken = await GetValidTokenAsync();
-            return new LoginResult
-            {
-                Success = savedToken != null,
-                Token = savedToken
-            };
+            return await PollForToken();
         }
         catch (InvalidOperationException)
         {
-            var token = await PollForToken();
-            return token;
+            return new LoginResult
+            {
+                Success = false,
+                Token = new Token { IdToken = "", SessionId = "" }
+            };
         }
     }
 
     public async Task<LoginResult> PollForToken()
     {
+        Token token = new() { IdToken = "", SessionId = ""};
         var response = await _httpClient.GetAsync($"{_apiBaseUrl}/login");
         response.EnsureSuccessStatusCode();
  
         var responseContent = await response.Content.ReadAsStringAsync();
         var loginResponse = JsonConvert.DeserializeObject<LoginResponse>(responseContent);
-        OpenBrowser(loginResponse.AuthUrl);
+
+        if (loginResponse != null)
+        {
+            OpenBrowser(loginResponse.AuthUrl);
+            Console.WriteLine("A browser window has been opened. Please complete the authentication process there.");
+            Console.WriteLine("Waiting for authentication to complete...");
  
-        Console.WriteLine("A browser window has been opened. Please complete the authentication process there.");
-        Console.WriteLine("Waiting for authentication to complete...");
+            token = await PollForTokenAsync(loginResponse.SessionId);
+        }
  
-        var token = await PollForTokenAsync(loginResponse.SessionId);
+        
  
         return new LoginResult
         {
             Success = token != null,
-            Token = token
+            Token = token ?? new Token { IdToken = "", SessionId = "" }
         };
     }
  
@@ -127,7 +92,7 @@ public class AuthService
         }
     }
  
-    private async Task<Token?> PollForTokenAsync(string sessionId)
+    private async Task<Token> PollForTokenAsync(string sessionId)
     {
         int maxAttempts = 30;
         int attempts = 0;
@@ -146,8 +111,6 @@ public class AuthService
                     return new Token
                     {
                         IdToken = tokenResponse != null ? tokenResponse.IdToken : "",
-                        AccessToken = tokenResponse != null ? tokenResponse.AccessToken : "",
-                        ExpiresAt = tokenResponse != null ? tokenResponse.ExpiresAt : DateTime.Now,
                         SessionId = sessionId
                     };
                 }
@@ -160,6 +123,6 @@ public class AuthService
             attempts++;
             await Task.Delay(2000);
         } 
-        return null;
+        return new Token { IdToken = "", SessionId = "" };
     }   
 }

@@ -3,15 +3,8 @@ namespace Cli.Models;
 public class Token
 
 {
-    public required string AccessToken { get; set; }
-
     public required string IdToken { get; set;}
-
-    public DateTime ExpiresAt { get; set; }
-
     public required string SessionId { get; set; }
- 
-    public bool IsExpired => DateTime.UtcNow >= ExpiresAt;
 }
 
 public class LoginResponse
@@ -22,15 +15,6 @@ public class LoginResponse
  
 public class TokenResponse
 {
-    public required string AccessToken { get; set; }
-    public DateTime ExpiresAt { get; set; }
-    public required string IdToken { get; set; }
-}
-
-public class RefreshResponse
-{
-    public required string AccessToken { get; set; }
-    public DateTime ExpiresAt { get; set; }
     public required string IdToken { get; set; }
 }
 
