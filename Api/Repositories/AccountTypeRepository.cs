@@ -1,4 +1,3 @@
-using System.Data;
 using Api.Models;
 using Api.Shared;
 using Dapper;
@@ -10,7 +9,7 @@ namespace Api.Repositories
     {
         Task<AccountType> GetAccountTypeByIdAsync(int id);
         Task<IEnumerable<AccountType>> GetAllAccountTypesAsync();
-        Task<int> GetAccountTypeIdByNameAsync(string name);
+        Task<AccountType> GetAccountTypeByNameAsync(string name);
     }
     public class AccountTypeRepository : IAccountTypeRepository
     {
@@ -27,17 +26,16 @@ namespace Api.Repositories
             return await connection.QueryFirstOrDefaultAsync<AccountType>(query, new { Id = id });
         }
 
-        public async Task<int> GetAccountTypeIdByNameAsync(string name)
+        public async Task<AccountType> GetAccountTypeByNameAsync(string name)
         {
             var query = $@"
                 SELECT account_type_id AS AccountTypeId, name
                 FROM account_types
                 WHERE name = @Name;
-                RETURNING account_type_id
             ";
 
             using var connection = new NpgsqlConnection(Constants.ConnectionString);
-            return (int)await connection.QueryFirstOrDefaultAsync<AccountType>(query, new { Name = name });
+            return await connection.QueryFirstOrDefaultAsync<AccountType>(query, new { Name = name });
         }
 
         public async Task<IEnumerable<AccountType>> GetAllAccountTypesAsync()

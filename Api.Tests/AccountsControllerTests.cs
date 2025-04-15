@@ -31,11 +31,11 @@ namespace Api.Tests.Controllers
         [Fact]
         public async Task CreateAccount_ReturnsOk_WhenSuccessful()
         {
-            var request = new AccountCreateRequest { UserId = 1, AccountType = new AccountType(), Balance = 1000 };
+            var request = new AccountCreateRequest { UserId = 1, AccountTypeName = "savings" };
             var account = new Account { AccountId = 10, UserId = 1, AccountTypeId = 2, Balance = 1000, CreatedAt = DateTime.UtcNow };
             var user = new User { UserID = 1, GoogleID = "g123", Username = "test", Email = "test@example.com", Role = new Role { RoleID = 1, Name = "Customer" } };
 
-            _accountServiceMock.Setup(x => x.CreateAccount(request)).ReturnsAsync(10);
+            _accountServiceMock.Setup(x => x.CreateAccount(request.UserId, request.AccountTypeName)).ReturnsAsync(10);
             _accountServiceMock.Setup(x => x.GetAccountById(10)).ReturnsAsync(account);
             _userServiceMock.Setup(x => x.GetUserById(1)).ReturnsAsync(user);
             _emailServiceMock.Setup(x => x.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(Task.CompletedTask);

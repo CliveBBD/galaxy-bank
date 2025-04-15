@@ -24,16 +24,16 @@ namespace Api.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<Account>> CreateAccount([FromBody] AccountCreateRequest accountDto)
+        public async Task<ActionResult<Account>> CreateAccount([FromBody] AccountCreateRequest request)
         {
             try
             {
-                if (accountDto == null)
+                if (request == null)
                 {
                     return BadRequest(new { message = $"Invalid account data." });
                 }
 
-                var accountId = await _accountService.CreateAccount(accountDto);
+                var accountId = await _accountService.CreateAccount(request.UserId, request.AccountTypeName);
 
                 var account = await _accountService.GetAccountById(accountId);
 

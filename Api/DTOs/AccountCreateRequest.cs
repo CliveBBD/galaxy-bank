@@ -8,9 +8,7 @@ namespace Api.DTOs
         [Required]
         public required int UserId { get; set; }
 
-        [JsonConverter(typeof(CaseInsensitiveEnumConverter<AccountType>))]
-        public AccountType AccountType  { get; set; } 
+        public string AccountTypeName { get; set; } = String.Empty;
 
-        public  int Balance { get; set; } = 50;
     }
 }

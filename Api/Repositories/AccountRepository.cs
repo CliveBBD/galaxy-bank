@@ -1,5 +1,4 @@
 
-using Api.DTOs;
 using Api.Models;
 using Api.Shared;
 using Dapper;
@@ -9,7 +8,7 @@ namespace Api.Repositories
 {
     public interface IAccountRepository
     {
-        Task<int> CreateAccountAsync(AccountCreateRequest accountDto);
+        Task<int> CreateAccountAsync(int userId, string accountTypeName);
         Task<IEnumerable<Account>> GetAccountsAsync();
         Task<Account> GetAccountByIdAsync(int id);
         Task<IEnumerable<Account>> GetAccountsByUserEmailAsync(string email);
@@ -18,8 +17,21 @@ namespace Api.Repositories
 
     public class AccountRepository : IAccountRepository
     {
-        public async Task<int> CreateAccountAsync(AccountCreateRequest accountDto)
+        private readonly IAccountTypeRepository _accountTypeRepository;
+
+        public AccountRepository(IAccountTypeRepository accountTypeRepository)
         {
+            _accountTypeRepository = accountTypeRepository;
+
+        }
+        public async Task<int> CreateAccountAsync(int userId, string accountTypeName)
+        {
+            var openingBalance = 50;
+            var accountType = await _accountTypeRepository.GetAccountTypeByNameAsync(accountTypeName);
+
+            if (accountType == null)
+                throw new ArgumentException($"Account type {accountTypeName} does not exist, available account types are 'checking', 'savings' and 'credit_card'.");
+
             var query = @"
                 INSERT INTO accounts (user_id, account_type_id, balance)
                 VALUES (@UserId, @AccountType, @Balance)
@@ -28,7 +40,14 @@ namespace Api.Repositories
 
             using var connection = new NpgsqlConnection(Constants.ConnectionString);
 
-            var accountId = await connection.ExecuteScalarAsync<int>(query, accountDto);
+            var accountId = await connection.ExecuteScalarAsync<int>(query, new
+            {
+                UserId = userId,
+                AccountType = accountType.AccountTypeId,
+                Balance = openingBalance
+            }
+             );
+
             return accountId;
         }
 

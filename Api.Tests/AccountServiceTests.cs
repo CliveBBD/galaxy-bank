@@ -13,7 +13,6 @@ namespace Api.Tests.Services
     public class AccountServiceTests
     {
         private readonly Mock<IAccountRepository> _mockRepository;
-        private readonly Mock<IAccountTypeRepository> _mockAccountTypeRepository;
 
 
         private readonly IAccountService _accountService;
@@ -21,10 +20,8 @@ namespace Api.Tests.Services
         public AccountServiceTests()
         {
             _mockRepository = new Mock<IAccountRepository>();
-            _mockAccountTypeRepository = new Mock<IAccountTypeRepository>();
             _accountService = new AccountService(
-            _mockRepository.Object,
-            _mockAccountTypeRepository.Object
+            _mockRepository.Object
         );
         }
 
