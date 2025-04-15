@@ -33,11 +33,14 @@ CROSS JOIN generate_series(1, 3);
 
 -- 4. Generate Transaction References
 DO $$
-DECLARE 
-    total_transactions INT := (SELECT COUNT(*) FROM accounts) * 60 + 600;
-BEGIN
-  INSERT INTO transaction_references (transaction_reference_id)
-  SELECT generate_series(1, total_transactions);
+DECLARE total_transactions INT := (
+        SELECT COUNT(*)
+        FROM accounts
+    ) * 60 + 600;
+BEGIN FOR i IN 1..total_transactions LOOP
+INSERT INTO transaction_references DEFAULT
+VALUES;
+END LOOP;
 END $$;
 
 -- 5. Generate Natural Transaction Flow with Balance Validation

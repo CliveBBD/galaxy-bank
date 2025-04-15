@@ -1,0 +1,81 @@
+using Api.Services;
+using Microsoft.AspNetCore.Mvc;
+
+namespace Api.Controllers
+{
+    [Route("transactions")]
+    public class TransactionsController(ITransactionService transactionService) : Controller
+    {
+        private readonly ITransactionService _transactionService = transactionService;
+
+        [HttpGet("", Name = "GetTransactions")]
+        public async Task<IActionResult> GetTransactions()
+        {
+            string googleId = "google_id_b597e0d6d8e47ab0405e4627"; // Replace with actual Google ID from context.
+
+            try
+            {
+                var transactions = await _transactionService.GetTransactionsAsync(googleId);
+                Console.WriteLine(transactions);
+                return Ok(transactions);
+            }
+            catch (Exception e)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+            }
+        }
+
+        [HttpGet("account/{accountId}", Name = "GetTransactionsByAccountId")]
+        public async Task<IActionResult> GetTransactionsByAccountId(int accountId)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            string googleId = "google_id_b597e0d6d8e47ab0405e4627"; // Replace with actual Google ID from context.
+
+            try
+            {
+                var transactions = await _transactionService.GetTransactionsByAccountIdAsync(accountId, googleId);
+                return Ok(transactions);
+            }
+            catch (Exception e)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+            }
+        }
+
+        [HttpGet("{transactionId}", Name = "GetTransactionsById")]
+        public async Task<IActionResult> GetTransactionsById(int transactionId)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            string googleId = "google_id_b597e0d6d8e47ab0405e4627"; // Replace with actual Google ID from context.
+
+            try
+            {
+                var transactions = await _transactionService.GetTransactionsByIdAsync(transactionId, googleId);
+                return Ok(transactions);
+            }
+            catch (Exception e)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+            }
+        }
+
+        public IActionResult Index()
+        {
+            return View();
+        }
+
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        public IActionResult Error()
+        {
+            return View("Error!");
+        }
+    }
+}

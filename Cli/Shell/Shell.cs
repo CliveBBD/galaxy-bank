@@ -2,6 +2,7 @@ using Spectre.Console;
 using Spectre.Console.Cli;
 using Cli.Models;
 using Cli.Helpers;
+using System.Text.RegularExpressions;
 
 namespace Cli.Shell
 {
@@ -50,8 +51,10 @@ namespace Cli.Shell
 
                 try
                 {
-                    // Split the input into arguments and run the command
-                    var inputArgs = trimmedInput.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    // Use Regex to split input while preserving quoted strings
+                    var inputArgs = Regex.Matches(trimmedInput, @"[\""].+?[\""]|[^ ]+")
+                                         .Select(m => m.Value.Trim('"'))
+                                         .ToArray();
                     app.Run(inputArgs);
 
                     if (trimmedInput.Equals("clear", StringComparison.OrdinalIgnoreCase))
