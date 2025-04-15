@@ -1,6 +1,7 @@
-﻿using Spectre.Console.Cli;
+﻿﻿using Spectre.Console.Cli;
 using Cli.Shell;
 using Cli.Helpers;
+using Microsoft.Extensions.Configuration;
 
 // Application entry point
 

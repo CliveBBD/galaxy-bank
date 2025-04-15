@@ -1,57 +1,99 @@
+namespace  Api;
+
+using System.Data;
+using System.Text.Json.Serialization;
+using Api.Helpers;
 using Api.Repositories;
 using Api.Services;
 using Npgsql;
 using System.Data;
+using Api.Shared;
+using Microsoft.AspNetCore.Builder;
 
-Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
-
-var builder = WebApplication.CreateBuilder(args);
-
-
-
-// Add services to the container.
-
-builder.Services.AddControllers().AddJsonOptions(options =>
+public class Program
 {
-    options.JsonSerializerOptions.PropertyNamingPolicy = null; // Preserve original property names
-});
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+    public static void Main(string[] args)
+    {
+        Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
+        var builder = WebApplication.CreateBuilder(args);
+        builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+        var configurationBuilder = new ConfigurationBuilder();
+        configurationBuilder.SetBasePath(Directory.GetCurrentDirectory()).AddUserSecrets<Program>();
+        configurationBuilder.AddJsonFile("appsettings.json").AddEnvironmentVariables();
+        configurationBuilder.Build();
+        ConfigureServices(builder.Services);
+        WebApplication app = ConfigureApp(builder);
+        app.Run();            
+    }
 
-// Add PostgreSQL database connection
-builder.Services.AddScoped<IDbConnection>(sp =>
-    new NpgsqlConnection(builder.Configuration.GetConnectionString("DefaultConnection")));
+    public static void ConfigureServices(IServiceCollection services)
+    {
+        services.AddHttpClient<GoogleAuthService>();
+        services.AddSingleton<TokenService>();
+        services.AddScoped<GoogleAuthService>();
+        services.AddScoped<IRoleRepository, RoleRepository>();
+        services.AddScoped<IRoleService, RoleService>();
+        services.AddControllers();
+        services.AddControllers().AddJsonOptions(options =>
+        {
+            options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+            options.JsonSerializerOptions.PropertyNamingPolicy = null; // Preserve original property names
+        });
+        services.AddOpenApi();
+        services.AddScoped<IDbConnection>(sp =>
+        {
+            var configuration = sp.GetRequiredService<IConfiguration>();
+            var connectionString = configuration.GetConnectionString("DbConnection");
 
-// Add repositories here
-builder.Services.AddScoped<IRoleRepository, RoleRepository>();
-builder.Services.AddScoped<IDepositRepository, DepositRepository>();
-builder.Services.AddScoped<IWithdrawRepository, WithdrawRepository>();
-builder.Services.AddScoped<ITransactionTypeRepository, TransactionTypeRepository>();
-builder.Services.AddScoped<ITransferRepository, TransferRepository>();
-builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
-builder.Services.AddScoped<ITransactionReferenceRepository, TransactionReferenceRepository>();
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                throw new InvalidOperationException("Database connection string is missing.");
+            }
 
-// Add services here
-builder.Services.AddScoped<IRoleService, RoleService>();
-builder.Services.AddScoped<IDepositService, DepositService>();
-builder.Services.AddScoped<IWithdrawService, WithdrawService>();
-builder.Services.AddScoped<ITransactionTypeService, TransactionTypeService>();
-builder.Services.AddScoped<ITransferService, TransferService>();
-builder.Services.AddScoped<ITransactionService, TransactionService>();
-builder.Services.AddScoped<ITransactionReferenceService, TransactionReferenceService>();
+            return new NpgsqlConnection(connectionString);
+        });
+        services.AddScoped<IRoleRepository, RoleRepository>();
+        services.AddScoped<IAccountRepository, AccountRepository>();
+        services.AddScoped<IAccountTypeRepository, AccountTypeRepository>();
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IRoleService, RoleService>();
+        services.AddScoped<IAccountService, AccountService>();
+        services.AddScoped<AccountMapper>();
+        services.AddScoped<IEmailService, EmailService>();
+        services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IDepositRepository, DepositRepository>();
+        services.AddScoped<IWithdrawRepository, WithdrawRepository>();
+        services.AddScoped<ITransactionTypeRepository, TransactionTypeRepository>();
+        services.AddScoped<ITransferRepository, TransferRepository>();
+        services.AddScoped<ITransactionRepository, TransactionRepository>();
+        services.AddScoped<ITransactionReferenceRepository, TransactionReferenceRepository>();
+        services.AddScoped<IDepositService, DepositService>();
+        services.AddScoped<IWithdrawService, WithdrawService>();
+        services.AddScoped<ITransactionTypeService, TransactionTypeService>();
+        services.AddScoped<ITransferService, TransferService>();
+        services.AddScoped<ITransactionService, TransactionService>();
+        services.AddScoped<ITransactionReferenceService, TransactionReferenceService>();
+    }
 
-var app = builder.Build();
+    public static WebApplication ConfigureApp(WebApplicationBuilder builder)
+    {
+        var app = builder.Build();
+        if (app.Environment.IsDevelopment())
+        {
+            app.MapOpenApi();
+            app.UseSwaggerUi(options =>
+            {
+                options.DocumentPath = "/openapi/v1.json";
+            });
+        }
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
+        app.UseCors();
+        app.UseHttpsRedirection();
+        app.UseAuthorization();
+        app.MapControllers();
+
+        return app;
+    }
+    
+        
 }
-
-app.UseHttpsRedirection();
-
-app.UseAuthorization();
-
-app.MapControllers();
-
-app.Run();
