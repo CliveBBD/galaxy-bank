@@ -1,18 +1,20 @@
+namespace  Api;
+
 using System.Data;
 using System.Text.Json.Serialization;
 using Api.Helpers;
 using Api.Repositories;
 using Api.Services;
-using Api.Shared;
 using Npgsql;
+using System.Data;
+using Api.Shared;
 using Microsoft.AspNetCore.Builder;
-
-namespace  Api;
 
 public class Program
 {
     public static void Main(string[] args)
     {
+        Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
         var builder = WebApplication.CreateBuilder(args);
         builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
         var configurationBuilder = new ConfigurationBuilder();
@@ -35,12 +37,13 @@ public class Program
         services.AddControllers().AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+            options.JsonSerializerOptions.PropertyNamingPolicy = null; // Preserve original property names
         });
         services.AddOpenApi();
         services.AddScoped<IDbConnection>(sp =>
         {
             var configuration = sp.GetRequiredService<IConfiguration>();
-            var connectionString = configuration.GetConnectionString("DbConnection");
+            var connectionString = Constants.ConnectionString;
 
             if (string.IsNullOrWhiteSpace(connectionString))
             {
@@ -58,6 +61,18 @@ public class Program
         services.AddScoped<AccountMapper>();
         services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IDepositRepository, DepositRepository>();
+        services.AddScoped<IWithdrawRepository, WithdrawRepository>();
+        services.AddScoped<ITransactionTypeRepository, TransactionTypeRepository>();
+        services.AddScoped<ITransferRepository, TransferRepository>();
+        services.AddScoped<ITransactionRepository, TransactionRepository>();
+        services.AddScoped<ITransactionReferenceRepository, TransactionReferenceRepository>();
+        services.AddScoped<IDepositService, DepositService>();
+        services.AddScoped<IWithdrawService, WithdrawService>();
+        services.AddScoped<ITransactionTypeService, TransactionTypeService>();
+        services.AddScoped<ITransferService, TransferService>();
+        services.AddScoped<ITransactionService, TransactionService>();
+        services.AddScoped<ITransactionReferenceService, TransactionReferenceService>();
     }
 
     public static WebApplication ConfigureApp(WebApplicationBuilder builder)

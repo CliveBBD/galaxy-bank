@@ -3,19 +3,19 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers
 {
-    [Route("roles")]
-    public class RolesController(IRoleService roleService) : Controller
+    [Route("transaction-types")]
+    public class TransactionTypeController(ITransactionTypeService transactionTypeService) : Controller
     {
-        private readonly IRoleService _roleService = roleService;
+        private readonly ITransactionTypeService _transactionTypeService = transactionTypeService;
 
-        [HttpGet("", Name = "GetRoles")]
-        public async Task<IActionResult> GetRoles()
+        [HttpGet("", Name = "GetTransactionType")]
+        public async Task<IActionResult> GetTransactionType()
         {
             try
             {
-                var roles = await _roleService.GetRolesAsync();
-                Console.WriteLine(roles);
-                return Ok(roles);
+                var transactionTypes = await _transactionTypeService.GetTransactionTypesAsync();
+                Console.WriteLine(transactionTypes);
+                return Ok(transactionTypes);
             }
             catch (Exception e)
             {
