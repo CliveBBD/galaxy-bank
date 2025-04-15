@@ -217,9 +217,71 @@ namespace Cli.Commands
     {
         public override int Execute(CommandContext context)
         {
-            // Placeholder for getting all transactions logic
-            AnsiConsole.MarkupLine("[green]Getting all transactions...[/]");
-            return 0;
+            using var httpClient = new HttpClient();
+            try
+            {
+                // Call the transactions API endpoint
+                var response = httpClient.GetAsync("https://localhost:7059/transactions").Result;
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var jsonResponse = response.Content.ReadAsStringAsync().Result;
+                    var transactions = JsonSerializer.Deserialize<List<Transaction>>(jsonResponse);
+
+                    if (transactions != null && transactions.Any())
+                    {
+                        // Display transactions in a table
+                        var table = new Table();
+                        table.AddColumn("Transaction ID");
+                        table.AddColumn("Reference");
+                        table.AddColumn("Account ID");
+                        table.AddColumn("Amount");
+                        table.AddColumn("Type");
+                        table.AddColumn("Balance After");
+                        table.AddColumn("Created At");
+
+                        foreach (var transaction in transactions)
+                        {
+                            // Use a custom currency symbol "Q"
+                            string formattedAmount = transaction.Amount < 0
+                                ? $"[red]-Q {Math.Abs(transaction.Amount)}[/]" // Format negative values with parentheses and red color
+                                : $"[green]Q {transaction.Amount}[/]"; // Format positive values with green color
+
+                            string formattedBalance = transaction.BalanceAfterTransaction < 0
+                                ? $"[red]-Q {Math.Abs(transaction.BalanceAfterTransaction)}[/]"
+                                : $"[green]Q {transaction.BalanceAfterTransaction}[/]";
+
+                            table.AddRow(
+                                transaction.TransactionID.ToString(),
+                                transaction.Reference,
+                                transaction.AccountID.ToString(),
+                                formattedAmount,
+                                transaction.TransactionType.Name,
+                                formattedBalance,
+                                transaction.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")
+                            );
+                        }
+
+                        AnsiConsole.Write(table);
+                    }
+                    else
+                    {
+                        AnsiConsole.MarkupLine("[yellow]No transactions found.[/]");
+                    }
+
+                    return 0;
+                }
+                else
+                {
+                    AnsiConsole.MarkupLine($"[red]Failed to fetch transactions: {response.StatusCode} - {response.ReasonPhrase}[/]");
+                    return 1;
+                }
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[red]An error occurred: {ex.Message}[/]");
+                return 1;
+            }
         }
     }
 
