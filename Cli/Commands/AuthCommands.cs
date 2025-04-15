@@ -12,11 +12,10 @@ namespace Cli.Commands
            try
             {
                 var tokenManager = new TokenManager();
-                var apiClient = new AuthService(tokenManager);
-    
+                var authService = new AuthService(tokenManager);
                 Console.WriteLine("Initiating Google authentication...");
     
-                var result = await apiClient.LoginAsync();
+                var result = await authService.LoginAsync();
     
                 if (result.Success)
                 {

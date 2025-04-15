@@ -37,8 +37,6 @@ class Program
             );
         });
 
-        SetupConfig();
-
         // If arguments are provided, run the command directly
         if (args.Length > 0)
         {
@@ -47,12 +45,5 @@ class Program
 
         // Otherwise, start the interactive shell
         return Shell.RunShell(app);
-    }
-
-    public static void SetupConfig() {
-        new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-            .Build();
     }
 }

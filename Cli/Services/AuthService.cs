@@ -1,6 +1,7 @@
 using Newtonsoft.Json;
 using System.Diagnostics;
 using Cli.Models;
+using Microsoft.Extensions.Configuration;
  
 namespace Cli.Services;
  
@@ -8,13 +9,16 @@ public class AuthService
 {
     private readonly HttpClient _httpClient;
     private readonly TokenManager _tokenManager;
- 
     // API base URL (this should match your Web API's address)
-    private readonly string _apiBaseUrl = "https://localhost:7059"; 
+    private readonly string _apiBaseUrl; 
     public AuthService(TokenManager tokenManager)
     {
         _httpClient = new HttpClient();
         _tokenManager = tokenManager;
+        var config = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true).Build();
+        _apiBaseUrl = config["ApiBaseUrl"] ?? "";
     }
  
     private async Task<Token> GetValidTokenAsync()
@@ -157,5 +161,5 @@ public class AuthService
             await Task.Delay(2000);
         } 
         return null;
-    }    
+    }   
 }
