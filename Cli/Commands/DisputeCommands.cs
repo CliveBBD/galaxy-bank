@@ -7,7 +7,7 @@ namespace Cli.Commands
     {
         public class Settings : CommandSettings
         {
-            [CommandOption("-t|--transaction-reference <Transaction Reference Id>")]
+            [CommandOption("-t|--transaction-reference <TransactionReferenceId>")]
             public int TransactionReferenceId { get; set; }
 
             [CommandOption("-r|--reason <Reason>")]
