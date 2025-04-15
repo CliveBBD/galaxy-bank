@@ -4,7 +4,7 @@ namespace Cli.Models
     {
         public static string Username { get; set; } = string.Empty;
         public static string Email { get; set; } = string.Empty;
-        public static string Id { get; set; } = string.Empty;
+        public static string GoogleId { get; set; } = string.Empty;
         public static string Token { get; set; } = "No token";
 
 
@@ -13,7 +13,7 @@ namespace Cli.Models
 
             Username = username;
             Email = email;
-            Id = id;
+            GoogleId = id;
             Token = token;
         }
 
@@ -21,7 +21,7 @@ namespace Cli.Models
         {
             Username = string.Empty;
             Email = string.Empty;
-            Id = string.Empty;
+            GoogleId = string.Empty;
         }
     }
 }

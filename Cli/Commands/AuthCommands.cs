@@ -2,10 +2,7 @@ using Spectre.Console;
 using Spectre.Console.Cli;
 using Cli.Models;
 using Cli.Services;
-using Newtonsoft.Json;
-using System.IdentityModel.Tokens.Jwt;
 using Google.Apis.Auth;
-using System.Text.Json;
 
 namespace Cli.Commands
 {
@@ -86,7 +83,7 @@ namespace Cli.Commands
             {
                 AnsiConsole.MarkupLine($"[green]You are logged in as {User.Username}[/]");
                 AnsiConsole.MarkupLine($"[green]Email: {User.Email}[/]");
-                AnsiConsole.MarkupLine($"[green]User ID: {User.Id}[/]");
+                AnsiConsole.MarkupLine($"[green]Google ID: {User.GoogleId}[/]");
             }
             else
             {
