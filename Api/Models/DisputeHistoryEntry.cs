@@ -7,10 +7,12 @@ namespace Api.Models
         [Required]
         public required int DisputeHistoryID { get; set; }
         [Required]
+        public required int DisputeID { get; set; }
+        [Required]
         public required DisputeStatus Status { get; set; }
         [Required]
         public required DateTime UpdatedAt { get; set; }
         [Required]
-        public required int UpdatedById { get; set; }
+        public required RedactedUser UpdatedBy { get; set; }
     }
 }

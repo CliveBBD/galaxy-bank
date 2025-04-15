@@ -73,6 +73,8 @@ public class Program
         services.AddScoped<ITransferService, TransferService>();
         services.AddScoped<ITransactionService, TransactionService>();
         services.AddScoped<ITransactionReferenceService, TransactionReferenceService>();
+        services.AddScoped<IDisputeRepository, DisputeRepository>();
+        services.AddScoped<IDisputeService, DisputeService>();
     }
 
     public static WebApplication ConfigureApp(WebApplicationBuilder builder)
