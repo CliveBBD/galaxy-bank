@@ -35,6 +35,7 @@ jobs:
           REPOSITORY: galaxybank-api
           IMAGE_TAG: latest
         run: |
+          cd Api/
           docker build -t $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG .
           docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG
 
