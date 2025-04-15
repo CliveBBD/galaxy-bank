@@ -5,14 +5,16 @@ namespace Api.Models
     public class Account
     {
         [Required]
-        public required int AccountID { get; set; }
+        public required int AccountId { get; set; }
         [Required]
         public required int UserId { get; set; }
         [Required]
-        public required AccountType AccountType { get; set; }
+        public required int AccountTypeId { get; set; }
         [Required]
         public required int Balance { get; set; }
         [Required]
-        public required DateTime CreatedAt { get; set; }
+        public required DateTime CreatedAt { get; set; } = DateTime.Now;
+
+
     }
 }
