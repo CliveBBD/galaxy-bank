@@ -36,6 +36,10 @@ resource "aws_ecs_task_definition" "api" {
           name  = "ASPNETCORE_ENVIRONMENT",
           value = "Development"
         },
+        {
+          name  = "DEFAULT_CONNECTION_STRING",
+          value = "Host=${aws_db_instance.postgres.endpoint},Port=${aws_db_instance.postgres.port};Database=${aws_db_instance.postgres.db_name};Username=${aws_db_instance.postgres.username};Password=${aws_db_instance.postgres.password};"
+        },
       ]
       secrets = [
         {

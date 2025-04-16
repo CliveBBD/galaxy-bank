@@ -90,7 +90,6 @@ public class Program
         }
 
         app.UseCors();
-        app.UseHttpsRedirection();
         app.UseAuthorization();
         app.MapControllers();
 
