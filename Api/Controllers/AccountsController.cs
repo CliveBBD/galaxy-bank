@@ -1,3 +1,4 @@
+using System.Text;
 using Api.DTOs;
 using Api.Helpers;
 using Api.Models;
@@ -33,7 +34,15 @@ namespace Api.Controllers
                     return BadRequest(new { message = $"Invalid account data." });
                 }
 
-                var accountNumber = await _accountService.CreateAccount(request.AccountTypeName);
+                var payload = await JwtDecoder.Decode(HttpContext);
+
+                var userDto = new CreateUserDto(
+                    payload.Subject,
+                    payload.GivenName,
+                    payload.Email
+                );
+
+                var accountNumber = await _accountService.CreateAccount(request.AccountTypeName, userDto);
 
                 var account = await _accountService.GetAccountByAccountNumber(accountNumber);
 
