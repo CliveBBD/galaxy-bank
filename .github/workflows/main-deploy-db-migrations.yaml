@@ -10,6 +10,8 @@ on:
   push:
     branches:
       - main
+env:
+  AWS_REGION: af-south-1
 
 jobs:
   migrate:
@@ -18,6 +20,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Assume the deployment user role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionsOIDCRole
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Install PostgreSQL client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
