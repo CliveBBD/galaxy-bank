@@ -16,22 +16,42 @@ namespace Api.Controllers
             _userService = userService;
         }
 
-        [HttpGet("{id}")]
-        public async Task<ActionResult<User>> GetUserById(int id)
+        [HttpPost("", Name = "CreateUser")]
+        public async Task<IActionResult> CreateUser([FromBody] CreateUserDto dto)
         {
+
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
             try
             {
-                var user = await _userService.GetUserById(id);
-                if (user == null)
-                    return NotFound();
-
-                return Ok(user);
-
+                var userId = await _userService.CreateUserAsync(dto);
+                return Ok("User created successfully.");
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+                return Conflict(new { message = ex.Message });
             }
+        }
+
+        [HttpGet("{id}", Name = "GetUserById")]
+        public async Task<IActionResult> GetUserById(int id)
+        {
+            var user = await _userService.GetUserByIdAsync(id);
+            if (user == null)
+                return NotFound();
+
+            return Ok(user);
+        }
+
+        [HttpGet("by-email/{email}", Name = "GetUserByEmail")]
+        public async Task<IActionResult> GetUserByEmail(string email)
+        {
+            var user = await _userService.GetUserByEmailAsync(email);
+            if (user == null)
+                return NotFound();
+
+            return Ok(user);
         }
 
     }

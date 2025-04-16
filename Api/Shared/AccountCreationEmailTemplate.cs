@@ -9,7 +9,7 @@ namespace Api.Shared
 
         public static string Subject = "Welcome to Galaxy Bank!";
 
-        public static string Message(string username, int accountId)
+        public static string Message(string username, string accountNumber)
         {
 
             var message = $@"
@@ -52,7 +52,7 @@ namespace Api.Shared
                                 <div class='content'>
                                 <p>Thank you for signing up with Galaxy Bank. We're excited to have you on board!</p>
                                 <p>Your new account has been created successfully.</p>
-                                <p><strong>Account Number:</strong> {accountId}</p>
+                                <p><strong>Account Number:</strong> {accountNumber}</p>
                                 <p>If you have any questions or need help, feel free to contact our support team anytime.</p>
                                 </div>
                                 <div class='footer'>

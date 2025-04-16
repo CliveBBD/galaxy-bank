@@ -1,110 +1,84 @@
-resource "aws_ecs_cluster" "ecs_cluster" {
-  name = "galaxybank-cluster"
+resource "aws_ecs_cluster" "main" {
+  name = "${var.app_name}-cluster"
 }
 
-resource "aws_security_group" "ecs_sg" {
-  name        = "ecs-sg"
-  description = "Security group for ECS tasks"
-  vpc_id      = aws_vpc.main.id
-
-  ingress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-resource "aws_ecrpublic_repository" "ecr_repository" {
-  provider        = aws.us_east_1
-  repository_name = "galaxybank-api"
-
-  catalog_data {
-    description = "Public repository for GalaxyBank API"
-    about_text  = "GalaxyBank API container images"
-    usage_text  = "Pull using docker pull public.ecr.aws/galaxybank-api"
-    architectures     = ["x86_64"]
-    operating_systems = ["Linux"]
-  }
-}
-
-resource "aws_ecs_task_definition" "ecs_task_definition" {
-  family                   = "galaxybank-task"
-  network_mode             = "awsvpc"
+resource "aws_ecs_task_definition" "api" {
+  family                   = "${var.app_name}-task"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "256"
-  memory                   = "512"
-  execution_role_arn       = aws_iam_role.ecs_task_role.arn
+  cpu                      = "512"
+  memory                   = "1024"
+  network_mode             = "awsvpc"
+  execution_role_arn       = aws_iam_role.ecs_task_execution.arn
+  task_role_arn            = aws_iam_role.ecs_task_role.arn
+
+  runtime_platform {
+    operating_system_family = "LINUX"
+    cpu_architecture        = "X86_64"
+  }
 
   container_definitions = jsonencode([
     {
-      name  = "galaxybank-api",
-      image = "${aws_ecrpublic_repository.ecr_repository.repository_uri}:latest"
-       #command   = ["/app/GalaxyBank.dll"], #  Corrected command.
+      name  = var.app_name
+      image = "${aws_ecr_repository.api.repository_url}:latest"
       portMappings = [
         {
-          containerPort = 80
-          hostPort      = 80
-        },
-      ],
+          containerPort = 80,
+          hostPort      = 80,
+          protocol      = "tcp"
+        }
+      ]
       environment = [
         {
+          name  = "ASPNETCORE_URLS",
+          value = "http://+:80"
+        },
+        {
           name  = "ASPNETCORE_ENVIRONMENT",
-          value = "Production"
+          value = "Development"
         },
+      ]
+      secrets = [
         {
-          name  = "DB_HOST",
-          value = aws_db_instance.postgres.endpoint
+          name      = "ConnectionStrings__DefaultConnection"
+          valueFrom = aws_secretsmanager_secret.db_connection.arn
         },
-        {
-          name  = "DB_NAME",
-          value = "galaxybankdb"
-        },
-        {
-          name  = "DB_USER",
-          value = "galaxybank"
-        },
-        {
-          name  = "DB_PASSWORD",
-          value = "password"
-        },
-      ],
-
+      ]
       logConfiguration = {
-        logDriver = "awslogs"
+        logDriver = "awslogs",
         options = {
-          awslogs-group         = "/ecs/galaxybank-api"
-          awslogs-region        = "af-south-1"
-          awslogs-stream-prefix = "ecs"
+          "awslogs-group"         = "/ecs/${var.app_name}",
+          "awslogs-region"        = var.region,
+          "awslogs-stream-prefix" = "ecs"
         }
       }
-    },
+      essential = true
+    }
   ])
 }
 
-resource "aws_ecs_service" "ecs_service" {
-  name            = "galaxybank-service"
-  cluster         = aws_ecs_cluster.ecs_cluster.id
-  task_definition = aws_ecs_task_definition.ecs_task_definition.arn
-  desired_count   = 1
+resource "aws_ecs_service" "api" {
+  name            = "${var.app_name}-service"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.api.arn
   launch_type     = "FARGATE"
+  desired_count   = 1
+
   network_configuration {
-    subnets          = [for subnet in aws_subnet.private_subnets : subnet.id]
+    subnets          = [aws_subnet.public_subnet1.id, aws_subnet.public_subnet2.id]
     security_groups  = [aws_security_group.ecs_sg.id]
-    assign_public_ip = false
+    assign_public_ip = true
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.alb_target_group.arn
-    container_name   = "galaxybank-api"
+    target_group_arn = aws_lb_target_group.api.arn
+    container_name   = var.app_name
     container_port   = 80
   }
-  depends_on = [aws_lb_listener.alb_listener]
+
+  depends_on = [aws_lb_listener.http]
+}
+
+resource "aws_cloudwatch_log_group" "ecs_logs" {
+  name              = "/ecs/${var.app_name}"
+  retention_in_days = 7
 }

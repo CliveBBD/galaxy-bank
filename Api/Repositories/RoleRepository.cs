@@ -10,16 +10,11 @@ namespace Api.Repositories
     public interface IRoleRepository
     {
         public Task<IEnumerable<Role>> GetRolesAsync();
+        Task<Role?> GetRoleByNameAsync(string name);
     }
 
     public class RoleRepository : IRoleRepository
     {
-        private readonly IDbConnection _dbConnection;
-        public RoleRepository(IDbConnection? dbConnection)
-        {
-            //TODO: undo this patch and fix it properly
-            _dbConnection = new NpgsqlConnection(Constants.ConnectionString);
-        }
         public async Task<IEnumerable<Role>> GetRolesAsync()
         {
             string query = """
@@ -28,7 +23,18 @@ namespace Api.Repositories
                 name
             FROM roles;
         """;
-            return await _dbConnection.QueryAsync<Role>(query);
+
+            using var connection = new NpgsqlConnection(Constants.ConnectionString);
+            return await connection.QueryAsync<Role>(query);
+        }
+
+        public async Task<Role?> GetRoleByNameAsync(string name)
+        {
+            var sql = "SELECT role_id AS RoleID, name FROM Roles WHERE Name = @Name";
+
+            using var connection = new NpgsqlConnection(Constants.ConnectionString);
+
+            return await connection.QueryFirstOrDefaultAsync<Role>(sql, new { Name = name });
         }
     }
 }
