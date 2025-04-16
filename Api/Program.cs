@@ -6,7 +6,6 @@ using Api.Helpers;
 using Api.Repositories;
 using Api.Services;
 using Npgsql;
-using System.Data;
 using Api.Shared;
 using Microsoft.AspNetCore.Builder;
 
