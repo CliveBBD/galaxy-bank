@@ -94,7 +94,7 @@ namespace Cli.Commands
 
         }
     }
-    public class ListAccountsCommand : Command
+    public class ListAccountsCommand : Command<ListAccountsCommand.Settings>
     {
         public class Settings : CommandSettings
         {
@@ -243,19 +243,6 @@ namespace Cli.Commands
                 AnsiConsole.MarkupLine($"[red]An error occurred: {ex.Message}[/]");
                 return 1;
             }
-        }
-    }
-
-
-
-
-    public class ListAccountsCommand : Command
-    {
-        public override int Execute(CommandContext context)
-        {
-            // Placeholder for account listing logic
-            AnsiConsole.MarkupLine("[green]Listing all accounts...[/]");
-            return 0;
         }
     }
 
