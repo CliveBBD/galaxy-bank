@@ -8,7 +8,7 @@ namespace Api.Services
     {
         Task<string> CreateAccount(string accountTypeName);
         Task<IEnumerable<Account>> GetAccounts();
-        Task<Account> GetAccountById(string id);
+        Task<Account> GetAccountByAccountNumber(string accountNumber);
         Task<IEnumerable<Account>> GetAccountsByUserEmail(string email);
     }
     public class AccountService : IAccountService
@@ -28,9 +28,9 @@ namespace Api.Services
             return await _accountRepository.GetAccountsAsync();
         }
 
-        public async Task<Account> GetAccountById(string id)
+        public async Task<Account> GetAccountByAccountNumber(string accountNumber)
         {
-            return await _accountRepository.GetAccountByIdAsync(id);
+            return await _accountRepository.GetAccountByAccountNumberAsync(accountNumber);
         }
 
         public async Task<IEnumerable<Account>> GetAccountsByUserEmail(string email)

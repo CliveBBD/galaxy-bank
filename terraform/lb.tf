@@ -43,13 +43,3 @@ resource "aws_lb_target_group" "alb_target_group" {
   vpc_id      = aws_vpc.main.id
   target_type = "ip"
 }
-
-output "alb_dns_name" {
-  value       = aws_lb.alb.dns_name
-  description = "The DNS name of the Application Load Balancer"
-}
-
-output "ecr_repository_url" {
-  value       = aws_ecrpublic_repository.ecr_repository.repository_uri
-  description = "The URI of the public ECR repository"
-}
