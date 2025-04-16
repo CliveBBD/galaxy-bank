@@ -84,8 +84,8 @@ resource "aws_iam_policy" "ecs_task_s3_read_only" {
           "s3:ListBucket"
         ],
         Resource = [
-          "arn:aws:s3:::stellar-path-s3-bucket",
-          "arn:aws:s3:::stellar-path-s3-bucket/*"
+          "arn:aws:s3:::galaxy-bank-tf-state",
+          "arn:aws:s3:::galaxy-bank-tf-state/*"
         ]
       }
     ]
@@ -108,8 +108,8 @@ resource "aws_iam_policy" "terraform_state_access" {
           "s3:DeleteObject"
         ],
         Resource = [
-          "arn:aws:s3:::stellar-path-s3-bucket",
-          "arn:aws:s3:::stellar-path-s3-bucket/*"
+          "arn:aws:s3:::galaxy-bank-tf-state",
+          "arn:aws:s3:::galaxy-bank-tf-state/*"
         ]
       }
     ]
@@ -145,4 +145,3 @@ resource "aws_iam_role_policy_attachment" "github_actions_terraform_state" {
   role       = aws_iam_role.github_actions.name
   policy_arn = aws_iam_policy.terraform_state_access.arn
 }
- 
