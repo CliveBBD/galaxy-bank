@@ -67,15 +67,15 @@ namespace Api.Repositories
                     throw new InvalidOperationException("Failed to create a transaction reference.");
                 }
 
-                // Step 3: Retrieve the account ID and current balance for the user
-                string accountQuery = """
-                SELECT account_id AS "AccountId", balance AS "CurrentBalance"
+                // Step 3: Confirm the provided account ID belongs to the user
+                string accountValidationQuery = """
+                SELECT balance AS "CurrentBalance"
                 FROM accounts
-                WHERE user_id = @UserId AND account_type_id = 1;
+                WHERE account_id = @AccountId AND user_id = @UserId AND account_type_id = 1;
                 """;
                 var account = await _dbConnection.QuerySingleOrDefaultAsync<dynamic>(
-                    accountQuery,
-                    new { UserId = userId },
+                    accountValidationQuery,
+                    new { AccountId = depositRequest.AccountID, UserId = userId },
                     transaction: transaction
                 );
 
@@ -83,10 +83,9 @@ namespace Api.Repositories
 
                 if (account == null)
                 {
-                    throw new InvalidOperationException($"No account found for the user with ID '{userId}'.");
+                    throw new InvalidOperationException($"The account with ID '{depositRequest.AccountID}' does not belong to the user with ID '{userId}' or does not exist.");
                 }
 
-                int accountId = account.AccountId;
                 int currentBalance = account.CurrentBalance;
 
                 // Step 4: Calculate the new balance after the deposit
@@ -99,7 +98,7 @@ namespace Api.Repositories
                 """;
                 var transactionParameters = new
                 {
-                    AccountId = accountId,
+                    AccountId = depositRequest.AccountID,
                     TransactionReferenceId = transactionReferenceId,
                     TransactionTypeId = 1, // Assuming 1 represents "Deposit" in the transaction types table
                     Amount = depositRequest.Amount,
@@ -127,7 +126,7 @@ namespace Api.Repositories
                 """;
                 int balanceUpdateResult = await _dbConnection.ExecuteAsync(
                     updateBalanceQuery,
-                    new { NewBalance = newBalance, AccountId = accountId },
+                    new { NewBalance = newBalance, AccountId = depositRequest.AccountID },
                     transaction: transaction
                 );
 
@@ -135,7 +134,7 @@ namespace Api.Repositories
 
                 if (balanceUpdateResult <= 0)
                 {
-                    throw new InvalidOperationException($"Failed to update the balance for account ID '{accountId}'.");
+                    throw new InvalidOperationException($"Failed to update the balance for account ID '{depositRequest.AccountID}'.");
                 }
 
                 transaction.Commit();

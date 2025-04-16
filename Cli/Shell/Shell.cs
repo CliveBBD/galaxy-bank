@@ -9,7 +9,6 @@ namespace Cli.Shell
 {
     public class Shell
     {
-
         public static void DisplayBanner()
         {
             var font = FigletFont.Load("Fonts/ANSI_Shadow.flf");
@@ -17,22 +16,7 @@ namespace Cli.Shell
                 .Centered()
                 .Color(Color.Cyan1);
 
-
             AnsiConsole.Clear();
-
-            // Load an image
-            // var image = new CanvasImage("planet.png");
-            // image.MaxWidth(5);
-            // // image;
-
-            // // Set a sampler that will be used when scaling the image.
-            // image.BilinearResampler();
-
-            // Mutate the image using ImageSharp
-            // image.Mutate(ctx => ctx.Rotate(-45).EntropyCrop());
-
-            // Render the image to the console
-            // AnsiConsole.Write(image);
 
             AnsiConsole.Write(banner);
             AnsiConsole.MarkupLine("[bold green]Welcome to the Galaxy Bank CLI Shell![/]");
@@ -47,8 +31,7 @@ namespace Cli.Shell
 
             while (true)
             {
-
-                AnsiConsole.Markup($"[bold green]{User.Username}@gbank> [/]");
+                AnsiConsole.Markup($"[bold green]{User.Username}:globe_with_meridians: gbank> [/]");
                 var input = ReadLine.Read();
 
                 var trimmedInput = input.Trim();

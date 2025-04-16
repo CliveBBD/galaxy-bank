@@ -1,5 +1,6 @@
 using Api.Services;
 using Microsoft.AspNetCore.Mvc;
+using Api.Shared;
 
 namespace Api.Controllers
 {
@@ -11,10 +12,15 @@ namespace Api.Controllers
         [HttpGet("", Name = "GetTransactions")]
         public async Task<IActionResult> GetTransactions()
         {
-            string googleId = "google_id_b597e0d6d8e47ab0405e4627"; // Replace with actual Google ID from context.
 
             try
             {
+                var payload = await JwtDecoder.Decode(HttpContext);
+                if (payload == null)
+                {
+                    return Unauthorized("Invalid or missing token.");
+                }
+                var googleId = payload.Subject;
                 var transactions = await _transactionService.GetTransactionsAsync(googleId);
                 Console.WriteLine(transactions);
                 return Ok(transactions);
@@ -33,10 +39,14 @@ namespace Api.Controllers
                 return BadRequest(ModelState);
             }
 
-            string googleId = "google_id_b597e0d6d8e47ab0405e4627"; // Replace with actual Google ID from context.
-
             try
             {
+                var payload = await JwtDecoder.Decode(HttpContext);
+                if (payload == null)
+                {
+                    return Unauthorized("Invalid or missing token.");
+                }
+                var googleId = payload.Subject;
                 var transactions = await _transactionService.GetTransactionsByAccountIdAsync(accountId, googleId);
                 return Ok(transactions);
             }
@@ -53,11 +63,14 @@ namespace Api.Controllers
             {
                 return BadRequest(ModelState);
             }
-
-            string googleId = "google_id_b597e0d6d8e47ab0405e4627"; // Replace with actual Google ID from context.
-
             try
             {
+                var payload = await JwtDecoder.Decode(HttpContext);
+                if (payload == null)
+                {
+                    return Unauthorized("Invalid or missing token.");
+                }
+                var googleId = payload.Subject;
                 var transactions = await _transactionService.GetTransactionsByIdAsync(transactionId, googleId);
                 return Ok(transactions);
             }
