@@ -11,7 +11,7 @@ namespace Cli.Shell
     {
         public static void DisplayBanner()
         {
-            var font = FigletFont.Load("Fonts/ANSI_Shadow.flf");
+            var font = FigletFont.Load("fonts/ANSI_Shadow.flf");
             var banner = new FigletText(font, "Galaxy Bank")
                 .Centered()
                 .Color(Color.Cyan1);
