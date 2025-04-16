@@ -6,7 +6,5 @@ namespace Api.DTOs
     {
         [Required]
         public required int NewStatusId { get; set; }
-        [Required]
-        public required int UserID { get; set; }
     }
 }
