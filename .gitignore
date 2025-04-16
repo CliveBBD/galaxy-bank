@@ -59,8 +59,10 @@ nunit-*.xml
 .idea/*
 
 .terraform
-*.tfstate
-*.tfstate.backup
+terraform.tfstate
+terraform.auto.tfvars
+terraform.tfstate.backup
+
 
 #Secrets
 */client_secrets.*

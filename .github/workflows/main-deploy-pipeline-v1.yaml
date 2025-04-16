@@ -1,6 +1,8 @@
-name: Deploy to AWS ECS
+name: Galaxy Bank Main Deploy V1
+description: Deploys the Galaxy Bank application to AWS ECS using Terraform and Docker.
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -9,55 +11,65 @@ permissions:
   id-token: write
   contents: read
 
+env:
+  WORKING_DIRECTORY: ./Api
+  AWS_REGION: af-south-1
+
 jobs:
-  deploy:
-    name: Deploy to Amazon ECS
+  publish-and-deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
-      - name: Configure AWS credentials
+      - name: Assume the deployment user role
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::363615071302:role/GitHubActionsOIDCRole
-          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionsOIDCRole
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Terraform outputs
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Terraform Init
+        run: |
+          cd terraform
+          terraform init
+
+      - name: Terraform Plan
+        run: |
+          cd terraform
+          terraform plan
+
+      - name: Terraform Apply
+        run: |
+          cd terraform
+          terraform apply -auto-approve \
+          -var="db_username=${{ secrets.DB_USERNAME }}" \
+          -var="db_password=${{ secrets.DB_PASSWORD }}" \
+
+      - name: Extract Terraform Outputs
         uses: dflook/terraform-output@v1
-        id: terraform-outputs
+        id: tf-outputs
         with:
           path: terraform
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4.0.1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-        with:
-          registry-type: public
-
-      - name: Build, tag, and push image to Amazon ECR
-        id: build-image
-        env:
-          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          REPOSITORY: v1o5t6h9/galaxybank-api
-          IMAGE_TAG: latest
+      - name: Publish image to ECR
         run: |
-          cd Api/
-          docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG .
-          docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
+          REPOSITORY_URI=${{ steps.tf-outputs.outputs.ecr_repository_url }}
+          IMAGE_TAG=latest
 
-      - name: Deploy service to Amazon ECS
+          cd Api
+          docker build -t $REPOSITORY_URI:$IMAGE_TAG .
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
+          docker push $REPOSITORY_URI:$IMAGE_TAG
+
+      - name: Perform ECS deployment
         run: |
-          CLUSTER_NAME="${{ steps.terraform-outputs.outputs.ecs_cluster_name }}"
-          SERVICE_NAME="${{ steps.terraform-outputs.outputs.ecs_service_name }}"
-          aws ecs update-service --cluster $CLUSTER_NAME --service $SERVICE_NAME --force-new-deployment
+          CLUSTER_NAME="${{ steps.tf-outputs.outputs.ecs_cluster_name }}"
+          SERVICE_NAME="${{ steps.tf-outputs.outputs.ecs_service_name }}"
+          aws ecs update-service --cluster "$CLUSTER_NAME" --service "$SERVICE_NAME" --force-new-deployment
         env:
-          AWS_REGION: af-south-1
+          AWS_REGION: ${{ env.AWS_REGION }}
