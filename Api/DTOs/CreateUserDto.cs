@@ -1,10 +1,10 @@
 using Api.Models;
 
-public class CreateUserDto
+public class CreateUserDto(string googleID, string username, string email)
 {
     // public required int UserID { get; set; }
-    public required string GoogleID { get; set; }
-    public required string Username { get; set; }
-    public required string Email { get; set; }
+    public string GoogleID { get; set; } = googleID;
+    public string Username { get; set; } = username;
+    public string Email { get; set; } = email;
     public string RoleName { get; set; }
 }

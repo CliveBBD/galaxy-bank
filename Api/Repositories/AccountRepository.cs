@@ -7,7 +7,7 @@ namespace Api.Repositories
 {
     public interface IAccountRepository
     {
-        Task<string> CreateAccountAsync(string accountTypeName);
+        Task<string> CreateAccountAsync(string accountTypeName, CreateUserDto userDto);
         Task<IEnumerable<Account>> GetAccountsAsync();
         Task<Account> GetAccountByAccountNumberAsync(string accountNumber);
         Task<IEnumerable<Account>> GetAccountsByUserEmailAsync(string email);
@@ -25,15 +25,9 @@ namespace Api.Repositories
             _userRepository = userRepository;
 
         }
-        public async Task<string> CreateAccountAsync(string accountTypeName)
+        public async Task<string> CreateAccountAsync(string accountTypeName, CreateUserDto userDto)
         {
-            var newUser = new CreateUserDto
-            {
-                GoogleID = "google-oath2|6679",
-                Username = "newuser",
-                Email = "testmail@email.com",
-                RoleName = "customer"
-            };
+            var newUser = userDto;
 
 
             var openingBalance = 50;
@@ -47,7 +41,7 @@ namespace Api.Repositories
             int userId;
             if (!exists)
             {
-                userId = await _userRepository.CreateUserAsync(newUser.GoogleID, newUser.Username, newUser.Email, newUser.RoleName);
+                userId = await _userRepository.CreateUserAsync(newUser.GoogleID, newUser.Username, newUser.Email, "customer");
             }
             else
             {
