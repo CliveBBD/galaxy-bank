@@ -1,9 +1,5 @@
 data "aws_caller_identity" "current" {}
 
-locals {
-  app_name = "galaxy-bank"
-}
-
 resource "aws_iam_openid_connect_provider" "github" {
   url             = "https://token.actions.githubusercontent.com"
   client_id_list  = ["sts.amazonaws.com"]
@@ -35,9 +31,32 @@ resource "aws_iam_role" "github_actions" {
   })
 }
 
+data "aws_iam_policy_document" "ecs_task_execution_policy" {
+  statement {
+    actions = [
+      "secretsmanager:GetSecretValue",
+      "ssm:GetParameters",
+      "ssm:GetParameter"
+    ]
+    resources = [
+      aws_secretsmanager_secret.jwt_secret.arn,
+      aws_secretsmanager_secret.db_connection.arn,
+      aws_secretsmanager_secret.google_client_id.arn,
+      aws_secretsmanager_secret.api_key_1.arn,
+      aws_secretsmanager_secret.api_key_2.arn
+    ]
+  }
+}
+
+
+resource "aws_iam_role_policy" "ecs_task_execution_secrets" {
+  name   = "${var.app_name}-task-execution-secrets-policy"
+  role   = aws_iam_role.ecs_task_execution.id
+  policy = data.aws_iam_policy_document.ecs_task_execution_policy.json
+}
 
 resource "aws_iam_role" "ecs_task_execution" {
-  name = "${local.app_name}-ecs-task-execution-role"
+  name = "${var.app_name}-ecs-task-execution-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
@@ -54,7 +73,7 @@ resource "aws_iam_role" "ecs_task_execution" {
 }
 
 resource "aws_iam_role" "ecs_task_role" {
-  name = "${local.app_name}-task-role"
+  name = "${var.app_name}-task-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
@@ -71,7 +90,7 @@ resource "aws_iam_role" "ecs_task_role" {
 }
 
 resource "aws_iam_policy" "ecs_task_s3_read_only" {
-  name        = "${local.app_name}-task-s3-read-only-policy"
+  name        = "${var.app_name}-task-s3-read-only-policy"
   description = "Allows read-only access to the Terraform state S3 bucket"
   policy = jsonencode({
     Version = "2012-10-17"
@@ -84,8 +103,8 @@ resource "aws_iam_policy" "ecs_task_s3_read_only" {
           "s3:ListBucket"
         ],
         Resource = [
-          "arn:aws:s3:::galaxy-bank-tf-state",
-          "arn:aws:s3:::galaxy-bank-tf-state/*"
+          "arn:aws:s3:::galaxy-bank-s3-bucket",
+          "arn:aws:s3:::galaxy-bank-s3-bucket/*"
         ]
       }
     ]
@@ -108,8 +127,8 @@ resource "aws_iam_policy" "terraform_state_access" {
           "s3:DeleteObject"
         ],
         Resource = [
-          "arn:aws:s3:::galaxy-bank-tf-state",
-          "arn:aws:s3:::galaxy-bank-tf-state/*"
+          "arn:aws:s3:::galaxy-bank-s3-bucket",
+          "arn:aws:s3:::galaxy-bank-s3-bucket/*"
         ]
       }
     ]
@@ -118,7 +137,7 @@ resource "aws_iam_policy" "terraform_state_access" {
 
 resource "aws_iam_role_policy_attachment" "ecr" {
   role       = aws_iam_role.github_actions.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess"
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_task_execution_policy" {
