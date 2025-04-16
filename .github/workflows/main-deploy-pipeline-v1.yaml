@@ -5,6 +5,10 @@ on:
     branches:
       - main
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   deploy:
     name: Deploy to Amazon ECS
@@ -46,4 +50,3 @@ jobs:
           aws ecs update-service --cluster $CLUSTER_NAME --service $SERVICE_NAME --force-new-deployment
         env:
           AWS_REGION: af-south-1
-        
