@@ -1,4 +1,3 @@
-
 using Api.Models;
 using Api.Shared;
 using Dapper;
@@ -83,10 +82,20 @@ namespace Api.Repositories
             var query = $@"
                 SELECT account_id AS {nameof(Account.AccountId)}, user_id AS {nameof(Account.UserId)}, account_type_id AS {nameof(Account.AccountTypeId)}, balance AS {nameof(Account.Balance)}, created_at AS {nameof(Account.CreatedAt)}, account_number AS {nameof(Account.AccountNumber)}
                 FROM accounts";
+            Console.WriteLine(query);
 
-            using var connection = new NpgsqlConnection(Constants.ConnectionString);
-            await connection.OpenAsync();
-            return await connection.QueryAsync<Account>(query);
+            try
+            {
+                using var connection = new NpgsqlConnection(Constants.ConnectionString);
+                Console.WriteLine(connection.ConnectionString);
+                await connection.OpenAsync();
+                return await connection.QueryAsync<Account>(query);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred while fetching accounts: {ex.Message}");
+                throw;
+            }
         }
 
         public async Task<Account> GetAccountByIdAsync(string id)

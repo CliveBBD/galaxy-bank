@@ -1,13 +1,18 @@
 using Api.Models;
 using Api.Repositories;
+using Google.Apis.Auth;
 
 namespace Api.Services
 {
     public interface IUserService
     {
+
         Task<int> CreateUserAsync(CreateUserDto dto);
         Task<User?> GetUserByIdAsync(int id);
         Task<User?> GetUserByEmailAsync(string email);
+
+        Task<User?> GetCurrentUser(HttpContext httpContext);
+
     }
     public class UserService : IUserService
     {
@@ -38,8 +43,25 @@ namespace Api.Services
         }
 
         public async Task<User?> GetUserByEmailAsync(string email)
+
         {
             return await _userRepository.GetUserByEmailAsync(email);
+        }
+
+
+        public async Task<User?> GetCurrentUser(HttpContext httpContext)
+        {
+            var authHeader = httpContext.Request.Headers["Authorization"].ToString();
+            if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
+            {
+                var jwt = authHeader.Substring("Bearer ".Length).Trim();
+                var payload = await GoogleJsonWebSignature.ValidateAsync(jwt);
+                return await this.GetUserByEmail(payload.Email);
+            }
+            else
+            {
+                return null;
+            }
         }
 
 

@@ -85,43 +85,10 @@ public class GoogleAuthService
  
         var token = new StoredToken
         {
-            IdToken = tokenResponse != null ? tokenResponse.IdToken: "",
-            AccessToken = tokenResponse != null ? tokenResponse.AccessToken : "",
-            RefreshToken = tokenResponse != null ? tokenResponse.RefreshToken : "",
-            ExpiresAt = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresInSeconds.GetValueOrDefault())
+            IdToken = tokenResponse != null ? tokenResponse.IdToken: ""
         };
  
-        return token;
-    }
- 
-    public async Task<StoredToken> RefreshTokenAsync(string refreshToken)
-    {
-        // Set up the refresh token request parameters
-        var refreshRequest = new FormUrlEncodedContent(new Dictionary<string, string>
-        {
-            ["refresh_token"] = refreshToken,
-            ["client_id"] = _clientId ?? "",
-            ["client_secret"] = _clientSecret ?? "",
-            ["grant_type"] = "refresh_token"
-        });
- 
-        // Make the refresh token request
-        var response = await _httpClient.PostAsync(TokenEndpoint, refreshRequest);
-        response.EnsureSuccessStatusCode();
- 
-        // Parse the token response
-        var responseContent = await response.Content.ReadAsStringAsync();
-        var tokenResponse = JsonConvert.DeserializeObject<TokenResponse>(responseContent);
- 
-        var token = new StoredToken
-        {   
-            IdToken = tokenResponse != null ? tokenResponse.IdToken : "",
-            AccessToken = tokenResponse != null ? tokenResponse.AccessToken : "",
-            RefreshToken = refreshToken, // The refresh token doesn't change
-            ExpiresAt = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresInSeconds.GetValueOrDefault())
-        };
- 
-        return token;
+        return token ?? new() { IdToken = "" };
     }
  
     public string GenerateSessionId()
