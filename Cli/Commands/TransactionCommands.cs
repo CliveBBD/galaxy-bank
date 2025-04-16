@@ -61,7 +61,7 @@ namespace Cli.Commands
             httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", User.Token); // Replace with the actual token
             try
             {
-                var response = httpClient.PostAsync("https://localhost:7059/transfer", content).Result;
+                var response = httpClient.PostAsync($"{Constants.ApiBaseUrl}/transfer", content).Result;
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -121,7 +121,7 @@ namespace Cli.Commands
                 // TODO: Use account number instead
                 // TODO: Use one function for both deposit and withdraw, and move transfer out
                 // Fetch accounts from the API
-                var response = httpClient.GetAsync($"https://localhost:7059/accounts").Result;
+                var response = httpClient.GetAsync($"{Constants.ApiBaseUrl}/accounts").Result;
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -167,7 +167,7 @@ namespace Cli.Commands
 
                 // Send the deposit/withdraw request
                 var endpoint = this.GetType().Name == nameof(DepositCommand) ? "deposit" : "withdraw";
-                var result = httpClient.PostAsync($"https://localhost:7059/{endpoint}", content).Result;
+                var result = httpClient.PostAsync($"{Constants.ApiBaseUrl}/{endpoint}", content).Result;
 
                 if (result.IsSuccessStatusCode)
                 {
@@ -230,7 +230,7 @@ namespace Cli.Commands
                 // TODO: Stop using email endpoint
                 // TODO: api endpoints should start with /api
                 // CUSTOM: Use account number instead
-                var response = httpClient.GetAsync($"https://localhost:7059/accounts").Result;
+                var response = httpClient.GetAsync($"{Constants.ApiBaseUrl}/accounts").Result;
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -274,7 +274,7 @@ namespace Cli.Commands
 
                 // Send the deposit/withdraw request
                 var endpoint = this.GetType().Name == nameof(DepositCommand) ? "deposit" : "withdraw";
-                var result = httpClient.PostAsync($"https://localhost:7059/{endpoint}", content).Result;
+                var result = httpClient.PostAsync($"{Constants.ApiBaseUrl}/{endpoint}", content).Result;
 
                 if (result.IsSuccessStatusCode)
                 {
@@ -317,8 +317,8 @@ namespace Cli.Commands
             try
             {
                 string endpoint = !string.IsNullOrEmpty(settings.AccountNumber)
-                    ? $"https://localhost:7059/transactions/account/{settings.AccountNumber}"
-                    : "https://localhost:7059/transactions";
+                    ? $"{Constants.ApiBaseUrl}/transactions/account/{settings.AccountNumber}"
+                    : $"{Constants.ApiBaseUrl}/transactions";
 
                 var response = httpClient.GetAsync(endpoint).Result;
 
@@ -404,7 +404,7 @@ namespace Cli.Commands
             try
             {
                 // Replace with the actual API endpoint
-                var response = httpClient.GetAsync("https://localhost:7059/transaction-types").Result;
+                var response = httpClient.GetAsync($"{Constants.ApiBaseUrl}/transaction-types").Result;
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -485,7 +485,7 @@ namespace Cli.Commands
 
             try
             {
-                var endpoint = "https://localhost:7059/transactions";
+                var endpoint = $"{Constants.ApiBaseUrl}/transactions";
                 var response = httpClient.GetAsync(endpoint).Result;
 
                 if (response.IsSuccessStatusCode)
