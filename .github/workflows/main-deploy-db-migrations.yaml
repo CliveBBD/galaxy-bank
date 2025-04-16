@@ -4,7 +4,6 @@ description: Deploy DB Migrations to the database using Flyway
 on: 
   workflow_run:
     workflows: ["Galaxy Bank Main Deploy V1"]
-    branches: [main]
     types: [completed]
 
 permissions:
