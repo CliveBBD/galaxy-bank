@@ -30,7 +30,8 @@ namespace Api.Helpers
                 UserId = account.UserId,
                 Balance = account.Balance,
                 CreatedAt = account.CreatedAt,
-                AccountType = accountType
+                AccountType = accountType,
+                AccountNumber = account.AccountNumber
             };
         }
 
@@ -47,7 +48,8 @@ namespace Api.Helpers
                         UserId = account.UserId,
                         Balance = account.Balance,
                         CreatedAt = account.CreatedAt,
-                        AccountType = accountType!
+                        AccountType = accountType!,
+                        AccountNumber = account.AccountNumber
                     };
                 });
 

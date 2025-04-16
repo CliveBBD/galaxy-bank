@@ -4,8 +4,8 @@ namespace Api.Models
 {
     public class User
     {
-        [Required]
-        public required int UserID { get; set; }
+        // [Required]
+        public int UserID { get; set; }
         [Required]
         public required string GoogleID { get; set; }
         [Required]
