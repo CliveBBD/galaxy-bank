@@ -27,13 +27,27 @@ jobs:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionsOIDCRole
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Initialise Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Run Terraform output
+        run: |
+          cd terraform
+          terraform output
+
+      - name: Get Terraform Outputs
+        uses: dflook/terraform-output@v1
+        id: tf-outputs
+        with:
+          path: terraform
+
       - name: Install PostgreSQL client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
       - name: Run Flyway validate and migrate
         uses: joshuaavalon/flyway-action@v3.0.0
         with:
-          url: jdbc:postgresql://${{ secrets.RDS_HOSTNAME }}:5432/galaxy_db
+          url: jdbc:postgresql://${{ steps.tf-outputs.outputs.rds_endpoint }}:${{steps.tf-outputs.outputs.rds_db_port }}/${{steps.tf-outputs.outputs.rds_db_name }}
           user: ${{ secrets.DB_USERNAME }}
           password: ${{ secrets.DB_PASSWORD }}
           locations: filesystem:flyway/sql/migrations
