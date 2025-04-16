@@ -9,6 +9,7 @@ namespace Api.Repositories
     public interface ITransactionRepository
     {
         public Task<IEnumerable<Transaction>> GetTransactionsAsync(string googleId);
+        public Task<IEnumerable<Transaction>> GetDisputableTransactionsAsync(int? userId = null);
         public Task<IEnumerable<Transaction>> GetTransactionsByAccountIdAsync(int accountId, string googleId);
         public Task<IEnumerable<Transaction>> GetTransactionsByIdAsync(int transactionId, string googleId);
         public Task<IEnumerable<Transaction>> GetTransactionsByTransactionReferenceIdAsync(int transaction_reference_id, NpgsqlTransaction? transaction = null);
@@ -22,6 +23,67 @@ namespace Api.Repositories
         {
             _dbConnection = dbConnection;
         }
+
+        public async Task<IEnumerable<Transaction>> GetDisputableTransactionsAsync(int? userId = null)
+        {
+            string query = $@"
+                WITH
+                    candidate_transactions_for_user AS (
+                        SELECT t.transaction_reference_id, t.transaction_type_id, tt.name as transaction_type_name
+                        FROM transactions t
+                            INNER JOIN accounts a ON t.account_id = a.account_id
+                            INNER JOIN transaction_types tt ON t.transaction_type_id = tt.transaction_type_id
+                            INNER JOIN users u ON a.user_id = u.user_id
+                        WHERE (@userId IS NOT NULL AND a.user_id = @userId)
+                    ),
+                    undisputable_transaction_references_for_user AS (
+                        SELECT transaction_reference_id
+                        FROM candidate_transactions_for_user
+                        WHERE transaction_type_name != 'transfer_out' --only transfer_out can be disputed
+                        UNION ALL
+                        SELECT disputed_transaction_reference_id
+                        FROM disputes
+                    ),
+                    disputable_transaction_for_user AS (
+                        SELECT transaction_reference_id
+                        FROM candidate_transactions_for_user
+                        WHERE transaction_reference_id NOT IN (SELECT transaction_reference_id FROM undisputable_transaction_references_for_user)
+                    )
+                    SELECT DISTINCT 
+                        t.transaction_id AS {nameof(Transaction.TransactionID)},
+                        t.transaction_reference_id AS {nameof(Transaction.TransactionReferenceID)},
+                        t.reference AS {nameof(Transaction.Reference)},
+                        t.account_id AS {nameof(Transaction.AccountID)},
+                        t.amount AS {nameof(Transaction.Amount)},
+                        t.transaction_type_id AS {nameof(Transaction.TransactionType.TransactionTypeID)},
+                        t.created_at AS {nameof(Transaction.CreatedAt)},
+                        t.balance_after_transaction AS {nameof(Transaction.BalanceAfterTransaction)},
+                        tt.transaction_type_id AS {nameof(Transaction.TransactionType.TransactionTypeID)},
+                        tt.name AS {nameof(Transaction.TransactionType.Name)}
+                    FROM transactions t
+                    INNER JOIN transaction_types tt ON t.transaction_type_id = tt.transaction_type_id
+                    INNER JOIN disputable_transaction_for_user dtfu ON t.transaction_reference_id = dtfu.transaction_reference_id AND tt.name = 'transfer_out'
+            ";
+
+            var parameters = new
+            {
+                userId
+            };
+
+            using var connection = new NpgsqlConnection(Constants.ConnectionString);
+            return await connection.QueryAsync<Transaction, TransactionType, Transaction>(
+                query,
+                (transaction, transactionType) =>
+                {
+                    transaction.TransactionType = transactionType;
+                    return transaction;
+                },
+                param: parameters,
+                splitOn: nameof(Transaction.TransactionType.TransactionTypeID)
+            );
+
+        }
+
         public async Task<IEnumerable<Transaction>> GetTransactionsAsync(string googleId)
         {
             string query = """

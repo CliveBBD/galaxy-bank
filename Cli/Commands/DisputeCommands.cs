@@ -6,6 +6,7 @@ using Spectre.Console;
 using Spectre.Console.Cli;
 using Microsoft.AspNetCore.WebUtilities;
 using System.Net.Http.Json;
+using Api.Models;
 
 namespace Cli.Commands
 {
@@ -13,23 +14,67 @@ namespace Cli.Commands
     {
         public class Settings : CommandSettings
         {
-            [CommandOption("-t|--transaction-reference <TransactionReferenceId>")]
-            public int TransactionReferenceId { get; set; }
-
-            [CommandOption("-r|--reason <Reason>")]
-            public string Reason { get; set; } = string.Empty;
         }
         public override int Execute(CommandContext context, Settings settings)
         {
-            if (settings.TransactionReferenceId == 0 || string.IsNullOrEmpty(settings.Reason))
+
+            HttpClientWrapper http = new HttpClientWrapper(Models.User.Token);
+            string requestUrl = $"{Constants.ApiBaseUrl}/transactions/disputable";
+            HttpResponseMessage response = http.httpClient.GetAsync(requestUrl).Result;
+
+            if (response.IsSuccessStatusCode)
             {
-                AnsiConsole.MarkupLine("[red]Transaction ID and reason must be specified.[/]");
+                string jsonResponse = response.Content.ReadAsStringAsync().Result;
+                IEnumerable<Api.Models.Transaction>? disputableTransactions = JsonSerializer.Deserialize<IEnumerable<Api.Models.Transaction>>(jsonResponse);
+
+                if (disputableTransactions != null && disputableTransactions.Any())
+                {
+                    string selectedTransaction = CliWidgets.RenderSelection("Choose a transaction to dispute", disputableTransactions.Select(transaction => $"{transaction.TransactionReferenceID}: {transaction.Reference}. Payment of Q {-transaction.Amount}"));
+                    string selectedTransactionReferenceId = selectedTransaction.Split(':')[0];
+
+                    string reason = CliWidgets.PromptText("Please provide a reason for your dispute.");
+
+                    Dictionary<string, string?> payload = new Dictionary<string, string?>
+                    {
+                        { "disputedTransactionReferenceID", selectedTransactionReferenceId },
+                        { "reason", reason },
+                    };
+                    requestUrl = $"{Constants.ApiBaseUrl}/disputes";
+                    response = http.httpClient.PostAsync(requestUrl, JsonContent.Create(payload)).Result;
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        jsonResponse = response.Content.ReadAsStringAsync().Result;
+                        Api.Models.Dispute? createdDispute = JsonSerializer.Deserialize<Api.Models.Dispute>(jsonResponse);
+                        if (createdDispute != null)
+                        {
+                            TableBuilder<Api.Models.Dispute> tableBuilder = new TableBuilder<Api.Models.Dispute>(new List<Api.Models.Dispute>() { createdDispute });
+                            CliWidgets.RenderTable("New Dispute", tableBuilder.Table);
+                            return 0;
+                        }
+                        else
+                        {
+                            CliWidgets.RenderError("We had trouble creating the dispute. Please try again later.");
+                            return 1;
+                        }
+                    }
+                    else
+                    {
+                        CliWidgets.RenderHttpResponseAsync(response);
+                        return 1;
+                    }
+                }
+                else
+                {
+                    CliWidgets.RenderWarning("There are no transactions that you may dispute.");
+                    return 1;
+                }
+            }
+            else
+            {
+                CliWidgets.RenderHttpResponseAsync(response);
                 return 1;
             }
-
-            // Simulate dispute logic here
-            AnsiConsole.MarkupLine($"[green]Disputed transaction {settings.TransactionReferenceId} for reason: {settings.Reason}, waiting for approval[/]");
-            return 0;
         }
     }
 
@@ -50,7 +95,7 @@ namespace Cli.Commands
         }
         public override int Execute(CommandContext context, Settings settings)
         {
-            var http = new HttpClientWrapper(User.Token);
+            var http = new HttpClientWrapper(Models.User.Token);
             try
             {
                 var queryParameters = new Dictionary<string, string?>
@@ -71,24 +116,24 @@ namespace Cli.Commands
                     if (disputes != null && disputes.Any())
                     {
                         var tableBuilder = new TableBuilder<Api.Models.Dispute>(disputes);
-                        AnsiConsole.Write(tableBuilder.Table);
+                        CliWidgets.RenderPaginatedTable("Disputes", tableBuilder.Table);
                         return 0;
                     }
                     else
                     {
-                        AnsiConsole.MarkupLine("[yellow]No disputes found.[/]");
+                        CliWidgets.RenderWarning("No disputes found.");
                         return 1;
                     }
                 }
                 else
                 {
-                    AnsiConsole.MarkupLine($"[red]Failed to fetch disputes: {response.ReasonPhrase}[/]");
+                    CliWidgets.RenderHttpResponseAsync(response);
                     return 1;
                 }
             }
             catch (Exception exception)
             {
-                AnsiConsole.MarkupLine($"[red]An error occurred: {exception.Message}[/]");
+                CliWidgets.RenderError($"An error occurred: {exception.Message}");
                 return 1;
             }
         }
@@ -105,12 +150,12 @@ namespace Cli.Commands
         {
             if (settings.DisputeId == 0)
             {
-                AnsiConsole.MarkupLine("[red]Dispute ID must be specified.[/]");
+                CliWidgets.RenderError("Dispute ID must be specified.");
                 return 1;
             }
             else
             {
-                var http = new HttpClientWrapper(User.Token);
+                var http = new HttpClientWrapper(Models.User.Token);
                 var requestUrl = $"{Constants.ApiBaseUrl}/disputes/{settings.DisputeId}";
                 var response = http.httpClient.GetAsync(requestUrl).Result;
 
@@ -121,25 +166,23 @@ namespace Cli.Commands
                     if (dispute != null)
                     {
                         var tableBuilder = new TableBuilder<Api.Models.Dispute>(new List<Api.Models.Dispute>(){dispute});
-                        AnsiConsole.Write(tableBuilder.Table);
+                        CliWidgets.RenderTable("Dispute", tableBuilder.Table);
                         return 0;
                     }
                     else
                     {
-                        AnsiConsole.MarkupLine("[yellow]No disputes found.[/]");
+                        CliWidgets.RenderWarning("[yellow]No disputes found.[/]");
                         return 1;
                     }
                 }
                 else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
-                    AnsiConsole.MarkupLine($"[yellow]No disputes found[/]");
+                    CliWidgets.RenderWarning($"[yellow]No disputes found[/]");
                     return 0;
                 }
                 else
                 {
-                    AnsiConsole.MarkupLine($"[red]Failed to fetch disputes: {response.ReasonPhrase}[/]");
-                    string responseBody = response.Content.ReadAsStringAsync().Result;
-                    Console.WriteLine(responseBody);
+                    CliWidgets.RenderHttpResponseAsync(response);
                     return 1;
                 }
             }
@@ -161,7 +204,7 @@ namespace Cli.Commands
         {
             if (settings.DisputeId == 0)
             {
-                AnsiConsole.MarkupLine("[red]Dispute ID must be specified.[/]");
+                CliWidgets.RenderError("Dispute ID must be specified.");
                 return 1;
             }
             else
@@ -171,7 +214,7 @@ namespace Cli.Commands
                     { "limit", settings.Limit?.ToString() },
                     { "offset", settings.Offset?.ToString() }
                 };
-                var http = new HttpClientWrapper(User.Token);
+                var http = new HttpClientWrapper(Models.User.Token);
                 var requestUrl = QueryHelpers.AddQueryString($"{Constants.ApiBaseUrl}/disputes/{settings.DisputeId}/history", queryParameters);
                 var response = http.httpClient.GetAsync(requestUrl).Result;
 
@@ -183,23 +226,23 @@ namespace Cli.Commands
                     if (disputeHistory != null && disputeHistory.Any())
                     {
                         var tableBuilder = new TableBuilder<Api.Models.DisputeHistoryEntry>(disputeHistory);
-                        AnsiConsole.Write(tableBuilder.Table);
+                        CliWidgets.RenderTable("Dispute History", tableBuilder.Table);
                         return 0;
                     }
                     else
                     {
-                        AnsiConsole.MarkupLine("[yellow]No disputes found.[/]");
+                        CliWidgets.RenderWarning("No disputes found.");
                         return 1;
                     }
                 }
                 else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
-                    AnsiConsole.MarkupLine($"[yellow]No dispute found for the provided id {settings.DisputeId}.[/]");
+                    CliWidgets.RenderWarning($"No dispute found for the provided id {settings.DisputeId}.");
                     return 0;
                 }
                 else
                 {
-                    AnsiConsole.MarkupLine($"[red]Failed to fetch disputes: {response.ReasonPhrase}[/]");
+                    CliWidgets.RenderHttpResponseAsync(response);
                     return 1;
                 }
             }
@@ -216,7 +259,7 @@ namespace Cli.Commands
         public override int Execute(CommandContext context, Settings settings)
         {
 
-            var http = new HttpClientWrapper(User.Token);
+            var http = new HttpClientWrapper(Models.User.Token);
             var requestUrl = $"{Constants.ApiBaseUrl}/disputes/{settings.DisputeId}/allowed-next-statuses";
             var allowedNextStatusesResponse = http.httpClient.GetAsync(requestUrl).Result;
 
@@ -232,25 +275,22 @@ namespace Cli.Commands
                 }
                 else
                 {
-                    AnsiConsole.MarkupLine("[yellow]This dispute has already been resolved.[/]");
+                    CliWidgets.RenderWarning("This dispute has already been resolved.");
                     return 1;
                 }
             }
             else
             {
-                AnsiConsole.MarkupLine($"[red]Failed to fetch disputes: {allowedNextStatusesResponse.ReasonPhrase}[/]");
+                CliWidgets.RenderHttpResponseAsync(allowedNextStatusesResponse);
                 return 1;
             }
 
-            var selectedNextStatus = AnsiConsole.Prompt(
-                new SelectionPrompt<string>()
-                    .Title("Move to")
-                    .AddChoices(allowedNextDisputeStatuses.Select(status => status.Name)));
+            var selectedNextStatus = CliWidgets.RenderSelection("Move to", allowedNextDisputeStatuses.Select(status => status.Name));
 
             var selectedStatus = allowedNextDisputeStatuses.Find(status => status.Name == selectedNextStatus);
             if (selectedStatus == null)
             {
-                AnsiConsole.MarkupLine("[red]Selected status not found.[/]");
+                CliWidgets.RenderError("Selected status not found.");
                 return 1;
             }
             else
@@ -269,20 +309,18 @@ namespace Cli.Commands
                     if (insertedDisputeHistory != null)
                     {
                         var tableBuilder = new TableBuilder<Api.Models.DisputeHistoryEntry>(new List<Api.Models.DisputeHistoryEntry>(){insertedDisputeHistory});
-                        AnsiConsole.Write(tableBuilder.Table);
+                        CliWidgets.RenderTable("Dispute History", tableBuilder.Table);
                         return 0;
                     }
                     else
                     {
-                        AnsiConsole.MarkupLine("[yellow]We had trouble updating the dispute status. Please try again later.[/]");
+                        CliWidgets.RenderError("We had trouble updating the dispute status. Please try again later.");
                         return 1;
                     }
                 }
                 else
                 {
-                    var content = updateStatusResponse.Content.ReadAsStringAsync().Result;
-                    Console.WriteLine(content);
-                    AnsiConsole.MarkupLine($"[red]Failed to update the status of dispute {settings.DisputeId}: {updateStatusResponse.ReasonPhrase}[/]");
+                    CliWidgets.RenderHttpResponseAsync(updateStatusResponse);
                     return 1;
                 }
             }
