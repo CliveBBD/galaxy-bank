@@ -35,7 +35,7 @@ namespace Api.Controllers
 
                 var accountNumber = await _accountService.CreateAccount(request.AccountTypeName);
 
-                var account = await _accountService.GetAccountById(accountNumber);
+                var account = await _accountService.GetAccountByAccountNumber(accountNumber);
 
                 var user = await _userService.GetUserByIdAsync(account.UserId);
 
@@ -72,15 +72,15 @@ namespace Api.Controllers
 
         }
 
-        [HttpGet("{id}", Name = "GetAccountByEmail")]
-        public async Task<IActionResult> GetAccountByEmail(string id)
+        [HttpGet("{id}", Name = "GetAccountByAccountNumber")]
+        public async Task<IActionResult> GetAccountByAccountNumber(string accountNumber)
         {
             try
             {
-                var account = await _accountService.GetAccountById(id);
+                var account = await _accountService.GetAccountByAccountNumber(accountNumber);
 
                 if (account == null)
-                    return NotFound(new { message = $"Account with account number: {id} not found." });
+                    return NotFound(new { message = $"Account with account number: {accountNumber} not found." });
 
                 var response = await _accountMapper.ToAccountResponse(account);
                 return Ok(response);

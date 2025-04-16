@@ -9,7 +9,7 @@ namespace Api.Repositories
     {
         Task<string> CreateAccountAsync(string accountTypeName);
         Task<IEnumerable<Account>> GetAccountsAsync();
-        Task<Account> GetAccountByIdAsync(string id);
+        Task<Account> GetAccountByAccountNumberAsync(string accountNumber);
         Task<IEnumerable<Account>> GetAccountsByUserEmailAsync(string email);
 
     }
@@ -98,16 +98,16 @@ namespace Api.Repositories
             }
         }
 
-        public async Task<Account> GetAccountByIdAsync(string id)
+        public async Task<Account> GetAccountByAccountNumberAsync(string accountNumber)
         {
             var query = $@"
                 SELECT account_id AS {nameof(Account.AccountId)}, user_id AS {nameof(Account.UserId)}, account_type_id AS {nameof(Account.AccountTypeId)}, balance AS {nameof(Account.Balance)}, created_at AS {nameof(Account.CreatedAt)}, account_number AS {nameof(Account.AccountNumber)}
                 FROM accounts
-                WHERE account_number = @Id";
+                WHERE account_number = @AccountNumber";
 
             using var connection = new NpgsqlConnection(Constants.ConnectionString);
 
-            return await connection.QueryFirstOrDefaultAsync<Account>(query, new { Id = id });
+            return await connection.QueryFirstOrDefaultAsync<Account>(query, new { AccountNumber = accountNumber });
         }
 
         public async Task<IEnumerable<Account>> GetAccountsByUserEmailAsync(string email)
