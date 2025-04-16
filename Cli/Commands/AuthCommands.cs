@@ -2,6 +2,7 @@ using Spectre.Console;
 using Spectre.Console.Cli;
 using Cli.Models;
 using Cli.Services;
+using Google.Apis.Auth;
 
 namespace Cli.Commands
 {
@@ -11,15 +12,29 @@ namespace Cli.Commands
         {
            try
             {
-                var tokenManager = new TokenManager();
-                var authService = new AuthService(tokenManager);
+                var isTokenValid = await IsTokenValid(User.Token);
+                if(isTokenValid) 
+                {
+                    Console.WriteLine("Already authenticated, proceed.");
+                    return 0;
+                }
+                var authService = new AuthService();
                 Console.WriteLine("Initiating Google authentication...");
     
                 var result = await authService.LoginAsync();
+                var payload = await GoogleJsonWebSignature.ValidateAsync(result.Token.IdToken);
+                if(payload != null)
+                {
+                    User.SetUserDetails(
+                        payload.GivenName, 
+                        payload.Email, 
+                        payload.Subject, 
+                        result.Token.IdToken
+                    );
+                }
     
                 if (result.Success)
                 {
-                    await tokenManager.SaveTokenAsync(result.Token);
                     Console.WriteLine("Authentication successful!");
                 }
                 else
@@ -34,6 +49,19 @@ namespace Cli.Commands
                 Console.WriteLine($"Error: {ex.Message}");
                 return 1;
             }
+        }
+
+        public static async Task<bool> IsTokenValid(string jwt)
+        {
+            try 
+            {
+                var payload = await GoogleJsonWebSignature.ValidateAsync(jwt);
+                return true; 
+            }
+            catch(InvalidJwtException)
+            {
+                return false;
+            } 
         }
     }
 
@@ -55,7 +83,7 @@ namespace Cli.Commands
             {
                 AnsiConsole.MarkupLine($"[green]You are logged in as {User.Username}[/]");
                 AnsiConsole.MarkupLine($"[green]Email: {User.Email}[/]");
-                AnsiConsole.MarkupLine($"[green]User ID: {User.Id}[/]");
+                AnsiConsole.MarkupLine($"[green]Google ID: {User.GoogleId}[/]");
             }
             else
             {

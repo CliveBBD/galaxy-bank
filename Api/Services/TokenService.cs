@@ -25,10 +25,7 @@ public class TokenService
  
     public void RemoveToken(string userKey)
     {
-        if (_tokenStore.ContainsKey(userKey))
-        {
-            _tokenStore.Remove(userKey);
-        }
+        _tokenStore.Remove(userKey);
     }
 }
  
