@@ -23,6 +23,7 @@ resource "aws_security_group" "ecs_sg" {
 }
 
 resource "aws_ecrpublic_repository" "ecr_repository" {
+  provider        = aws.us_east_1
   repository_name = "galaxybank-api"
 
   catalog_data {
