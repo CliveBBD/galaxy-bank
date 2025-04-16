@@ -66,8 +66,9 @@ namespace Api.Controllers
             }
         }
 
-        [HttpGet("account/{accountId}", Name = "GetTransactionsByAccountId")]
-        public async Task<IActionResult> GetTransactionsByAccountId(int accountId)
+
+        [HttpGet("account/{accountNumber}", Name = "GetTransactionsByAccountNumber")]
+        public async Task<IActionResult> GetTransactionsByAccountNumber(string accountNumber)
         {
             if (!ModelState.IsValid)
             {
@@ -82,7 +83,7 @@ namespace Api.Controllers
                     return Unauthorized("Invalid or missing token.");
                 }
                 var googleId = payload.Subject;
-                var transactions = await _transactionService.GetTransactionsByAccountIdAsync(accountId, googleId);
+                var transactions = await _transactionService.GetTransactionsByAccountNumberAsync(accountNumber, googleId);
                 return Ok(transactions);
             }
             catch (Exception e)

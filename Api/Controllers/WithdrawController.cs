@@ -37,7 +37,7 @@ namespace Api.Controllers
                 var googleId = payload.Subject;
 
                 var result = await _withdrawService.WithdrawAsync(request, googleId);
-                await _emailService.SendEmailAsync(payload.Email, WithdrawEmailTemplate.Subject, WithdrawEmailTemplate.Message(payload.GivenName, request.AccountId.ToString(), request.Amount.ToString()));
+                await _emailService.SendEmailAsync(payload.Email, WithdrawEmailTemplate.Subject, WithdrawEmailTemplate.Message(payload.GivenName, request.AccountNumber.ToString(), request.Amount.ToString()));
                 Console.WriteLine(result);
                 return Ok(result);
             }
