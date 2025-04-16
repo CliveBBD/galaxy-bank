@@ -18,6 +18,16 @@ output "rds_endpoint" {
   description = "The endpoint of the RDS instance"
 }
 
+output "rds_db_name" {
+  value       = aws_db_instance.postgres.db_name
+  description = "The hosted database name"
+}
+
+output "rds_db_port" {
+  value       = aws_db_instance.postgres.port
+  description = "The hosted database port"
+}
+
 output "alb_dns_name" {
   value       = aws_lb.api.dns_name
   description = "The DNS name of the load balancer"
