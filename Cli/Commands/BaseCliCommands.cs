@@ -1,6 +1,7 @@
 using Spectre.Console;
 using Spectre.Console.Cli;
 using Cli.Helpers;
+using Cli.Models;
 
 namespace Cli.Commands
 {
@@ -12,9 +13,20 @@ namespace Cli.Commands
             table.AddColumn("[bold]Command[/]");
             table.AddColumn("[bold]Description[/]");
 
-            foreach (var command in CommandConfig.Commands)
+            if(!User.Role.Equals("no role yet", StringComparison.CurrentCultureIgnoreCase))
             {
-                table.AddRow($"[green]{command.Name}[/]", command.Description);
+                foreach (var command in CommandConfig.Commands)
+                {
+                    table.AddRow($"[green]{command.Name}[/]", command.Description);
+                }
+               
+            }
+            else 
+            {
+                foreach (var command in CommandConfig.Commands.Where(command => command.Name.Equals("help", StringComparison.CurrentCultureIgnoreCase) || command.Name.Equals("create-account", StringComparison.CurrentCultureIgnoreCase)).ToList())
+                {
+                    table.AddRow($"[green]{command.Name}[/]", command.Description);
+                }
             }
             AnsiConsole.Write(table);
             return 0;

@@ -2,7 +2,6 @@ using Newtonsoft.Json;
 using System.Diagnostics;
 using Cli.Models;
 using Microsoft.Extensions.Configuration;
-using Microsoft.AspNetCore.Mvc;
 
 namespace Cli.Services;
  

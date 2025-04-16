@@ -86,7 +86,7 @@ public class GoogleAuthService
         var token = new StoredToken
         {
             IdToken = tokenResponse != null ? tokenResponse.IdToken : "",
-            Role = user != null ? user.Role.Name : "Customer",
+            Role = user != null ? user.Role.Name : "No role yet",
             SessionId = state,
         };
  
