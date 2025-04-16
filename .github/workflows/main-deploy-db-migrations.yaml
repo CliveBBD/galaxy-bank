@@ -12,6 +12,7 @@ on:
       - main
   workflow_run:
     workflows: ["Galaxy Bank Main Deploy V1"]
+    branches: [main]
     types: [completed]
 
 env:
@@ -19,8 +20,6 @@ env:
 
 jobs:
   migrate:
-    needs: 
-    - publish-and-deploy
     name: Run DB migrations
     runs-on: ubuntu-latest
     steps:
