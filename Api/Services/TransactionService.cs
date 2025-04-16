@@ -1,5 +1,6 @@
 using Api.Repositories;
 using Api.DTOs;
+using Api.Models;
 
 namespace Api.Services
 {
