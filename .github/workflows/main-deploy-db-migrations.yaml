@@ -38,6 +38,7 @@ jobs:
       - name: Run Terraform output
         run: |
           cd terraform
+          terraform init
           terraform output
 
       - name: Get Terraform Outputs
