@@ -39,15 +39,19 @@ public class AuthService
 
     public async Task<LoginResult> PollForToken()
     {
+        Token token = new() { IdToken = "", Role = "", SessionId = "" };
         var response = await _httpClient.GetAsync($"{_apiBaseUrl}/login");
         response.EnsureSuccessStatusCode();
  
         var responseContent = await response.Content.ReadAsStringAsync();
         var loginResponse = JsonConvert.DeserializeObject<LoginResponse>(responseContent);
-        OpenBrowser(loginResponse.AuthUrl);
-        Console.WriteLine("A browser window has been opened. Please complete the authentication process there.");
-        Console.WriteLine("Waiting for authentication to complete...");
-        var token = await PollForTokenAsync(loginResponse.SessionId);
+        if(loginResponse != null)
+        {
+            OpenBrowser(loginResponse.AuthUrl);
+            Console.WriteLine("A browser window has been opened. Please complete the authentication process there.");
+            Console.WriteLine("Waiting for authentication to complete...");
+            token = await PollForTokenAsync(loginResponse.SessionId);
+        }
     
         return new LoginResult
         {
