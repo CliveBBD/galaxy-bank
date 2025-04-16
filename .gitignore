@@ -69,3 +69,5 @@ terraform.tfstate.backup
 #Sensitive Env Files
 .env.production
 .env
+
+.idea/

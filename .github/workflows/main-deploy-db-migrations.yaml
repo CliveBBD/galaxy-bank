@@ -1,0 +1,50 @@
+name: Flyway Database Migration
+description: Run Flyway database migrations on PostgreSQL RDS instance.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "flyway/migrations/**"
+
+env:
+  FLYWAY_VERSION: 9.24.0
+  DB_NAME: galaxy_db
+  DB_PORT: 5432
+  FLYWAY_URL: jdbc:postgresql://${{ secrets.RDS_HOSTNAME }}:5432/galaxy_db
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Download Flyway CLI
+        run: |
+          wget https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/${{ env.FLYWAY_VERSION }}/flyway-commandline-${{ env.FLYWAY_VERSION }}-linux-x64.tar.gz
+          tar -xzf flyway-commandline-${{ env.FLYWAY_VERSION }}-linux-x64.tar.gz
+          sudo mv flyway-${{ env.FLYWAY_VERSION }}/flyway /usr/local/bin/
+
+      - name: Configure Flyway
+        run: |
+          mkdir -p flyway/conf
+          cat <<EOF > flyway/conf/flyway.conf
+          flyway.url=jdbc:postgresql://${{ secrets.RDS_HOSTNAME }}:${{ env.DB_PORT }}/${{ env.DB_NAME }}
+          flyway.user=${{ secrets.DB_USERNAME }}
+          flyway.password=${{ secrets.DB_PASSWORD }}
+          flyway.locations=filesystem:./flyway/migrations
+          # Add any other Flyway configurations you need
+          EOF
+
+      - name: Run Flyway Migrate
+        run: flyway migrate -configFiles=flyway/conf/flyway.conf
+
