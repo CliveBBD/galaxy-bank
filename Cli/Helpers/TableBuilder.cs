@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Spectre.Console;
 
@@ -19,7 +21,7 @@ namespace Cli.Helpers
             Table = new Table();
             _flattenedProperties = new List<(string, Func<T, string>)>();
 
-            FlattenProperties(typeof(T), "", (obj) => obj!, _flattenedProperties);
+            FlattenProperties(typeof(T), (obj) => obj!, _flattenedProperties);
 
             foreach (var (columnName, _) in _flattenedProperties)
             {
@@ -33,11 +35,20 @@ namespace Cli.Helpers
             }
         }
 
-        private void FlattenProperties(Type type, string prefix, Func<object?, object?> parentObjectGetter, List<(string, Func<T, string>)> list)
+        public static string PascalToTitle(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return input;
+
+            var result = Regex.Replace(input, @"([a-z])([A-Z])", "$1 $2");
+            result = Regex.Replace(result, @"([A-Z])([A-Z][a-z])", "$1 $2");
+            return CultureInfo.CurrentCulture.TextInfo.ToTitleCase(result);
+        }
+
+        private void FlattenProperties(Type type, Func<object?, object?> parentObjectGetter, List<(string, Func<T, string>)> list)
         {
             foreach (var property in type.GetProperties())
             {
-                var propertyName = string.IsNullOrEmpty(prefix) ? property.Name : $"{prefix}.{property.Name}";
+                var propertyName = PascalToTitle(property.Name);
                 Func<T, string> getter = (childObject) =>
                 {
                     try
@@ -56,7 +67,6 @@ namespace Cli.Helpers
                 {
                     FlattenProperties(
                         property.PropertyType,
-                        propertyName,
                         (childObject) => property.GetValue(parentObjectGetter(childObject)),
                         list
                     );
