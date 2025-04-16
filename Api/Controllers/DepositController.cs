@@ -40,7 +40,7 @@ namespace Api.Controllers
 
                 var result = await _depositService.DepositAsync(request, googleId);
                 Console.WriteLine("To email result: " + payload.Email);
-                await _emailService.SendEmailAsync(payload.Email, DepositEmailTemplate.Subject, DepositEmailTemplate.Message(payload.GivenName, request.AccountID.ToString(), request.Amount.ToString()));
+                await _emailService.SendEmailAsync(payload.Email, DepositEmailTemplate.Subject, DepositEmailTemplate.Message(payload.GivenName, request.AccountNumber.ToString(), request.Amount.ToString()));
                 Console.WriteLine(result);
                 return Ok(result);
             }

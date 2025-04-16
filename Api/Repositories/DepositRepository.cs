@@ -29,7 +29,7 @@ namespace Api.Repositories
                 Console.WriteLine($"Google ID: {googleId}");
                 Console.WriteLine($"Deposit Amount: {depositRequest.Amount}");
                 Console.WriteLine($"Deposit Reference: {depositRequest.Reference}");
-                Console.WriteLine($"Account ID: {depositRequest.AccountID}");
+                Console.WriteLine($"Account Number: {depositRequest.AccountNumber}");
                 // Step 1: Retrieve the internal user ID using the Google ID
                 string userQuery = """
                 SELECT user_id AS "UserId"
@@ -67,15 +67,15 @@ namespace Api.Repositories
                     throw new InvalidOperationException("Failed to create a transaction reference.");
                 }
 
-                // Step 3: Confirm the provided account ID belongs to the user
+                // Step 3: Confirm the provided account number belongs to the user
                 string accountValidationQuery = """
-                SELECT balance AS "CurrentBalance"
+                SELECT account_id AS "AccountId", balance AS "CurrentBalance"
                 FROM accounts
-                WHERE account_id = @AccountId AND user_id = @UserId AND account_type_id = 1;
+                WHERE account_number = @AccountNumber AND user_id = @UserId;
                 """;
                 var account = await _dbConnection.QuerySingleOrDefaultAsync<dynamic>(
                     accountValidationQuery,
-                    new { AccountId = depositRequest.AccountID, UserId = userId },
+                    new { AccountNumber = depositRequest.AccountNumber, UserId = userId },
                     transaction: transaction
                 );
 
@@ -83,9 +83,10 @@ namespace Api.Repositories
 
                 if (account == null)
                 {
-                    throw new InvalidOperationException($"The account with ID '{depositRequest.AccountID}' does not belong to the user with ID '{userId}' or does not exist.");
+                    throw new InvalidOperationException($"The account with number '{depositRequest.AccountNumber}' does not belong to the user with ID '{userId}' or does not exist.");
                 }
 
+                int accountId = account.AccountId; // Retrieve the account ID for further operations
                 int currentBalance = account.CurrentBalance;
 
                 // Step 4: Calculate the new balance after the deposit
@@ -98,7 +99,7 @@ namespace Api.Repositories
                 """;
                 var transactionParameters = new
                 {
-                    AccountId = depositRequest.AccountID,
+                    AccountId = accountId, // Use the retrieved account ID
                     TransactionReferenceId = transactionReferenceId,
                     TransactionTypeId = 1, // Assuming 1 represents "Deposit" in the transaction types table
                     Amount = depositRequest.Amount,
@@ -126,7 +127,7 @@ namespace Api.Repositories
                 """;
                 int balanceUpdateResult = await _dbConnection.ExecuteAsync(
                     updateBalanceQuery,
-                    new { NewBalance = newBalance, AccountId = depositRequest.AccountID },
+                    new { NewBalance = newBalance, AccountId = accountId },
                     transaction: transaction
                 );
 
@@ -134,7 +135,7 @@ namespace Api.Repositories
 
                 if (balanceUpdateResult <= 0)
                 {
-                    throw new InvalidOperationException($"Failed to update the balance for account ID '{depositRequest.AccountID}'.");
+                    throw new InvalidOperationException($"Failed to update the balance for account number '{depositRequest.AccountNumber}'.");
                 }
 
                 transaction.Commit();
