@@ -75,3 +75,14 @@ jobs:
           aws ecs update-service --cluster "$CLUSTER_NAME" --service "$SERVICE_NAME" --force-new-deployment
         env:
           AWS_REGION: ${{ env.AWS_REGION }}
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Run Flyway validate and migrate
+        uses: joshuaavalon/flyway-action@v3.0.0
+        with:
+          url: jdbc:postgresql://${{ steps.tf-outputs.outputs.rds_endpoint }}/galaxy_db
+          user: galaxy
+          password: password
+          locations: filesystem:flyway/sql/migrations
