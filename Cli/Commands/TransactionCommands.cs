@@ -54,6 +54,7 @@ namespace Cli.Commands
             var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
             using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", User.Token); // Replace with the actual token
             try
             {
                 var response = httpClient.PostAsync("https://localhost:7059/transfer", content).Result;
@@ -65,7 +66,8 @@ namespace Cli.Commands
                 }
                 else
                 {
-                    AnsiConsole.MarkupLine($"[red]Failed to transfer: {response.StatusCode} - {response.ReasonPhrase}[/]");
+                    var errorMessage = response.Content.ReadAsStringAsync().Result;
+                    AnsiConsole.MarkupLine($"[red]Failed to transfer: {response.StatusCode} - {response.ReasonPhrase} - {errorMessage}[/]");
                     return 1;
                 }
             }
@@ -302,6 +304,7 @@ namespace Cli.Commands
         public override int Execute(CommandContext context, Settings settings)
         {
             using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", User.Token); // Replace with the actual token
             try
             {
                 string endpoint = settings.AccountID.HasValue
@@ -370,7 +373,8 @@ namespace Cli.Commands
                 }
                 else
                 {
-                    AnsiConsole.MarkupLine($"[red]Failed to fetch transactions: {response.StatusCode} - {response.ReasonPhrase}[/]");
+                    var errorMessage = response.Content.ReadAsStringAsync().Result;
+                    AnsiConsole.MarkupLine($"[red]Failed to fetch transactions: {response.StatusCode} - {response.ReasonPhrase} - {errorMessage}[/]");
                     return 1;
                 }
             }
@@ -387,6 +391,7 @@ namespace Cli.Commands
         public override int Execute(CommandContext context)
         {
             using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", User.Token); // Replace with the actual token
             try
             {
                 // Replace with the actual API endpoint
@@ -414,7 +419,8 @@ namespace Cli.Commands
                 }
                 else
                 {
-                    AnsiConsole.MarkupLine($"[red]Failed to fetch transaction types: {response.StatusCode} - {response.ReasonPhrase}[/]");
+                    var errorMessage = response.Content.ReadAsStringAsync().Result;
+                    AnsiConsole.MarkupLine($"[red]Failed to fetch transaction types: {response.StatusCode} - {response.ReasonPhrase} - {errorMessage}[/]");
                     return 1;
                 }
             }
