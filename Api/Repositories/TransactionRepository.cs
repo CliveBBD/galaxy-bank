@@ -12,7 +12,7 @@ namespace Api.Repositories
         public Task<IEnumerable<Transaction>> GetTransactionsByAccountIdAsync(int accountId, string googleId);
         public Task<IEnumerable<Transaction>> GetTransactionsByIdAsync(int transactionId, string googleId);
         public Task<IEnumerable<Transaction>> GetTransactionsByTransactionReferenceIdAsync(int transaction_reference_id, NpgsqlTransaction? transaction = null);
-        public Task<IEnumerable<int>> InsertReversalTransactions(IEnumerable<int> transactionIdsToReverse, NpgsqlTransaction? transaction = null);
+        public Task<bool> InsertReversalTransactions(IEnumerable<int> transactionIdsToReverse, NpgsqlTransaction? transaction = null);
     }
 
     public class TransactionRepository : ITransactionRepository
@@ -124,7 +124,7 @@ namespace Api.Repositories
         
         using var connection = new NpgsqlConnection(Constants.ConnectionString);
         await connection.OpenAsync();
-        using var transaction = tx ?? await connection.BeginTransactionAsync();
+        var transaction = tx ?? await connection.BeginTransactionAsync();
 
         try 
         {
@@ -175,7 +175,7 @@ namespace Api.Repositories
         }
     }
 
-    public async Task<IEnumerable<int>> InsertReversalTransactions(IEnumerable<int> transactionIdsToReverse, NpgsqlTransaction? tx = null)
+    public async Task<bool> InsertReversalTransactions(IEnumerable<int> transactionIdsToReverse, NpgsqlTransaction? tx = null)
     {
         var query = @$"
             SELECT reverse_transactions(@transactionIdsToReverse);
@@ -188,11 +188,11 @@ namespace Api.Repositories
 
         using var connection = new NpgsqlConnection(Constants.ConnectionString);
         await connection.OpenAsync();
-        using var transaction = tx ?? await connection.BeginTransactionAsync();
+        var transaction = tx ?? await connection.BeginTransactionAsync();
 
         try
         {
-            var insertedTransactionIds = await connection.QueryFirstOrDefaultAsync<int[]>(
+            var insertedTransactionIds = await connection.QueryFirstOrDefaultAsync<bool>(
                 query,
                 parameters
             );
@@ -206,7 +206,7 @@ namespace Api.Repositories
                 // this transaction should be handled by the function that created the transaction
             }
 
-            return insertedTransactionIds ?? [];
+            return insertedTransactionIds;
         }
         catch
         {

@@ -12,12 +12,18 @@ namespace Api.Services
         Task<IEnumerable<DisputeHistoryEntry>> GetDisputeHistoryAsync(Pagination? pagination, int disputeId, int? userId = null);
         Task<Dispute?> CreateDisputeAsync(int transactionReferenceID, string reason, int userID);
         Task<DisputeHistoryEntry?> UpdateDisputeStatus(int disputeID, int newStatusID, int updatedByID);
+        Task<IEnumerable<DisputeStatus?>> GetAllowedNextStatusesAsync(int disputeID);
     }
 
   public class DisputeService (IDisputeRepository disputeRepository, ITransactionRepository transactionRepository) : IDisputeService
   {
     private readonly IDisputeRepository _disputeRepository = disputeRepository;
     private readonly ITransactionRepository _transactionRepository = transactionRepository;
+
+    public async Task<IEnumerable<DisputeStatus?>> GetAllowedNextStatusesAsync(int disputeID)
+    {
+      return await _disputeRepository.GetAllowedNextStatusesAsync(disputeID);
+    }
 
     public async Task<Dispute?> CreateDisputeAsync(int transactionReferenceID, string reason, int userID)
     {
@@ -41,8 +47,8 @@ namespace Api.Services
 
     public async Task<DisputeHistoryEntry?> UpdateDisputeStatus(int disputeID, int newStatusID, int updatedByID)
     {
-      bool isProgressionAllowed = await _disputeRepository.IsDisputeProgressionAllowedAsync(disputeID, updatedByID);
-      // TODO: use status names instead of status ids
+      bool isProgressionAllowed = await _disputeRepository.IsDisputeProgressionAllowedAsync(disputeID, newStatusID);
+      Console.WriteLine("Progression allowed " + isProgressionAllowed);
       int acceptedStatusID = Constants.DisputeAcceptedId;
 
       if (isProgressionAllowed && newStatusID != acceptedStatusID)
@@ -52,6 +58,7 @@ namespace Api.Services
       else if (isProgressionAllowed && newStatusID == acceptedStatusID)
       {        
         using var connection = new NpgsqlConnection(Constants.ConnectionString);
+        await connection.OpenAsync();
         using var databaseTransaction = await connection.BeginTransactionAsync();
         try {
           var dispute = await _disputeRepository.GetDisputeAsync(disputeID);
@@ -69,11 +76,20 @@ namespace Api.Services
             return createdDisputeHistoryEntry;
           }
 
-        } catch {
+        } catch (Exception exception) {
           await databaseTransaction.RollbackAsync();
+          Console.WriteLine(exception.ToString());
           throw;
         } finally {
-          await databaseTransaction.CommitAsync();
+          try
+          {
+            await databaseTransaction.CommitAsync();
+          }
+          catch
+          {
+            // TODO: 
+          }
+          await connection.CloseAsync();
         }
       }
       else

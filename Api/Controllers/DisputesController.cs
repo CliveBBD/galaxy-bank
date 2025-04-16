@@ -163,6 +163,53 @@ namespace Api.Controllers
             }
         }
 
+        [HttpGet("{disputeId}/allowed-next-statuses", Name = "GetDisputeStatuses")]
+        public async Task<IActionResult> GetAllowedNextDisputeStatuses(
+            int disputeId
+        )
+        {
+            try
+            {
+                if (ModelState.IsValid) 
+                {
+                    var requestingUser = await _userService.GetCurrentUser(HttpContext);
+
+                    if (requestingUser != null && requestingUser.Role.Name == Constants.AdminRoleName)
+                    {
+                        var allowedNextStatuses = await _disputeService.GetAllowedNextStatusesAsync(
+                            disputeId
+                        );
+                        if (allowedNextStatuses != null && allowedNextStatuses.Any())
+                        {
+                            return Ok(allowedNextStatuses);
+                        }
+                        else
+                        {
+                            return NotFound(new ErrorResponse($"This dispute has been resolved."));
+                        }
+                    }
+                    else
+                    {
+                        return StatusCode(
+                            StatusCodes.Status403Forbidden, 
+                            ForbiddenErrorResponse
+                        );
+                    }
+                }
+                else
+                {
+                    return BadRequest(new ErrorResponse(ModelState));
+                }
+            } 
+            catch (Exception e)
+            {
+                return StatusCode(
+                    StatusCodes.Status500InternalServerError, 
+                    new ErrorResponse(e.Message)
+                );
+            }
+        }
+
         [HttpPost("{disputeId}/status", Name = "UpdateDisputeStatus")]
         public async Task<IActionResult> UpdateDisputeStatus(
             int disputeId,
