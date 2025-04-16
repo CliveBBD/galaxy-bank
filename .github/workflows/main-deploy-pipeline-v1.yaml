@@ -21,6 +21,12 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
+      - name: Terraform outputs
+        uses: dflook/terraform-output@v1
+        id: terraform-outputs
+        with:
+          path: terraform
+      
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -38,19 +44,11 @@ jobs:
           docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG .
           docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
 
-      - name: Fill in the new image ID in the Amazon ECS task definition
-        id: task-def
-        uses: aws-actions/amazon-ecs-render-task-definition@v1
-        with:
-          task-definition-arn: arn:aws:ecs:af-south-1:363615071302:task-definition/galaxybank-task:3
-          container-name: galaxybank-api
-          image: ${{ steps.build-image.outputs.image }}
-
       - name: Deploy service to Amazon ECS
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-        with:
-          task-definition: ${{ steps.task-def.outputs.task-definition }}
-          service: galaxybank-service
-          cluster: galaxybank-cluster
-          wait-for-service-stability: true
-          force-new-deployment: true
+        run: |
+          CLUSTER_NAME="${{steps.terraform-outputs.ecs_cluster_name}}"
+          SERVICE_NAME="${{steps.terraform-outputs.ecs_service_name}}"
+          aws ecs update-service --cluster $CLUSTER_NAME --service $SERVICE_NAME --force-new-deployment
+        env:
+          AWS_REGION: us-east-1
+        

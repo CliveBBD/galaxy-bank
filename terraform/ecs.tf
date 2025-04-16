@@ -27,9 +27,9 @@ resource "aws_ecrpublic_repository" "ecr_repository" {
   repository_name = "galaxybank-api"
 
   catalog_data {
-    description = "Public repository for GalaxyBank API"
-    about_text  = "GalaxyBank API container images"
-    usage_text  = "Pull using docker pull public.ecr.aws/galaxybank-api"
+    description       = "Public repository for GalaxyBank API"
+    about_text        = "GalaxyBank API container images"
+    usage_text        = "Pull using docker pull public.ecr.aws/galaxybank-api"
     architectures     = ["x86_64"]
     operating_systems = ["Linux"]
   }
@@ -47,7 +47,7 @@ resource "aws_ecs_task_definition" "ecs_task_definition" {
     {
       name  = "galaxybank-api",
       image = "${aws_ecrpublic_repository.ecr_repository.repository_uri}:latest"
-       #command   = ["/app/GalaxyBank.dll"], #  Corrected command.
+      #command   = ["/app/GalaxyBank.dll"], #  Corrected command.
       portMappings = [
         {
           containerPort = 80
