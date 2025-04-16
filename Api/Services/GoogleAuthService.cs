@@ -31,10 +31,10 @@ public class GoogleAuthService
         _configuration = configuration;
         _httpClient = httpClient;
         _tokenService = tokenService;
- 
-        _clientId = _configuration["Authentication:Google:ClientId"];
-        _clientSecret = _configuration["Authentication:Google:ClientSecret"];
-        _redirectUri = _configuration["Authentication:Google:RedirectUri"];
+
+        _clientId = Environment.GetEnvironmentVariable("GoogleClientId") ?? _configuration["Authentication:Google:ClientId"];
+        _clientSecret = Environment.GetEnvironmentVariable("GoogleClientSecret") ?? _configuration["Authentication:Google:ClientSecret"];
+        _redirectUri = Environment.GetEnvironmentVariable("GoogleRedirectUri") ?? _configuration["Authentication:Google:RedirectUri"];
         _scopes = [
             "https://www.googleapis.com/auth/userinfo.email",
             "https://www.googleapis.com/auth/userinfo.profile"
