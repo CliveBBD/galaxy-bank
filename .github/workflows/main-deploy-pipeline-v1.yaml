@@ -39,7 +39,7 @@ jobs:
           docker push $REPOSITORY_URL:$IMAGE_TAG
           aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REPOSITORY_URL
           docker push $REPOSITORY_URL:$IMAGE_TAG
-      
+
       - name: Deploy service to Amazon ECS
         run: |
           CLUSTER_NAME="${{ steps.terraform-outputs.outputs.ecs_cluster_name }}"
