@@ -27,11 +27,6 @@ jobs:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionsOIDCRole
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: List S3 bucket contents
-        run: |
-          aws sts get-caller-identity
-          aws s3 ls s3://galaxy-bank-s3-bucket/
-
       - name: Initialise Terraform
         uses: hashicorp/setup-terraform@v2
 
@@ -53,7 +48,7 @@ jobs:
       - name: Run Flyway validate and migrate
         uses: joshuaavalon/flyway-action@v3.0.0
         with:
-          url: jdbc:postgresql://${{ steps.tf-outputs.outputs.rds_endpoint }}/${{steps.tf-outputs.outputs.rds_db_name }}
-          user: ${{ secrets.DB_USERNAME }}
-          password: ${{ secrets.DB_PASSWORD }}
+          url: jdbc:postgresql://${{ steps.tf-outputs.outputs.rds_endpoint }}/galaxy_db
+          user: galaxy
+          password: password
           locations: filesystem:flyway/sql/migrations
