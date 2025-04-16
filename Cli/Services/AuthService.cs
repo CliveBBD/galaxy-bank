@@ -52,7 +52,7 @@ public class AuthService
         return new LoginResult
         {
             Success = token != null,
-            Token = token != null ? token : new Token() { IdToken = "", Role = "", SessionId = ""}
+            Token = token ?? new Token() { IdToken = "", Role = "", SessionId = "" }
         };
     }
  
@@ -117,7 +117,7 @@ public class AuthService
             attempts++;
             await Task.Delay(2000);
         } 
-        return null;
+        return new Token() { IdToken = "", Role = "", SessionId = "" };
     }
 
     public async Task<HttpResponseMessage> LogoutAsync(string sessionId)
