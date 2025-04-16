@@ -65,13 +65,21 @@ namespace Api.Controllers
         {
             try
             {
+
+                var payload = await JwtDecoder.Decode(HttpContext);
+                if (payload == null)
+                {
+                    return Unauthorized("Invalid or missing token.");
+                }
+                var googleId = payload.Subject;
+                // var accounts = await _accountService.GetAccounts(googleId);
                 var accounts = await _accountService.GetAccounts();
 
-                if (accounts == null)
-                    return NotFound(new { message = $"No account was found." });
 
+                Console.WriteLine(accounts);
                 var response = await _accountMapper.ToAccountResponseList(accounts);
                 return Ok(response);
+
 
             }
             catch (Exception e)
