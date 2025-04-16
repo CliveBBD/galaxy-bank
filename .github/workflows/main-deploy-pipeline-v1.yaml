@@ -35,13 +35,13 @@ jobs:
         env:
           REPOSITORY_URL: ${{steps.terraform-outputs.outputs.ecr_repository_url}}
           IMAGE_TAG: latest
-          AWS_REGION: af-south-1
+          AWS_REGION: us-east-1
         run: |
           echo "Changing directory to Api/"
           cd Api/
 
           echo "Building Docker image..."
-          docker build -t $REPOSITORY_URL:$IMAGE_TAG .
+          docker build -t $REPOSITORY_URL:$IMAGE_TAG -f Dockerfile .
 
           echo "Logging in to Amazon ECR..."
           docker push $REPOSITORY_URL:$IMAGE_TAG
