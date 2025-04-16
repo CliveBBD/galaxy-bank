@@ -8,7 +8,7 @@ namespace Api.Repositories
     public interface IAccountRepository
     {
         Task<string> CreateAccountAsync(string accountTypeName, CreateUserDto userDto);
-        Task<IEnumerable<Account>> GetAccountsAsync();
+        Task<IEnumerable<Account>> GetAccountsAsync(int? userId = null);
         Task<Account> GetAccountByAccountNumberAsync(string accountNumber);
         Task<IEnumerable<Account>> GetAccountsByUserEmailAsync(string email);
 
@@ -71,19 +71,23 @@ namespace Api.Repositories
             return accountNumber;
         }
 
-        public async Task<IEnumerable<Account>> GetAccountsAsync()
+        public async Task<IEnumerable<Account>> GetAccountsAsync(int? userId = null)
         {
             var query = $@"
                 SELECT account_id AS {nameof(Account.AccountId)}, user_id AS {nameof(Account.UserId)}, account_type_id AS {nameof(Account.AccountTypeId)}, balance AS {nameof(Account.Balance)}, created_at AS {nameof(Account.CreatedAt)}, account_number AS {nameof(Account.AccountNumber)}
-                FROM accounts";
-            Console.WriteLine(query);
+                FROM accounts
+                WHERE (@userId IS NULL OR user_id = @userId)
+            ";
+
+            var parameters = new
+            {
+                userId
+            };
 
             try
             {
                 using var connection = new NpgsqlConnection(Constants.ConnectionString);
-                Console.WriteLine(connection.ConnectionString);
-                await connection.OpenAsync();
-                return await connection.QueryAsync<Account>(query);
+                return await connection.QueryAsync<Account>(query, param: parameters);
             }
             catch (Exception ex)
             {

@@ -65,13 +65,31 @@ namespace Api.Controllers
         {
             try
             {
-                var accounts = await _accountService.GetAccounts();
+                var requestingUser = await _userService.GetCurrentUser(HttpContext);
 
-                if (accounts == null)
-                    return NotFound(new { message = $"No account was found." });
+                IEnumerable<Account> accounts;
+                if (requestingUser != null && requestingUser.Role.Name != Constants.AdminRoleName)
+                {
+                    accounts = await _accountService.GetAccounts(requestingUser.UserID);
+                }
+                else if (requestingUser != null && requestingUser.Role.Name == Constants.AdminRoleName)
+                {
+                    accounts = await _accountService.GetAccounts();
+                }
+                else
+                {
+                    return Unauthorized(new ErrorResponse("You are not authorized to perform actions on accounts. Please log in and try again."));
+                }
 
-                var response = await _accountMapper.ToAccountResponseList(accounts);
-                return Ok(response);
+                if (accounts != null)
+                {
+                    var response = await _accountMapper.ToAccountResponseList(accounts);
+                    return Ok(response);
+                }
+                else
+                {
+                    return NotFound(new ErrorResponse($"No accounts found"));
+                }
 
             }
             catch (Exception e)

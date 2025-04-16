@@ -6,7 +6,7 @@ namespace Api.Services
 {
     public interface ITransferService
     {
-        Task<int> TransferAsync(TransferRequest transferRequest, string googleId);
+        Task<(int TransactionResult, string ReceiverName, string ReceiverEmail)> TransferAsync(TransferRequest transferRequest, string googleId);
     }
 
     public class TransferService : ITransferService
@@ -18,7 +18,7 @@ namespace Api.Services
             _transferRepository = transferRepository;
         }
 
-        public async Task<int> TransferAsync(TransferRequest transferRequest, string googleId)
+        public async Task<(int TransactionResult, string ReceiverName, string ReceiverEmail)> TransferAsync(TransferRequest transferRequest, string googleId)
         {
             // Validate the request
             if (transferRequest == null || transferRequest.Amount <= 0)

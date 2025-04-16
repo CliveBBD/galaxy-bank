@@ -9,9 +9,11 @@ namespace Api.Controllers
     public class WithdrawController : Controller
     {
         private readonly IWithdrawService _withdrawService;
+        private readonly IEmailService _emailService;
 
-        public WithdrawController(IWithdrawService withdrawService)
+        public WithdrawController(IWithdrawService withdrawService, IEmailService emailService)
         {
+            _emailService = emailService;
             _withdrawService = withdrawService;
         }
 
@@ -35,6 +37,7 @@ namespace Api.Controllers
                 var googleId = payload.Subject;
 
                 var result = await _withdrawService.WithdrawAsync(request, googleId);
+                await _emailService.SendEmailAsync(payload.Email, WithdrawEmailTemplate.Subject, WithdrawEmailTemplate.Message(payload.GivenName, request.AccountId.ToString(), request.Amount.ToString()));
                 Console.WriteLine(result);
                 return Ok(result);
             }
