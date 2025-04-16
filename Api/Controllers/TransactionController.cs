@@ -1,13 +1,15 @@
 using Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Api.Shared;
+using Api.DTOs;
 
 namespace Api.Controllers
 {
     [Route("transactions")]
-    public class TransactionsController(ITransactionService transactionService) : Controller
+    public class TransactionsController(ITransactionService transactionService, IUserService userService) : Controller
     {
         private readonly ITransactionService _transactionService = transactionService;
+        private readonly IUserService _userService = userService;
 
         [HttpGet("", Name = "GetTransactions")]
         public async Task<IActionResult> GetTransactions()
@@ -28,6 +30,39 @@ namespace Api.Controllers
             catch (Exception e)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+            }
+        }
+
+        [HttpGet("disputable", Name = "GetDisputableTransactions")]
+        public async Task<IActionResult> GetDisputableTransactions()
+        {
+            try
+            {
+
+                var requestingUser = await _userService.GetCurrentUser(HttpContext);
+
+                if (requestingUser != null && requestingUser.Role.Name == Constants.AdminRoleName)
+                {
+                    var transactions = await _transactionService.GetDisputableTransactionsAsync();
+                    return Ok(transactions);
+                }
+                else if (requestingUser != null && requestingUser.Role.Name != Constants.AdminRoleName)
+                {
+                    var transactions = await _transactionService.GetDisputableTransactionsAsync(requestingUser.UserID);
+                    return Ok(transactions);
+                }
+                else
+                {
+                    return Unauthorized(new ErrorResponse("You are not authorized to use this feature. Please log in and try again"));
+                }
+
+            }
+            catch (Exception e)
+            {
+                return StatusCode(
+                    StatusCodes.Status500InternalServerError,
+                    new ErrorResponse(e.Message)
+                );
             }
         }
 
