@@ -21,12 +21,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      - name: Terraform outputs
-        uses: dflook/terraform-output@v1
-        id: terraform-outputs
-        with:
-          path: terraform
-      
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -44,10 +38,16 @@ jobs:
           docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG .
           docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
 
+      - name: Terraform outputs
+        uses: dflook/terraform-output@v1
+        id: terraform-outputs
+        with:
+          path: terraform
+      
       - name: Deploy service to Amazon ECS
         run: |
-          CLUSTER_NAME="${{steps.terraform-outputs.ecs_cluster_name}}"
-          SERVICE_NAME="${{steps.terraform-outputs.ecs_service_name}}"
+          CLUSTER_NAME="${{ steps.terraform-outputs.outputs.ecs_cluster_name }}"
+          SERVICE_NAME="${{ steps.terraform-outputs.outputs.ecs_service_name }}"
           aws ecs update-service --cluster $CLUSTER_NAME --service $SERVICE_NAME --force-new-deployment
         env:
           AWS_REGION: us-east-1
