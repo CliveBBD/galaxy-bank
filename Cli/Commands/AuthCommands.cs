@@ -32,7 +32,8 @@ namespace Cli.Commands
                         payload.Email, 
                         payload.Subject, 
                         result.Token.IdToken,
-                        result.Token.Role
+                        result.Token.Role,
+                        result.Token.SessionId
                     );
                 }
     
@@ -73,13 +74,13 @@ namespace Cli.Commands
         public override async Task<int> ExecuteAsync(CommandContext context)
         {
             var authService = new AuthService();
-            User.Clear();
-            var logoutResponse = await authService.LogoutAsync("");
+            var logoutResponse = await authService.LogoutAsync(User.SessionId);
             var logOut = JsonConvert.DeserializeObject(logoutResponse.Content.ReadAsStringAsync().Result);
             if(!logOut.HasProperty("Error"))
             {
                 AnsiConsole.MarkupLine($"[green]You are logged out[/]");
             }
+            User.Clear();
             return 0;
         }
     }

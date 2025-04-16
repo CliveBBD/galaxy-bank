@@ -57,8 +57,8 @@ namespace Api.Controllers
             return Ok(token);
         }
 
-        [HttpPost("logout/{sessionId}")]
-        public IActionResult LogOut(string sessionId)
+        [HttpPost("logout")]
+        public IActionResult LogOut([FromForm] string sessionId)
         {
             var logout = _tokenService.RemoveToken(sessionId);
             return Ok(logout);
