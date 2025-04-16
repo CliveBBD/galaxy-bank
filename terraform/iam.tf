@@ -118,7 +118,7 @@ resource "aws_iam_policy" "terraform_state_access" {
 
 resource "aws_iam_role_policy_attachment" "ecr" {
   role       = aws_iam_role.github_actions.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess"
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_task_execution_policy" {
