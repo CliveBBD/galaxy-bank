@@ -46,6 +46,18 @@ resource "aws_ecs_task_definition" "api" {
           name      = "ConnectionStrings__DefaultConnection"
           valueFrom = aws_secretsmanager_secret.db_connection.arn
         },
+        {
+          name      = "GoogleClientId"
+          valueFrom = aws_secretsmanager_secret.google_client_id.arn
+        },
+        {
+          name      = "GoogleClientSecret"
+          valueFrom = aws_secretsmanager_secret.google_client_secret.arn
+        },
+        {
+          name      = "GoogleRedirectUri"
+          valueFrom = aws_secretsmanager_secret.google_redirect_uri.arn
+        }
       ]
       logConfiguration = {
         logDriver = "awslogs",
