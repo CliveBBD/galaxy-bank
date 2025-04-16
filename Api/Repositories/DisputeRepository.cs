@@ -12,11 +12,12 @@ namespace Api.Repositories
         public interface IDisputeRepository
     {
         public Task<IEnumerable<Dispute>> GetAllDisputesAsync(Pagination pagination, int? userId = null, string? status = null, string? email = null);
-        public Task<Dispute?> GetDisputeAsync(int disputeId);
-        public Task<IEnumerable<DisputeHistoryEntry>> GetDisputeHistoryAsync(Pagination pagination, int disputeId);
-        public Task<Dispute?> CreateDisputeAsync(int transactionReferenceID, string reason, int? userID, string? email);
+        public Task<Dispute?> GetDisputeAsync(int disputeId, int? userId = null);
+        public Task<IEnumerable<DisputeHistoryEntry>> GetDisputeHistoryAsync(Pagination pagination, int disputeId, int? userId = null);
+        public Task<Dispute?> CreateDisputeAsync(int transactionReferenceID, string reason, int userID);
         public Task<bool> IsDisputeProgressionAllowedAsync(int disputeID, int newStatusID);
-        public Task<DisputeHistoryEntry?> CreateDisputeStatusHistoryEntryAsync(int disputeID, int newStatusID, int updatedByID);
+        public Task<DisputeHistoryEntry?> CreateDisputeStatusHistoryEntryAsync(int disputeID, int newStatusID, int updatedByID, NpgsqlTransaction? transaction = null);
+        Task<IEnumerable<DisputeStatus>> GetAllowedNextStatusesAsync(int disputeId);
     }
 
   public class DisputeRepository : IDisputeRepository
@@ -44,7 +45,7 @@ namespace Api.Repositories
         };
         return disputeHistoryEntry;
     };
-    public async Task<Dispute?> CreateDisputeAsync(int transactionReferenceID, string reason, int? userID, string? email)
+    public async Task<Dispute?> CreateDisputeAsync(int transactionReferenceID, string reason, int userID)
     {
         string insertDisputeQuery = $@"
             WITH
@@ -55,11 +56,7 @@ namespace Api.Repositories
                         INNER JOIN transaction_types tt ON t.transaction_type_id = tt.transaction_type_id
                         INNER JOIN users u ON a.user_id = u.user_id
                     WHERE t.transaction_reference_id = @transactionReferenceId
-                        AND (
-                            (@userId IS NOT NULL AND a.user_id = @userId)
-                            OR
-                            (@email IS NOT NULL AND u.email = @email)
-                        )
+                        AND (@userId IS NOT NULL AND a.user_id = @userId)
                 ),
                 undisputable_transaction_references_for_user AS (
                     SELECT transaction_reference_id
@@ -85,7 +82,7 @@ namespace Api.Repositories
         	INSERT INTO dispute_status_history (dispute_id, dispute_status_id, updated_at, updated_by_id)
             SELECT @disputeID, 1, NOW(), user_id
             FROM users
-            WHERE (@userId IS NOT NULL AND user_id = @userId) OR (@email IS NOT NULL AND email = @email)
+            WHERE (@userId IS NOT NULL AND user_id = @userId)
             RETURNING dispute_history_id;
         ";
 
@@ -114,8 +111,7 @@ namespace Api.Repositories
             {
                 transactionReferenceID,
                 reason,
-                userID,
-                email
+                userID
             };
 
             var disputeID = await connection.ExecuteScalarAsync<int>(insertDisputeQuery, insertDisputeQueryParameters, transaction);
@@ -130,8 +126,7 @@ namespace Api.Repositories
                 var insertDisputeHistoryQueryParameters = new
                 {
                     disputeID,
-                    userID,
-                    email
+                    userID
                 };
                 var disputeHistoryID = await connection.ExecuteScalarAsync<int>(insertDisputeHistoryQuery, insertDisputeHistoryQueryParameters, transaction);
                 
@@ -169,7 +164,7 @@ namespace Api.Repositories
         }
     }
 
-    public async Task<DisputeHistoryEntry?> CreateDisputeStatusHistoryEntryAsync(int disputeID, int newStatusID, int updatedByID)
+    public async Task<DisputeHistoryEntry?> CreateDisputeStatusHistoryEntryAsync(int disputeID, int newStatusID, int updatedByID, NpgsqlTransaction? tx)
     {
         string insertQuery = $@"
             INSERT INTO dispute_status_history (dispute_id, dispute_status_id, updated_at, updated_by_id)
@@ -186,6 +181,7 @@ namespace Api.Repositories
                 dsh.updated_by_id AS { nameof(DisputeHistoryEntry.UpdatedBy.UserID) },
                 u.username AS { nameof(DisputeHistoryEntry.UpdatedBy.Username) },
                 u.email AS { nameof(DisputeHistoryEntry.UpdatedBy.Email) },
+                ds.dispute_status_id AS { nameof(DisputeHistoryEntry.Status.DisputeStatusID) },
                 ds.name AS { nameof(DisputeHistoryEntry.Status.Name) }
             FROM dispute_status_history dsh
                 INNER JOIN dispute_statuses ds ON dsh.dispute_status_id = ds.dispute_status_id
@@ -202,7 +198,7 @@ namespace Api.Repositories
 
         using var connection = new NpgsqlConnection(Constants.ConnectionString);
         await connection.OpenAsync();
-        using var transaction = await connection.BeginTransactionAsync();
+        var transaction = tx ?? await connection.BeginTransactionAsync();
 
         try
         {
@@ -210,7 +206,7 @@ namespace Api.Repositories
 
             if (disputeHistoryID == 0)
             {
-                await transaction.RollbackAsync();
+                if (tx == null) await transaction.RollbackAsync();
                 return null;
             }
             else
@@ -220,23 +216,47 @@ namespace Api.Repositories
                     disputeHistoryID
                 };
 
-                return (await connection.QueryAsync<DisputeHistoryEntry, RedactedUser, DisputeStatus, DisputeHistoryEntry>(
+                var createdDisputeHistoryEntry = (await connection.QueryAsync<DisputeHistoryEntry, RedactedUser, DisputeStatus, DisputeHistoryEntry>(
                     getCreatedDisputeHistoryQuery,
                     _disputeHistoryEntryMapper,
                     param: getCreatedDisputeHistoryParameters,
+                    splitOn: string.Join(',', nameof(DisputeHistoryEntry.UpdatedBy.UserID), nameof(DisputeHistoryEntry.Status.DisputeStatusID)),
                     transaction: transaction
                 )).SingleOrDefault();
-            }
 
+                if (tx == null)
+                {
+                    transaction.Commit();
+                }
+                else
+                {
+                    // this transaction should be handled by the function that created the transaction
+                }
+                return createdDisputeHistoryEntry;
+            }
         }
         catch
         {
-            await transaction.RollbackAsync();
+            if (tx == null)
+            {
+                await transaction.RollbackAsync();
+            }
+            else
+            {
+                // this transaction should be handled by the function that created the transaction
+            }
             throw;
         }
         finally
         {
-            await connection.CloseAsync();
+            if (tx == null)
+            {
+                await connection.CloseAsync();
+            }
+            else
+            {
+                // this transaction should be handled by the function that created the transaction
+            }
         }
 
     }
@@ -271,7 +291,7 @@ namespace Api.Repositories
                 INNER JOIN users u ON a.user_id = u.user_id 
                 WHERE NOW() BETWEEN dsh.from_date AND dsh.to_date
             )
-            SELECT 
+            SELECT DISTINCT
                 dwcs.dispute_id AS { nameof(Dispute.DisputeID) },
                 dwcs.reason { nameof(Dispute.Reason) },
                 dwcs.disputed_transaction_reference_id { nameof(Dispute.DisputedTransactionReferenceID) },
@@ -304,7 +324,7 @@ namespace Api.Repositories
         );
     }
 
-    public async Task<Dispute?> GetDisputeAsync(int disputeId)
+    public async Task<Dispute?> GetDisputeAsync(int disputeId, int? userId = null)
     {
         string query = $@"
             SELECT 
@@ -315,12 +335,14 @@ namespace Api.Repositories
                 dwcs.dispute_status_id { nameof(Dispute.CurrentStatus.DisputeStatusID) },
                 dwcs.name { nameof(Dispute.CurrentStatus.Name) }
             FROM dispute_with_current_status dwcs
-            WHERE dwcs.dispute_id = @disputeId
+            WHERE dwcs.dispute_id = @disputeId AND (@userId is NULL OR dwcs.involved_user_id = @userId)
+            LIMIT 1
         ";
 
         var parameters = new
         {
-            disputeId
+            disputeId,
+            userId
         };
 
         using var connection = new NpgsqlConnection(Constants.ConnectionString);
@@ -332,10 +354,11 @@ namespace Api.Repositories
         )).SingleOrDefault();
     }
 
-    public async Task<IEnumerable<DisputeHistoryEntry>> GetDisputeHistoryAsync(Pagination pagination, int disputeId)
+    public async Task<IEnumerable<DisputeHistoryEntry>> GetDisputeHistoryAsync(Pagination pagination, int disputeId, int? userId = null)
     {
         string query = $@"
             SELECT
+                DISTINCT
                 dsh.dispute_history_id AS { nameof(DisputeHistoryEntry.DisputeHistoryID) },
                 dsh.dispute_id AS { nameof(DisputeHistoryEntry.DisputeID) },
                 dsh.updated_at AS { nameof(DisputeHistoryEntry.UpdatedAt) },
@@ -347,7 +370,9 @@ namespace Api.Repositories
             FROM dispute_status_history dsh
                 INNER JOIN users u ON dsh.updated_by_id = u.user_id
                 INNER JOIN dispute_statuses ds ON dsh.dispute_status_id = ds.dispute_status_id
+                INNER JOIN disputes_for_users dfu ON dfu.dispute_id = dsh.dispute_id
             WHERE dsh.dispute_id = @disputeId
+                 AND (@userId IS NULL OR dfu.user_id = @userId)
             ORDER BY dsh.updated_at
             LIMIT @limit
             OFFSET @offset
@@ -357,7 +382,8 @@ namespace Api.Repositories
         {
             limit = pagination.Limit,
             offset = pagination.Offset,
-            disputeId
+            disputeId,
+            userId
         };
 
         using var connection = new NpgsqlConnection(Constants.ConnectionString);
@@ -367,6 +393,32 @@ namespace Api.Repositories
             splitOn: string.Join(',', nameof(DisputeHistoryEntry.UpdatedBy.UserID), nameof(DisputeHistoryEntry.Status.DisputeStatusID)),
             param: parameters
         );
+    }
+
+    public async Task<IEnumerable<DisputeStatus>> GetAllowedNextStatusesAsync(int disputeId)
+    {
+        var query = $@"
+            SELECT DISTINCT
+                adp.to_dispute_status_id AS { nameof(DisputeStatus.DisputeStatusID) },
+                ds.name AS { nameof(DisputeStatus.Name) }
+            FROM allowed_dispute_progressions adp
+            INNER JOIN dispute_statuses ds ON adp.to_dispute_status_id = ds.dispute_status_id
+            INNER JOIN dispute_with_current_status dwcs ON dwcs.dispute_status_id = adp.from_dispute_status_id
+            WHERE dwcs.dispute_id = @disputeId
+        ";
+
+        var parameters = new
+        {
+            disputeId,
+        };
+
+        using var connection = new NpgsqlConnection(Constants.ConnectionString);
+        var result = await connection.QueryAsync<DisputeStatus>(
+            query,
+            param: parameters
+        );
+
+        return result;
     }
 
     public async Task<bool> IsDisputeProgressionAllowedAsync(int disputeID, int newStatusID)

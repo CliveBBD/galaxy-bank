@@ -6,7 +6,7 @@ namespace Api.Repositories
 {
     public interface ITransferRepository
     {
-        public Task<int> TransferAsync(TransferRequest transferRequest, string googleId);
+        public Task<(int TransactionResult, string ReceiverName, string ReceiverEmail)> TransferAsync(TransferRequest transferRequest, string googleId);
     }
 
     public class TransferRepository : ITransferRepository
@@ -16,7 +16,7 @@ namespace Api.Repositories
         {
             _dbConnection = dbConnection;
         }
-        public async Task<int> TransferAsync(TransferRequest transferRequest, string googleId)
+        public async Task<(int TransactionResult, string ReceiverName, string ReceiverEmail)> TransferAsync(TransferRequest transferRequest, string googleId)
         {
             if (transferRequest.Amount <= 0)
             {
@@ -208,8 +208,29 @@ namespace Api.Repositories
                     throw new InvalidOperationException("Failed to insert the receiver's transaction record.");
                 }
 
+                // Step 12: Retrieve the receiver's name and email
+                string receiverDetailsQuery = """
+                SELECT u.username AS "Name", u.email AS "Email"
+                FROM users u
+                INNER JOIN accounts a ON u.user_id = a.user_id
+                WHERE a.account_id = @AccountId;
+                """;
+                var receiverDetails = await _dbConnection.QuerySingleOrDefaultAsync<dynamic>(
+                    receiverDetailsQuery,
+                    new { AccountId = receiverAccountId },
+                    transaction: transaction
+                );
+
+                if (receiverDetails == null)
+                {
+                    throw new InvalidOperationException("Failed to retrieve the receiver's details.");
+                }
+
+                string receiverName = receiverDetails.Name;
+                string receiverEmail = receiverDetails.Email;
+
                 transaction.Commit();
-                return senderTransactionResult + receiverTransactionResult;
+                return (senderTransactionResult + receiverTransactionResult, receiverName, receiverEmail);
             }
             catch (Exception ex)
             {

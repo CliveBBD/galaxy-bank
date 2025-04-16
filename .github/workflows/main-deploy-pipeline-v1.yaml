@@ -1,56 +1,88 @@
-name: Deploy to AWS ECS
+name: Galaxy Bank Main Deploy V1
+description: Deploys the Galaxy Bank application to AWS ECS using Terraform and Docker.
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
 
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  WORKING_DIRECTORY: ./Api
+  AWS_REGION: af-south-1
+
 jobs:
-  deploy:
-    name: Deploy to Amazon ECS
+  publish-and-deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4.0.1
+      - name: Checkout Repository
+        uses: actions/checkout@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          fetch-depth: 1
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+      - name: Assume the deployment user role
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          registry-type: public
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionsOIDCRole
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Build, tag, and push image to Amazon ECR
-        id: build-image
-        env:
-          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          REPOSITORY: v1o5t6h9/galaxybank-api
-          IMAGE_TAG: latest
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Terraform Init
         run: |
-          cd Api/
-          docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG .
-          docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
+          cd terraform
+          terraform init
 
-      - name: Fill in the new image ID in the Amazon ECS task definition
-        id: task-def
-        uses: aws-actions/amazon-ecs-render-task-definition@v1
-        with:
-          task-definition-arn: arn:aws:ecs:af-south-1:363615071302:task-definition/galaxybank-task:3
-          container-name: galaxybank-api
-          image: ${{ steps.build-image.outputs.image }}
+      - name: Terraform Plan
+        run: |
+          cd terraform
+          terraform plan \
+          -var="db_username=${{ secrets.DB_USERNAME }}" \
+          -var="db_password=${{ secrets.DB_PASSWORD }}" \
 
-      - name: Deploy service to Amazon ECS
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      - name: Terraform Apply
+        run: |
+          cd terraform
+          terraform apply -auto-approve \
+          -var="db_username=${{ secrets.DB_USERNAME }}" \
+          -var="db_password=${{ secrets.DB_PASSWORD }}" \
+
+      - name: Extract Terraform Outputs
+        uses: dflook/terraform-output@v1
+        id: tf-outputs
         with:
-          task-definition: ${{ steps.task-def.outputs.task-definition }}
-          service: galaxybank-service
-          cluster: galaxybank-cluster
-          wait-for-service-stability: true
-          force-new-deployment: true
+          path: terraform
+
+      - name: Publish image to ECR
+        run: |
+          REPOSITORY_URI=${{ steps.tf-outputs.outputs.ecr_repository_url }}
+          IMAGE_TAG=latest
+
+          cd Api
+          docker build -t $REPOSITORY_URI:$IMAGE_TAG .
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
+          docker push $REPOSITORY_URI:$IMAGE_TAG
+
+      - name: Perform ECS deployment
+        run: |
+          CLUSTER_NAME="${{ steps.tf-outputs.outputs.ecs_cluster_name }}"
+          SERVICE_NAME="${{ steps.tf-outputs.outputs.ecs_service_name }}"
+          aws ecs update-service --cluster "$CLUSTER_NAME" --service "$SERVICE_NAME" --force-new-deployment
+        env:
+          AWS_REGION: ${{ env.AWS_REGION }}
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Run Flyway validate and migrate
+        uses: joshuaavalon/flyway-action@v3.0.0
+        with:
+          url: jdbc:postgresql://${{ steps.tf-outputs.outputs.rds_endpoint }}/galaxy_db
+          user: galaxy
+          password: password
+          locations: filesystem:flyway/sql/migrations

@@ -1,3 +1,4 @@
+using System.Text;
 using Api.DTOs;
 using Api.Helpers;
 using Api.Models;
@@ -26,14 +27,7 @@ namespace Api.Controllers
             _accountTypeRepository = accountTypeRepository;
         }
 
-        [HttpGet("account-types")]
-        public async Task<IEnumerable<string>> GetAccountTypes()
-        {
-            return await _accountTypeRepository.GetAllAccountTypesAsync();
-        }
-
-        
-        [HttpPost("account")]
+        [HttpPost("", Name = "CreateAccount")]
         public async Task<ActionResult<Account>> CreateAccount([FromBody] AccountCreateRequest request)
         {
             try
@@ -43,16 +37,24 @@ namespace Api.Controllers
                     return BadRequest(new { message = $"Invalid account data." });
                 }
 
-                var accountId = await _accountService.CreateAccount(request.UserId, request.AccountTypeName);
+                var payload = await JwtDecoder.Decode(HttpContext);
 
-                var account = await _accountService.GetAccountById(accountId);
+                var userDto = new CreateUserDto(
+                    payload.Subject,
+                    payload.GivenName,
+                    payload.Email
+                );
 
-                var user = await _userService.GetUserById(account.UserId);
+                var accountNumber = await _accountService.CreateAccount(request.AccountTypeName, userDto);
+
+                var account = await _accountService.GetAccountByAccountNumber(accountNumber);
+
+                var user = await _userService.GetUserByIdAsync(account.UserId);
 
 
-                await _emailService.SendEmailAsync(user.Email, AccountCreationEmailTemplate.Subject, AccountCreationEmailTemplate.Message(user.Username, accountId));
+                await _emailService.SendEmailAsync(user.Email, AccountCreationEmailTemplate.Subject, AccountCreationEmailTemplate.Message(user.Username, accountNumber));
 
-                return Ok($"Successfully created an account with account number: {accountId}.");
+                return Ok($"Successfully created an account with account number: {accountNumber}.");
             }
             catch (Exception e)
             {
@@ -61,18 +63,36 @@ namespace Api.Controllers
 
         }
 
-        [HttpGet]
+        [HttpGet("", Name = "GetAccounts")]
         public async Task<IActionResult> GetAccounts()
         {
             try
             {
-                var accounts = await _accountService.GetAccounts();
+                var requestingUser = await _userService.GetCurrentUser(HttpContext);
 
-                if (accounts == null)
-                    return NotFound(new { message = $"No account was found." });
+                IEnumerable<Account> accounts;
+                if (requestingUser != null && requestingUser.Role.Name != Constants.AdminRoleName)
+                {
+                    accounts = await _accountService.GetAccounts(requestingUser.UserID);
+                }
+                else if (requestingUser != null && requestingUser.Role.Name == Constants.AdminRoleName)
+                {
+                    accounts = await _accountService.GetAccounts();
+                }
+                else
+                {
+                    return Unauthorized(new ErrorResponse("You are not authorized to perform actions on accounts. Please log in and try again."));
+                }
 
-                var response = await _accountMapper.ToAccountResponseList(accounts);
-                return Ok(response);
+                if (accounts != null)
+                {
+                    var response = await _accountMapper.ToAccountResponseList(accounts);
+                    return Ok(response);
+                }
+                else
+                {
+                    return NotFound(new ErrorResponse($"No accounts found"));
+                }
 
             }
             catch (Exception e)
@@ -82,15 +102,15 @@ namespace Api.Controllers
 
         }
 
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetAccount(int id)
+        [HttpGet("{accountNumber}", Name = "GetAccountByAccountNumber")]
+        public async Task<IActionResult> GetAccountByAccountNumber(string accountNumber)
         {
             try
             {
-                var account = await _accountService.GetAccountById(id);
+                var account = await _accountService.GetAccountByAccountNumber(accountNumber);
 
                 if (account == null)
-                    return NotFound(new { message = $"Account with account number: {id} not found." });
+                    return NotFound(new { message = $"Account with account number: {accountNumber} not found." });
 
                 var response = await _accountMapper.ToAccountResponse(account);
                 return Ok(response);
@@ -103,7 +123,7 @@ namespace Api.Controllers
 
         }
 
-        [HttpGet("user/{email}")]
+        [HttpGet("user/{email}", Name = "GetAccountsByUserEmail")]
         public async Task<ActionResult<IEnumerable<Account>>> GetAccountsByUserEmail(string email)
         {
 

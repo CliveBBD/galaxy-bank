@@ -12,21 +12,24 @@ namespace Cli.Commands
     {
         public override async Task<int> ExecuteAsync(CommandContext context)
         {
-           try
+            try
             {
                 var isTokenValid = await IsTokenValid(User.Token);
-                if(isTokenValid) 
+                if (isTokenValid)
                 {
                     Console.WriteLine("Already authenticated, proceed.");
                     return 0;
                 }
                 var authService = new AuthService();
                 Console.WriteLine("Initiating Google authentication...");
-    
+
                 var result = await authService.LoginAsync();
                 var payload = await GoogleJsonWebSignature.ValidateAsync(result.Token.IdToken);
-                if(payload != null)
+                if (payload != null)
                 {
+
+                    // get user from db if exists
+
                     User.SetUserDetails(
                         payload.GivenName, 
                         payload.Email, 
@@ -36,7 +39,7 @@ namespace Cli.Commands
                         result.Token.SessionId
                     );
                 }
-    
+
                 if (result.Success)
                 {
                     Console.WriteLine("Authentication successful!");
@@ -57,15 +60,15 @@ namespace Cli.Commands
 
         public static async Task<bool> IsTokenValid(string jwt)
         {
-            try 
+            try
             {
                 var payload = await GoogleJsonWebSignature.ValidateAsync(jwt);
-                return true; 
+                return true;
             }
-            catch(InvalidJwtException)
+            catch (InvalidJwtException)
             {
                 return false;
-            } 
+            }
         }
     }
 

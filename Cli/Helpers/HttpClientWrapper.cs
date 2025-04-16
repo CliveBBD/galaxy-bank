@@ -4,11 +4,11 @@ namespace Cli.Helpers;
 
 public class HttpClientWrapper
 {
-    private HttpClient _httpClient { get; set; }
+    public HttpClient httpClient { get; set; }
     public HttpClientWrapper(string jwt) {
-        _httpClient = new HttpClient();
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-            "Bearer ", jwt
+        httpClient = new HttpClient();
+        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", jwt
         );
     }
 }

@@ -6,4 +6,6 @@ public class AccountResponse
     public AccountType AccountType { get; set; } = default!;
     public decimal Balance { get; set; }
     public DateTime CreatedAt { get; set; }
+    public string AccountNumber { get; set; }
+
 }

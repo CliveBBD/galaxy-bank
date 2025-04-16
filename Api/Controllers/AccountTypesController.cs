@@ -16,7 +16,7 @@ namespace Api.Controllers
             _accountTypeRepository = accountTypeRepository;
         }
 
-        [HttpGet("{name}")]
+        [HttpGet("{name}", Name = "GetAccountTypeByName")]
         public async Task<AccountType> GetAccountTypeByName(string name)
         {
             var accountType = await _accountTypeRepository.GetAccountTypeByNameAsync(name);

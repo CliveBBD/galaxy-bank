@@ -6,9 +6,9 @@ namespace Api.Services
 {
     public interface IAccountService
     {
-        Task<int> CreateAccount(int userId, string accountTypeName);
-        Task<IEnumerable<Account>> GetAccounts();
-        Task<Account> GetAccountById(int id);
+        Task<string> CreateAccount(string accountTypeName, CreateUserDto createUserDto);
+        Task<IEnumerable<Account>> GetAccounts(int? userId = null);
+        Task<Account> GetAccountByAccountNumber(string accountNumber);
         Task<IEnumerable<Account>> GetAccountsByUserEmail(string email);
     }
     public class AccountService : IAccountService
@@ -18,19 +18,19 @@ namespace Api.Services
         {
             _accountRepository = accountRepository;
         }
-        public async Task<int> CreateAccount(int userId, string accountTypeName)
+        public async Task<string> CreateAccount(string accountTypeName, CreateUserDto createUserDto)
         {
-            return await _accountRepository.CreateAccountAsync(userId, accountTypeName);
+            return await _accountRepository.CreateAccountAsync(accountTypeName, createUserDto);
         }
 
-        public async Task<IEnumerable<Account>> GetAccounts()
+        public async Task<IEnumerable<Account>> GetAccounts(int? userId)
         {
-            return await _accountRepository.GetAccountsAsync();
+            return await _accountRepository.GetAccountsAsync(userId);
         }
 
-        public async Task<Account> GetAccountById(int id)
+        public async Task<Account> GetAccountByAccountNumber(string accountNumber)
         {
-            return await _accountRepository.GetAccountByIdAsync(id);
+            return await _accountRepository.GetAccountByAccountNumberAsync(accountNumber);
         }
 
         public async Task<IEnumerable<Account>> GetAccountsByUserEmail(string email)

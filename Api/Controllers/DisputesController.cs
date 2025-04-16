@@ -4,21 +4,30 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Api.DTOs;
+using Api.Helpers;
 using Api.Models;
 using Api.Services;
 using Api.Shared;
+using Google.Apis.Auth;
+using Google.Apis.Auth.OAuth2.Responses;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 
 namespace Api.Controllers
 {
     [ApiController]
     [Route("disputes")]
-    public class DisputesController(IDisputeService disputeService) : ControllerBase
+    public class DisputesController(IDisputeService disputeService, IUserService userService) : ControllerBase
     {
         
         private readonly IDisputeService _disputeService = disputeService;
+        private readonly IUserService _userService = userService;
+
+        private static readonly ErrorResponse UnauthorizedErrorResponse = new ErrorResponse("You are not authorized to perform actions on disputes. Please log in and try again.");
+        private static readonly ErrorResponse ForbiddenErrorResponse = new ErrorResponse("User is not authorized to perform this action");
 
         [HttpGet("", Name = "GetAllDisputes")]
         public async Task<IActionResult> GetAllDisputes(
@@ -37,8 +46,22 @@ namespace Api.Controllers
                     if (limit.HasValue) pagination.Limit = limit;
                     if (offset.HasValue) pagination.Offset = offset;
 
-                    var disputes = await _disputeService.GetAllDisputesAsync(pagination, userId, status, email);
-                    return Ok(disputes);
+                    var requestingUser = await _userService.GetCurrentUser(HttpContext);
+
+                    if (requestingUser != null && requestingUser.Role.Name == Constants.AdminRoleName)
+                    {
+                        var disputes = await _disputeService.GetAllDisputesAsync(pagination: pagination, userId: userId, status: status, email: email);
+                        return Ok(disputes);
+                    }
+                    else if (requestingUser != null && requestingUser.Role.Name != Constants.AdminRoleName)
+                    {
+                        var disputes = await _disputeService.GetAllDisputesAsync(pagination: pagination, status: status, email: requestingUser.Email);
+                        return Ok(disputes);
+                    }
+                    else
+                    {
+                        return Unauthorized(UnauthorizedErrorResponse);
+                    }
                 }
                 else
                 {
@@ -63,14 +86,21 @@ namespace Api.Controllers
             {
                 if (ModelState.IsValid) 
                 {
-                    var dispute = await _disputeService.GetDisputeAsync(disputeId);
-                    if (dispute != null)
+                    var requestingUser = await _userService.GetCurrentUser(HttpContext);
+
+                    if (requestingUser != null && requestingUser.Role.Name == Constants.AdminRoleName)
                     {
-                        return Ok(dispute);
+                        var dispute = await _disputeService.GetDisputeAsync(disputeId);
+                        return dispute == null ? NotFound(new ErrorResponse($"Dispute with disputeId={disputeId} not found.")) : Ok(dispute);
+                    }
+                    else if (requestingUser != null && requestingUser.Role.Name != Constants.AdminRoleName)
+                    {
+                        var dispute = await _disputeService.GetDisputeAsync(disputeId, requestingUser.UserID);
+                        return dispute == null ? NotFound(new ErrorResponse($"Dispute with disputeId={disputeId} not found.")) : Ok(dispute);
                     }
                     else
                     {
-                        return NotFound(new ErrorResponse($"Dispute with disputeId={disputeId} not found."));
+                        return Unauthorized(UnauthorizedErrorResponse);
                     }
                 }
                 else
@@ -102,8 +132,69 @@ namespace Api.Controllers
                     if (limit.HasValue) pagination.Limit = limit;
                     if (offset.HasValue) pagination.Offset = offset;
 
-                    var disputes = await _disputeService.GetDisputeHistoryAsync(pagination, disputeId);
-                    return Ok(disputes);
+                    var requestingUser = await _userService.GetCurrentUser(HttpContext);
+
+                    if (requestingUser != null && requestingUser.Role.Name == Constants.AdminRoleName)
+                    {
+                        var disputes = await _disputeService.GetDisputeHistoryAsync(pagination, disputeId);
+                        return Ok(disputes);
+                    }
+                    else if (requestingUser != null && requestingUser.Role.Name != Constants.AdminRoleName)
+                    {
+                        var disputes = await _disputeService.GetDisputeHistoryAsync(pagination, disputeId, requestingUser.UserID);
+                        return Ok(disputes);
+                    }
+                    else
+                    {
+                        return Unauthorized(UnauthorizedErrorResponse);
+                    }
+                }
+                else
+                {
+                    return BadRequest(new ErrorResponse(ModelState));
+                }
+            } 
+            catch (Exception e)
+            {
+                return StatusCode(
+                    StatusCodes.Status500InternalServerError, 
+                    new ErrorResponse(e.Message)
+                );
+            }
+        }
+
+        [HttpGet("{disputeId}/allowed-next-statuses", Name = "GetDisputeStatuses")]
+        public async Task<IActionResult> GetAllowedNextDisputeStatuses(
+            int disputeId
+        )
+        {
+            try
+            {
+                if (ModelState.IsValid) 
+                {
+                    var requestingUser = await _userService.GetCurrentUser(HttpContext);
+
+                    if (requestingUser != null && requestingUser.Role.Name == Constants.AdminRoleName)
+                    {
+                        var allowedNextStatuses = await _disputeService.GetAllowedNextStatusesAsync(
+                            disputeId
+                        );
+                        if (allowedNextStatuses != null && allowedNextStatuses.Any())
+                        {
+                            return Ok(allowedNextStatuses);
+                        }
+                        else
+                        {
+                            return NotFound(new ErrorResponse($"This dispute has been resolved."));
+                        }
+                    }
+                    else
+                    {
+                        return StatusCode(
+                            StatusCodes.Status403Forbidden, 
+                            ForbiddenErrorResponse
+                        );
+                    }
                 }
                 else
                 {
@@ -129,25 +220,36 @@ namespace Api.Controllers
             {
                 if (ModelState.IsValid) 
                 {
-                    var createdDisputeHistoryEntry = await _disputeService.UpdateDisputeStatus(
-                        disputeId,
-                        disputeStatusUpdateRequest.NewStatusId,
-                        disputeStatusUpdateRequest.UserID
-                    );
-                    if (createdDisputeHistoryEntry != null)
+                    var requestingUser = await _userService.GetCurrentUser(HttpContext);
+
+                    if (requestingUser != null && requestingUser.Role.Name == Constants.AdminRoleName)
                     {
-                        return StatusCode(
-                            StatusCodes.Status201Created, 
-                            createdDisputeHistoryEntry
+                        var createdDisputeHistoryEntry = await _disputeService.UpdateDisputeStatus(
+                            disputeId,
+                            disputeStatusUpdateRequest.NewStatusId,
+                            requestingUser.UserID
                         );
+                        if (createdDisputeHistoryEntry != null)
+                        {
+                            return StatusCode(
+                                StatusCodes.Status201Created, 
+                                createdDisputeHistoryEntry
+                            );
+                        }
+                        else
+                        {
+                            return BadRequest(new ErrorResponse($"""
+                                Cannot update dispute status for disputeID={disputeId}.\n
+                                This dispute is not allowed to progress to dispute status disputeStatus={disputeStatusUpdateRequest.NewStatusId}.
+                            """));
+                        }
                     }
                     else
                     {
-                        return BadRequest(new ErrorResponse($"""
-                            Cannot update dispute status for disputeID={disputeId}.\n
-                            This may be for numerous reasons including:
-                            1. The dispute is not allowed to progress to dispute status disputeStatus={disputeStatusUpdateRequest.NewStatusId}.
-                        """));
+                        return StatusCode(
+                            StatusCodes.Status403Forbidden, 
+                            ForbiddenErrorResponse
+                        );
                     }
                 }
                 else
@@ -171,14 +273,18 @@ namespace Api.Controllers
         {
             try
             {
-                var validationErrors = disputeCreateRequest.Validate();
-                if (ModelState.IsValid && !validationErrors.Any()) 
+                var requestingUser = await _userService.GetCurrentUser(HttpContext);
+
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(new ErrorResponse(ModelState));
+                }
+                else if (ModelState.IsValid && requestingUser != null) 
                 {
                     var createdDispute = await _disputeService.CreateDisputeAsync(
                         disputeCreateRequest.DisputedTransactionReferenceID,
                         disputeCreateRequest.Reason,
-                        disputeCreateRequest.UserID,
-                        disputeCreateRequest.Email
+                        requestingUser.UserID
                     );
                     if (createdDispute != null)
                     {
@@ -201,7 +307,7 @@ namespace Api.Controllers
                 }
                 else
                 {
-                    return BadRequest(ModelState.IsValid ? new ErrorResponse(validationErrors) : new ErrorResponse(ModelState));
+                    return Unauthorized(UnauthorizedErrorResponse);
                 }
             } 
             catch (Exception e)

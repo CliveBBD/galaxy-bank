@@ -59,11 +59,15 @@ nunit-*.xml
 .idea/*
 
 .terraform
-*.tfstate
-*.tfstate.backup
+terraform.tfstate
+terraform.auto.tfvars
+terraform.tfstate.backup
+
 
 #Secrets
 */client_secrets.*
 #Sensitive Env Files
 .env.production
 .env
+
+.idea/
