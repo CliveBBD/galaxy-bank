@@ -61,7 +61,7 @@ namespace Api.Controllers
         }
 
         [HttpGet("", Name = "GetAccounts")]
-        public async Task<IActionResult> GetAccounts([])
+        public async Task<IActionResult> GetAccounts()
         {
             try
             {
