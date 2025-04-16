@@ -1,11 +1,7 @@
 name: Deploy DB Migrations
 description: Deploy DB Migrations to the database using Flyway
 
-on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
+on: 
   workflow_run:
     workflows: ["Galaxy Bank Main Deploy V1"]
     types: [completed]
