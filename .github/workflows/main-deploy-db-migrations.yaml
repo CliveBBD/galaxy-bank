@@ -11,6 +11,10 @@ permissions:
   id-token: write
   contents: read
 
+permissions:
+  id-token: write
+  contents: read
+
 env:
   AWS_REGION: af-south-1
 
