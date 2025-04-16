@@ -15,8 +15,10 @@ namespace Cli.Helpers
             new() { Name = "logout", Description = "Log out of your account", CommandType = typeof(LogoutCommand) },
             new() { Name = "whoami", Description = "Show the currently logged-in user", CommandType = typeof(WhoAmICommand) },
             new() { Name = "dispute", Description = "Create a new dispute", CommandType = typeof(DisputeCommand) },
-            new() { Name = "get-dispute-by-id", Description = "Retrieve a dispute by its ID", CommandType = typeof(GetDisputeByIdCommand) },
-            new() { Name = "resolve-dispute", Description = "Resolve an existing dispute", CommandType = typeof(ResolveDisputeCommand) },
+            new() { Name = "show-disputes", Description = "Show a list of disputes", CommandType = typeof(ListDisputesCommand) },
+            new() { Name = "show-dispute", Description = "Retrieve a dispute by its ID", CommandType = typeof(GetDisputeByIdCommand) },
+            new() { Name = "show-dispute-history", Description = "Retrieve a dispute by its ID", CommandType = typeof(GetDisputeHistoryByIdCommand) },
+            new() { Name = "review-dispute", Description = "Review an existing dispute", CommandType = typeof(ResolveDisputeCommand) },
             new() { Name = "transfer", Description = "Transfer money between accounts", CommandType = typeof(TransferCommand) },
             new() { Name = "show-balance", Description = "Display the current account balance", CommandType = typeof(BalanceCommand) },
             new() { Name = "show-accounts", Description = "List all accounts", CommandType = typeof(ListAccountsCommand) },
@@ -27,6 +29,7 @@ namespace Cli.Helpers
             new() {Name="transaction-types", Description="List all transaction types", CommandType = typeof(GetAllTransactionTypesCommand) },
             new() {Name="get-transactions", Description="Get all transactions", CommandType = typeof(GetAllTransactionsCommand) },
             new() {Name="get-accounts", Description="List account(s)", CommandType = typeof(GetAccountsCommand) },
+            new() {Name="show-statement", Description="Get account statement", CommandType = typeof(GetStatementCommand) },
         };
         public static IReadOnlyList<CommandInfo> Commands => commands;
     }

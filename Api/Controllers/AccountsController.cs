@@ -61,7 +61,7 @@ namespace Api.Controllers
         }
 
         [HttpGet("", Name = "GetAccounts")]
-        public async Task<IActionResult> GetAccounts()
+        public async Task<IActionResult> GetAccounts([])
         {
             try
             {
@@ -74,8 +74,15 @@ namespace Api.Controllers
                 var googleId = payload.Subject;
                 var accounts = await _accountService.GetAccounts(googleId);
 
-                var response = await _accountMapper.ToAccountResponseList(accounts);
-                return Ok(response);
+                if (accounts != null)
+                {
+                    var response = await _accountMapper.ToAccountResponseList(accounts);
+                    return Ok(response);
+                }
+                else
+                {
+                    return NotFound(new ErrorResponse($"No accounts found"));
+                }
 
 
             }

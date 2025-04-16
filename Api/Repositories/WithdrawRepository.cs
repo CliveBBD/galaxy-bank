@@ -50,57 +50,41 @@ namespace Api.Repositories
 
                 int userId = user.UserId;
 
-                // Step 2: Validate that the account belongs to the user
+                // Step 2: Validate that the account belongs to the user using AccountNumber
                 string accountValidationQuery = """
-                SELECT COUNT(1)
+                SELECT account_id AS "AccountId", balance AS "CurrentBalance"
                 FROM accounts
-                WHERE account_id = @AccountId AND user_id = @UserId;
-                """;
-                int accountExists = await _dbConnection.ExecuteScalarAsync<int>(
-                    accountValidationQuery,
-                    new { AccountId = withdrawRequest.AccountId, UserId = userId },
-                    transaction: transaction
-                );
-
-                if (accountExists <= 0)
-                {
-                    throw new InvalidOperationException("The specified account does not belong to the user or is invalid.");
-                }
-
-                // Step 3: Retrieve the current balance for the account
-                string balanceQuery = """
-                SELECT balance AS "CurrentBalance"
-                FROM accounts
-                WHERE account_id = @AccountId;
+                WHERE account_number = @AccountNumber AND user_id = @UserId;
                 """;
                 var account = await _dbConnection.QuerySingleOrDefaultAsync<dynamic>(
-                    balanceQuery,
-                    new { AccountId = withdrawRequest.AccountId },
+                    accountValidationQuery,
+                    new { AccountNumber = withdrawRequest.AccountNumber, UserId = userId },
                     transaction: transaction
                 );
 
                 if (account == null)
                 {
-                    throw new InvalidOperationException("Account not found.");
+                    throw new InvalidOperationException("The specified account does not belong to the user or is invalid.");
                 }
 
+                int accountId = account.AccountId;
                 int currentBalance = account.CurrentBalance;
 
-                // Step 4: Validate that the withdrawal amount does not exceed the current balance
+                // Step 3: Validate that the withdrawal amount does not exceed the current balance
                 if (withdrawRequest.Amount > currentBalance)
                 {
                     throw new InvalidOperationException("Insufficient funds. Withdrawal amount exceeds the current balance.");
                 }
 
-                // Step 5: Update the account balance atomically
+                // Step 4: Update the account balance atomically
                 string updateBalanceQuery = """
                 UPDATE accounts
                 SET balance = balance - @Amount
-                WHERE account_id = @AccountId AND balance >= @Amount;
+                WHERE account_number = @AccountNumber AND balance >= @Amount;
                 """;
                 int balanceUpdateResult = await _dbConnection.ExecuteAsync(
                     updateBalanceQuery,
-                    new { Amount = withdrawRequest.Amount, AccountId = withdrawRequest.AccountId },
+                    new { Amount = withdrawRequest.Amount, AccountNumber = withdrawRequest.AccountNumber },
                     transaction: transaction
                 );
 
@@ -109,7 +93,7 @@ namespace Api.Repositories
                     throw new InvalidOperationException("Failed to update the account balance. Insufficient funds or account not found.");
                 }
 
-                // Step 6: Insert a new transaction reference
+                // Step 5: Insert a new transaction reference
                 string transactionReferenceQuery = """
                 INSERT INTO transaction_references DEFAULT VALUES RETURNING transaction_reference_id;
                 """;
@@ -123,16 +107,16 @@ namespace Api.Repositories
                     throw new InvalidOperationException("Failed to create a transaction reference.");
                 }
 
-                // Step 7: Insert the transaction record
+                // Step 6: Insert the transaction record
                 string transactionQuery = """
                 INSERT INTO transactions (account_id, transaction_reference_id, transaction_type_id, amount, balance_after_transaction, created_at, reference)
                 VALUES (@AccountId, @TransactionReferenceId, @TransactionTypeId, -@Amount, @BalanceAfterTransaction, @CreatedAt, @Reference);
                 """;
                 var transactionParameters = new
                 {
-                    AccountId = withdrawRequest.AccountId,
+                    AccountId = accountId,
                     TransactionReferenceId = transactionReferenceId,
-                    TransactionTypeId = 1, // Assuming 1 represents "Withdraw" in the transaction types table
+                    TransactionTypeId = 2, // Assuming 2 represents "Withdraw" in the transaction types table
                     Amount = withdrawRequest.Amount,
                     BalanceAfterTransaction = currentBalance - withdrawRequest.Amount,
                     CreatedAt = DateTime.UtcNow,

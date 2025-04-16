@@ -9,9 +9,11 @@ namespace Api.Controllers
     public class DepositController : Controller
     {
         private readonly IDepositService _depositService;
+        private readonly IEmailService _emailService;
 
-        public DepositController(IDepositService depositService)
+        public DepositController(IDepositService depositService, IEmailService emailService)
         {
+            _emailService = emailService;
             _depositService = depositService;
         }
 
@@ -22,6 +24,7 @@ namespace Api.Controllers
             {
                 return BadRequest(ModelState);
             }
+
 
             try
             {
@@ -36,6 +39,8 @@ namespace Api.Controllers
                 Console.WriteLine($"Google ID: {googleId}");
 
                 var result = await _depositService.DepositAsync(request, googleId);
+                Console.WriteLine("To email result: " + payload.Email);
+                await _emailService.SendEmailAsync(payload.Email, DepositEmailTemplate.Subject, DepositEmailTemplate.Message(payload.GivenName, request.AccountNumber.ToString(), request.Amount.ToString()));
                 Console.WriteLine(result);
                 return Ok(result);
             }

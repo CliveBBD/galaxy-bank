@@ -11,6 +11,6 @@ namespace Cli.Helpers
         public static IConfigurationRoot Config { get; } = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true).Build();
-        public static string ApiBaseUrl { get; } = Config["ApiBaseUrl"] ?? "";
+        public static string ApiBaseUrl { get; } = Environment.GetEnvironmentVariable("API_BASE_URL") ?? Config["ApiBaseUrl"] ?? "https://localhost:7059";
     }
 }
