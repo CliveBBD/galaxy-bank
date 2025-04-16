@@ -72,11 +72,8 @@ namespace Api.Controllers
                     return Unauthorized("Invalid or missing token.");
                 }
                 var googleId = payload.Subject;
-                // var accounts = await _accountService.GetAccounts(googleId);
-                var accounts = await _accountService.GetAccounts();
+                var accounts = await _accountService.GetAccounts(googleId);
 
-
-                Console.WriteLine(accounts);
                 var response = await _accountMapper.ToAccountResponseList(accounts);
                 return Ok(response);
 
