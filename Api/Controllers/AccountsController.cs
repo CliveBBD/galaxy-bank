@@ -72,7 +72,7 @@ namespace Api.Controllers
 
         }
 
-        [HttpGet("{id}", Name = "GetAccountByAccountNumber")]
+        [HttpGet("{accountNumber}", Name = "GetAccountByAccountNumber")]
         public async Task<IActionResult> GetAccountByAccountNumber(string accountNumber)
         {
             try
