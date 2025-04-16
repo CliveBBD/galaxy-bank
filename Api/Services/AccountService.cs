@@ -7,6 +7,7 @@ namespace Api.Services
     public interface IAccountService
     {
         Task<string> CreateAccount(string accountTypeName, CreateUserDto createUserDto);
+        Task<IEnumerable<Account>> GetAccounts(string googleId);
         Task<IEnumerable<Account>> GetAccounts(int? userId = null);
         Task<Account> GetAccountByAccountNumber(string accountNumber);
         Task<IEnumerable<Account>> GetAccountsByUserEmail(string email);
@@ -21,6 +22,12 @@ namespace Api.Services
         public async Task<string> CreateAccount(string accountTypeName, CreateUserDto createUserDto)
         {
             return await _accountRepository.CreateAccountAsync(accountTypeName, createUserDto);
+        }
+
+
+        public async Task<IEnumerable<Account>> GetAccounts(string googleId)
+        {
+            return await _accountRepository.GetAccountsAsync(googleId);
         }
 
         public async Task<IEnumerable<Account>> GetAccounts(int? userId)

@@ -8,6 +8,7 @@ namespace Api.Repositories
     public interface IAccountRepository
     {
         Task<string> CreateAccountAsync(string accountTypeName, CreateUserDto userDto);
+        Task<IEnumerable<Account>> GetAccountsAsync(string googleId);
         Task<IEnumerable<Account>> GetAccountsAsync(int? userId = null);
         Task<Account> GetAccountByAccountNumberAsync(string accountNumber);
         Task<IEnumerable<Account>> GetAccountsByUserEmailAsync(string email);
@@ -30,7 +31,7 @@ namespace Api.Repositories
             var newUser = userDto;
 
 
-            var openingBalance = 50;
+            var openingBalance = 0;
             var accountType = await _accountTypeRepository.GetAccountTypeByNameAsync(accountTypeName);
 
             if (accountType == null)
@@ -69,6 +70,31 @@ namespace Api.Repositories
              );
 
             return accountNumber;
+        }
+        
+        public async Task<IEnumerable<Account>> GetAccountsAsync(string googleId)
+        {
+            var query = $@"
+                    SELECT a.account_id AS {nameof(Account.AccountId)},
+                    a.user_id AS {nameof(Account.UserId)},
+                    a.account_type_id AS {nameof(Account.AccountTypeId)},
+                    a.balance AS {nameof(Account.Balance)},
+                    a.created_at AS {nameof(Account.CreatedAt)},
+                    a.account_number AS {nameof(Account.AccountNumber)}
+                    FROM accounts a
+                    INNER JOIN Users u ON a.user_Id = u.user_Id
+                    WHERE u.google_id = @GoogleId";
+            try
+            {
+                using var connection = new NpgsqlConnection(Constants.ConnectionString);
+                await connection.OpenAsync();
+                return await connection.QueryAsync<Account>(query, new { GoogleId = googleId });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred while fetching accounts: {ex.Message}");
+                throw;
+            }
         }
 
         public async Task<IEnumerable<Account>> GetAccountsAsync(int? userId = null)
