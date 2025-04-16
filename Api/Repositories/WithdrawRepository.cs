@@ -54,7 +54,7 @@ namespace Api.Repositories
                 string accountValidationQuery = """
                 SELECT COUNT(1)
                 FROM accounts
-                WHERE account_id = @AccountId AND user_id = @UserId;
+                WHERE account_id = @AccountId; -- AND user_id = @UserId;
                 """;
                 int accountExists = await _dbConnection.ExecuteScalarAsync<int>(
                     accountValidationQuery,
