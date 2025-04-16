@@ -41,7 +41,8 @@ resource "aws_ecs_task_definition" "ecs_task_definition" {
   requires_compatibilities = ["FARGATE"]
   cpu                      = "256"
   memory                   = "512"
-  execution_role_arn       = aws_iam_role.ecs_task_role.arn
+  execution_role_arn       = aws_iam_role.ecs_task_execution.arn
+  task_role_arn            = aws_iam_role.ecs_task_role.arn
 
   container_definitions = jsonencode([
     {
@@ -52,12 +53,17 @@ resource "aws_ecs_task_definition" "ecs_task_definition" {
         {
           containerPort = 80
           hostPort      = 80
+          protocol      = "tcp"
         },
       ],
       environment = [
         {
+          name  = "ASPNETCORE_URLS",
+          value = "http://+:80"
+        },
+        {
           name  = "ASPNETCORE_ENVIRONMENT",
-          value = "Production"
+          value = "Development"
         },
         {
           name  = "DB_HOST",
@@ -81,10 +87,11 @@ resource "aws_ecs_task_definition" "ecs_task_definition" {
         logDriver = "awslogs"
         options = {
           awslogs-group         = "/ecs/galaxybank-api"
-          awslogs-region        = "af-south-1"
+          awslogs-region        = "us-east-1"
           awslogs-stream-prefix = "ecs"
         }
       }
+      essential = true
     },
   ])
 }
@@ -107,4 +114,9 @@ resource "aws_ecs_service" "ecs_service" {
     container_port   = 80
   }
   depends_on = [aws_lb_listener.alb_listener]
+}
+
+resource "aws_cloudwatch_log_group" "esc_logs" {
+  name              = "/ecs/galaxybank-api"
+  retention_in_days = 7
 }

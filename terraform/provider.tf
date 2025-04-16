@@ -6,15 +6,11 @@ terraform {
     }
   }
   backend "s3" {
-    bucket         = "galaxy-bank-tf-state"
+    bucket         = "galaxy-bank-tf-state1"
     key            = "terraform.tfstate"
-    region         = "af-south-1"
+    region         = "us-east-1"
     dynamodb_table = "galaxy-bank-state-lock-table"
   }
-}
-
-provider "aws" {
-  region = "af-south-1"
 }
 
 provider "aws" {
