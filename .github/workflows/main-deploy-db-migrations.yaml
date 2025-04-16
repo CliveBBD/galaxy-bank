@@ -6,8 +6,6 @@ on:
   push:
     branches:
       - main
-    paths:
-      - "flyway/migrations/**"
 
 env:
   FLYWAY_VERSION: 9.24.0
