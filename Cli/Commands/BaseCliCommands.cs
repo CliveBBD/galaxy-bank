@@ -25,8 +25,8 @@ namespace Cli.Commands
     {
         public override int Execute(CommandContext context)
         {
-            AnsiConsole.MarkupLine("[bold cyan]Galaxy Bank CLI v1.0[/]");
-            AnsiConsole.MarkupLine("Manage your accounts, check balances, and move money in the terminal.");
+            CliWidgets.RenderText("[bold cyan]Galaxy Bank CLI v1.0[/]");
+            CliWidgets.RenderText("Manage your accounts, check balances, and move money in the terminal.");
             return 0;
         }
     }

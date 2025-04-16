@@ -1,13 +1,15 @@
 using Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Api.Shared;
+using Api.DTOs;
 
 namespace Api.Controllers
 {
     [Route("transactions")]
-    public class TransactionsController(ITransactionService transactionService) : Controller
+    public class TransactionsController(ITransactionService transactionService, IUserService userService) : Controller
     {
         private readonly ITransactionService _transactionService = transactionService;
+        private readonly IUserService _userService = userService;
 
         [HttpGet("", Name = "GetTransactions")]
         public async Task<IActionResult> GetTransactions()
@@ -31,8 +33,42 @@ namespace Api.Controllers
             }
         }
 
-        [HttpGet("account/{accountId}", Name = "GetTransactionsByAccountId")]
-        public async Task<IActionResult> GetTransactionsByAccountId(int accountId)
+        [HttpGet("disputable", Name = "GetDisputableTransactions")]
+        public async Task<IActionResult> GetDisputableTransactions()
+        {
+            try
+            {
+
+                var requestingUser = await _userService.GetCurrentUser(HttpContext);
+
+                if (requestingUser != null && requestingUser.Role.Name == Constants.AdminRoleName)
+                {
+                    var transactions = await _transactionService.GetDisputableTransactionsAsync();
+                    return Ok(transactions);
+                }
+                else if (requestingUser != null && requestingUser.Role.Name != Constants.AdminRoleName)
+                {
+                    var transactions = await _transactionService.GetDisputableTransactionsAsync(requestingUser.UserID);
+                    return Ok(transactions);
+                }
+                else
+                {
+                    return Unauthorized(new ErrorResponse("You are not authorized to use this feature. Please log in and try again"));
+                }
+
+            }
+            catch (Exception e)
+            {
+                return StatusCode(
+                    StatusCodes.Status500InternalServerError,
+                    new ErrorResponse(e.Message)
+                );
+            }
+        }
+
+
+        [HttpGet("account/{accountNumber}", Name = "GetTransactionsByAccountNumber")]
+        public async Task<IActionResult> GetTransactionsByAccountNumber(string accountNumber)
         {
             if (!ModelState.IsValid)
             {
@@ -47,7 +83,7 @@ namespace Api.Controllers
                     return Unauthorized("Invalid or missing token.");
                 }
                 var googleId = payload.Subject;
-                var transactions = await _transactionService.GetTransactionsByAccountIdAsync(accountId, googleId);
+                var transactions = await _transactionService.GetTransactionsByAccountNumberAsync(accountNumber, googleId);
                 return Ok(transactions);
             }
             catch (Exception e)

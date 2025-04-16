@@ -65,21 +65,14 @@ namespace Api.Controllers
         {
             try
             {
-                var requestingUser = await _userService.GetCurrentUser(HttpContext);
 
-                IEnumerable<Account> accounts;
-                if (requestingUser != null && requestingUser.Role.Name != Constants.AdminRoleName)
+                var payload = await JwtDecoder.Decode(HttpContext);
+                if (payload == null)
                 {
-                    accounts = await _accountService.GetAccounts(requestingUser.UserID);
+                    return Unauthorized("Invalid or missing token.");
                 }
-                else if (requestingUser != null && requestingUser.Role.Name == Constants.AdminRoleName)
-                {
-                    accounts = await _accountService.GetAccounts();
-                }
-                else
-                {
-                    return Unauthorized(new ErrorResponse("You are not authorized to perform actions on accounts. Please log in and try again."));
-                }
+                var googleId = payload.Subject;
+                var accounts = await _accountService.GetAccounts(googleId);
 
                 if (accounts != null)
                 {
@@ -90,6 +83,7 @@ namespace Api.Controllers
                 {
                     return NotFound(new ErrorResponse($"No accounts found"));
                 }
+
 
             }
             catch (Exception e)
