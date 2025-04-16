@@ -56,7 +56,7 @@ namespace Api.Services
             {
                 var jwt = authHeader.Substring("Bearer ".Length).Trim();
                 var payload = await GoogleJsonWebSignature.ValidateAsync(jwt);
-                return await this.GetUserByEmail(payload.Email);
+                return await this.GetUserByEmailAsync(payload.Email);
             }
             else
             {
