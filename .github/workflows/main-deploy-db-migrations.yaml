@@ -8,7 +8,7 @@ on:
       - main
 
 env:
-  FLYWAY_VERSION: 9.24.0
+  FLYWAY_VERSION: 10.19.0
   DB_NAME: galaxy_db
   DB_PORT: 5432
   FLYWAY_URL: jdbc:postgresql://${{ secrets.RDS_HOSTNAME }}:5432/galaxy_db
