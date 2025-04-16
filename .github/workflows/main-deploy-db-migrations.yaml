@@ -53,7 +53,7 @@ jobs:
       - name: Run Flyway validate and migrate
         uses: joshuaavalon/flyway-action@v3.0.0
         with:
-          url: jdbc:postgresql://${{ steps.tf-outputs.outputs.rds_endpoint }}:${{steps.tf-outputs.outputs.rds_db_port }}/${{steps.tf-outputs.outputs.rds_db_name }}
+          url: jdbc:postgresql://${{ steps.tf-outputs.outputs.rds_endpoint }}/${{steps.tf-outputs.outputs.rds_db_name }}
           user: ${{ secrets.DB_USERNAME }}
           password: ${{ secrets.DB_PASSWORD }}
           locations: filesystem:flyway/sql/migrations
