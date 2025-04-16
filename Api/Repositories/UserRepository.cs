@@ -113,7 +113,6 @@ namespace Api.Repositories
 
             return result.HasValue;
         }
-       
 
     }
 }
