@@ -23,5 +23,16 @@ namespace Api.Controllers
             }
         }
 
+        [HttpGet("{name}", Name = "GetRoleByName")]
+        public async Task<IActionResult> GetRoleByName(string name)
+        {
+            var role = await _roleService.GetRoleByNameAsync(name);
+
+            if (role == null)
+                return NotFound(new { message = $"Role '{name}' not found." });
+
+            return Ok(role);
+        }
+
     }
 }

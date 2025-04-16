@@ -14,6 +14,8 @@ namespace Api.Models
         public required int Balance { get; set; }
         [Required]
         public required DateTime CreatedAt { get; set; } = DateTime.Now;
+        [Required]
+        public required string AccountNumber { get; set; }
 
 
     }
