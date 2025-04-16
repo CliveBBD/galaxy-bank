@@ -5,6 +5,9 @@ using Spectre.Console.Cli;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Globalization;
+using PdfSharpCore.Drawing;
+using PdfSharpCore.Pdf;
 
 namespace Cli.Commands
 {
@@ -419,6 +422,168 @@ namespace Cli.Commands
                 {
                     var errorMessage = response.Content.ReadAsStringAsync().Result;
                     AnsiConsole.MarkupLine($"[red]Failed to fetch transaction types: {response.StatusCode} - {response.ReasonPhrase} - {errorMessage}[/]");
+                    return 1;
+                }
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[red]An error occurred: {ex.Message}[/]");
+                return 1;
+            }
+        }
+    }
+
+    public class GetStatementCommand : Command<GetStatementCommand.Settings>
+    {
+        public class Settings : CommandSettings
+        {
+            [CommandOption("-s|--start <YYYY-MM-DD>")]
+            public string StartDate { get; set; } = string.Empty;
+
+            [CommandOption("-e|--end <YYYY-MM-DD>")]
+            public string? EndDate { get; set; }
+
+            [CommandOption("-o|--output <OutputFile>")]
+            public string? OutputFile { get; set; }
+
+            [CommandOption("-i|--id <AccountID>")]
+            public int? AccountID { get; set; }
+        }
+
+        public override int Execute(CommandContext context, Settings settings)
+        {
+            if (string.IsNullOrEmpty(settings.StartDate))
+            {
+                AnsiConsole.MarkupLine("[red]Start date is required.[/]");
+                return 1;
+            }
+
+            if (!DateTime.TryParseExact(settings.StartDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var startDate))
+            {
+                AnsiConsole.MarkupLine("[red]Invalid start date format. Use yyyy-MM-dd.[/]");
+                return 1;
+            }
+
+            DateTime? endDate = null;
+            if (!string.IsNullOrEmpty(settings.EndDate))
+            {
+                if (!DateTime.TryParseExact(settings.EndDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedEndDate))
+                {
+                    AnsiConsole.MarkupLine("[red]Invalid end date format. Use yyyy-MM-dd.[/]");
+                    return 1;
+                }
+                endDate = parsedEndDate;
+            }
+
+            using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", User.Token); // Replace with the actual token
+
+            try
+            {
+                var endpoint = "https://localhost:7059/transactions";
+                var response = httpClient.GetAsync(endpoint).Result;
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var jsonResponse = response.Content.ReadAsStringAsync().Result;
+                    var transactions = JsonSerializer.Deserialize<List<Transaction>>(jsonResponse);
+
+                    Console.WriteLine("This is the response" + jsonResponse);
+                    if (transactions != null && transactions.Any())
+                    {
+                        Console.WriteLine(transactions);
+                        // Filter transactions by date range
+                        transactions = transactions
+                            .Where(t => t.CreatedAt >= startDate && (!endDate.HasValue || t.CreatedAt <= endDate.Value))
+                            .ToList();
+
+                        // Filter by AccountID if provided
+                        if (settings.AccountID.HasValue)
+                        {
+                            transactions = transactions
+                                .Where(t => t.AccountID == settings.AccountID.Value)
+                                .ToList();
+                        }
+
+                        if (!transactions.Any())
+                        {
+                            AnsiConsole.MarkupLine("[yellow]No transactions found for the specified filters.[/]");
+                            return 0;
+                        }
+
+                        // Display transactions in a table
+                        var table = new Table();
+                        table.AddColumn("Transaction ID");
+                        table.AddColumn("Reference");
+                        table.AddColumn("Account ID");
+                        table.AddColumn("Amount");
+                        table.AddColumn("Type");
+                        table.AddColumn("Balance After");
+                        table.AddColumn("Created At");
+
+                        foreach (var transaction in transactions)
+                        {
+                            string formattedAmount = transaction.Amount < 0
+                                ? $"[red]-Q {Math.Abs(transaction.Amount)}[/]"
+                                : $"[green]Q {transaction.Amount}[/]";
+
+                            string formattedBalance = transaction.BalanceAfterTransaction < 0
+                                ? $"[red]-Q {Math.Abs(transaction.BalanceAfterTransaction)}[/]"
+                                : $"[green]Q {transaction.BalanceAfterTransaction}[/]";
+
+                            table.AddRow(
+                                transaction.TransactionID.ToString(),
+                                transaction.Reference,
+                                transaction.AccountID.ToString(),
+                                formattedAmount,
+                                transaction.TransactionType.Name,
+                                formattedBalance,
+                                transaction.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")
+                            );
+                        }
+
+                        AnsiConsole.Write(table);
+
+                        // Save to PDF if output file is specified
+                        if (!string.IsNullOrEmpty(settings.OutputFile))
+                        {
+                            var pdfDocument = new PdfDocument();
+                            var page = pdfDocument.AddPage();
+                            var graphics = XGraphics.FromPdfPage(page);
+                            var font = new XFont("Arial", 12);
+
+                            graphics.DrawString("Transaction Statement", font, XBrushes.Black, new XRect(0, 0, page.Width, 50), XStringFormats.TopCenter);
+
+                            int yOffset = 50;
+                            foreach (var transaction in transactions)
+                            {
+                                var line = $"ID: {transaction.TransactionID}, Ref: {transaction.Reference}, Account: {transaction.AccountID}, Amount: {transaction.Amount}, Type: {transaction.TransactionType.Name}, Balance: {transaction.BalanceAfterTransaction}, Date: {transaction.CreatedAt:yyyy-MM-dd HH:mm:ss}";
+                                graphics.DrawString(line, font, XBrushes.Black, new XRect(20, yOffset, page.Width - 40, 20), XStringFormats.TopLeft);
+                                yOffset += 20;
+
+                                if (yOffset > page.Height - 50)
+                                {
+                                    page = pdfDocument.AddPage();
+                                    graphics = XGraphics.FromPdfPage(page);
+                                    yOffset = 50;
+                                }
+                            }
+
+                            pdfDocument.Save(settings.OutputFile);
+                            AnsiConsole.MarkupLine($"[green]Statement saved to {settings.OutputFile}[/]");
+                        }
+                    }
+                    else
+                    {
+                        AnsiConsole.MarkupLine("[yellow]No transactions found.[/]");
+                    }
+
+                    return 0;
+                }
+                else
+                {
+                    var errorMessage = response.Content.ReadAsStringAsync().Result;
+                    AnsiConsole.MarkupLine($"[red]Failed to fetch transactions: {response.StatusCode} - {response.ReasonPhrase} - {errorMessage}[/]");
                     return 1;
                 }
             }
