@@ -1,5 +1,9 @@
 data "aws_caller_identity" "current" {}
 
+locals {
+  runner = "${var.app_name}-runner"
+}
+
 resource "aws_iam_openid_connect_provider" "github" {
   url             = "https://token.actions.githubusercontent.com"
   client_id_list  = ["sts.amazonaws.com"]
@@ -29,28 +33,6 @@ resource "aws_iam_role" "github_actions" {
       }
     ]
   })
-
-  inline_policy {
-    name = "GitHubActionsPermissions"
-    policy = jsonencode({
-      Version = "2012-10-17",
-      Statement = [
-        {
-          Effect = "Allow",
-          Action = [
-            "logs:ListTagsForResource",
-            "iam:GetOpenIDConnectProvider",
-            "iam:GetRole",
-            "iam:GetPolicy",
-            "elasticloadbalancing:DescribeLoadBalancerAttributes",
-            "elasticloadbalancing:DescribeTargetGroupAttributes",
-            "secretsmanager:DescribeSecret"
-          ],
-          Resource = "*"
-        }
-      ]
-    })
-  }
 }
 
 data "aws_iam_policy_document" "ecs_task_execution_policy" {
@@ -66,6 +48,71 @@ data "aws_iam_policy_document" "ecs_task_execution_policy" {
   }
 }
 
+data "aws_iam_policy_document" "list_tags_for_resource_policy" {
+  statement {
+    actions = [
+      "logs:ListTagsForResource",
+    ]
+    resources = [
+      "*"
+    ]
+  }
+}
+
+data "aws_iam_policy_document" "get_role_policy" {
+  statement {
+    actions = [
+      "iam:GetRole",
+    ]
+    resources = [
+      "*"
+    ]
+  }
+}
+
+data "aws_iam_policy_document" "get_policy_policy" {
+  statement {
+    actions = [
+      "iam:GetPolicy",
+    ]
+    resources = [
+      "*"
+    ]
+  }
+}
+
+data "aws_iam_policy_document" "describe_load_balancer_attributes_policy" {
+  statement {
+    actions = [
+      "elasticloadbalancing:DescribeLoadBalancerAttributes",
+    ]
+    resources = [
+      "*"
+    ]
+  }
+}
+
+data "aws_iam_policy_document" "describe_target_group_attributes_policy" {
+  statement {
+    actions = [
+      "elasticloadbalancing:DescribeTargetGroupAttributes",
+    ]
+    resources = [
+      "*"
+    ]
+  }
+}
+
+data "aws_iam_policy_document" "describe_secret_policy" {
+  statement {
+    actions = [
+      "secretsmanager:DescribeSecret",
+    ]
+    resources = [
+      "*"
+    ]
+  }
+}
 
 resource "aws_iam_role_policy" "ecs_task_execution_secrets" {
   name   = "${var.app_name}-task-execution-secrets-policy"
@@ -181,4 +228,40 @@ resource "aws_iam_role_policy_attachment" "ecs_task_s3_attach" {
 resource "aws_iam_role_policy_attachment" "github_actions_terraform_state" {
   role       = aws_iam_role.github_actions.name
   policy_arn = aws_iam_policy.terraform_state_access.arn
+}
+
+resource "aws_iam_role_policy" "gh_runner_list_tags" {
+  name   = "${local.runner}-list-tags-policy"
+  role   = aws_iam_role.github_actions.id
+  policy = data.aws_iam_policy_document.list_tags_for_resource_policy.json
+}
+
+resource "aws_iam_role_policy" "gh_runner_get_role" {
+  name   = "${local.runner}-get-role-policy"
+  role   = aws_iam_role.github_actions.id
+  policy = data.aws_iam_policy_document.get_role_policy.json
+}
+
+resource "aws_iam_role_policy" "runner_get_policy" {
+  name   = "${local.runner}-get-policy-policy"
+  role   = aws_iam_role.github_actions.id
+  policy = data.aws_iam_policy_document.get_policy_policy.json
+}
+
+resource "aws_iam_role_policy" "runner_describe_load_balancer_attributes_policy" {
+  name   = "${local.runner}-describe-load-balancer-attributes-policy"
+  role   = aws_iam_role.github_actions.id
+  policy = data.aws_iam_policy_document.describe_load_balancer_attributes_policy.json
+}
+
+resource "aws_iam_role_policy" "runner_describe_target_group_attributes_policy" {
+  name   = "${local.runner}-describe-target-group-attributes-policy"
+  role   = aws_iam_role.github_actions.id
+  policy = data.aws_iam_policy_document.describe_target_group_attributes_policy.json
+}
+
+resource "aws_iam_role_policy" "runner_describe_secret_policy" {
+  name   = "${local.runner}-describe-secret-policy"
+  role   = aws_iam_role.github_actions.id
+  policy = data.aws_iam_policy_document.describe_secret_policy.json
 }
