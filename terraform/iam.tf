@@ -29,6 +29,28 @@ resource "aws_iam_role" "github_actions" {
       }
     ]
   })
+
+  inline_policy {
+    name = "GitHubActionsPermissions"
+    policy = jsonencode({
+      Version = "2012-10-17",
+      Statement = [
+        {
+          Effect = "Allow",
+          Action = [
+            "logs:ListTagsForResource",
+            "iam:GetOpenIDConnectProvider",
+            "iam:GetRole",
+            "iam:GetPolicy",
+            "elasticloadbalancing:DescribeLoadBalancerAttributes",
+            "elasticloadbalancing:DescribeTargetGroupAttributes",
+            "secretsmanager:DescribeSecret"
+          ],
+          Resource = "*"
+        }
+      ]
+    })
+  }
 }
 
 data "aws_iam_policy_document" "ecs_task_execution_policy" {
