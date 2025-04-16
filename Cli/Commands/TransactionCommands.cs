@@ -54,6 +54,7 @@ namespace Cli.Commands
             var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
             using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", User.Token); // Replace with the actual token
             try
             {
                 var response = httpClient.PostAsync("https://localhost:7059/transfer", content).Result;
@@ -65,7 +66,8 @@ namespace Cli.Commands
                 }
                 else
                 {
-                    AnsiConsole.MarkupLine($"[red]Failed to transfer: {response.StatusCode} - {response.ReasonPhrase}[/]");
+                    var errorMessage = response.Content.ReadAsStringAsync().Result;
+                    AnsiConsole.MarkupLine($"[red]Failed to transfer: {response.StatusCode} - {response.ReasonPhrase} - {errorMessage}[/]");
                     return 1;
                 }
             }
@@ -102,37 +104,74 @@ namespace Cli.Commands
                 return 1;
             }
 
-            // Prompt user to select an account
-            var accountID = AnsiConsole.Prompt(
-                new SelectionPrompt<string>()
-                    .Title("Select an [green]account[/] to deposit into:")
-                    .PageSize(10)
-                    .AddChoices(new[] { "Check", "Savings", "Credit" }) // Fake account IDs
-            );
-
-            var depositPayload = new
-            {
-                AccountID = 1,
-                Amount = settings.Amount,
-                Reference = settings.Reference
-            };
-
-            var jsonPayload = JsonSerializer.Serialize(depositPayload);
-            var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-
             using var httpClient = new HttpClient();
+
+            // Add the Authorization header with the bearer token
+            var bearerToken = User.Token; // Replace with the actual token
+            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", bearerToken);
+
             try
             {
-                var response = httpClient.PostAsync("https://localhost:7059/deposit", content).Result;
+                // TODO: fetch api from configuration
+                // TODO: Stop using email endpoint
+                // TODO: Use account number instead
+                // TODO: Use one function for both deposit and withdraw, and move transfer out
+                // Fetch accounts from the API
+                var userEmail = "user_1@example.com"; // Replace with the actual user email
+                var response = httpClient.GetAsync($"https://localhost:7059/accounts/user/{userEmail}").Result;
 
-                if (response.IsSuccessStatusCode)
+                if (!response.IsSuccessStatusCode)
                 {
-                    AnsiConsole.MarkupLine($"[green]Deposited Q {settings.Amount:n0} to account {accountID} with reference {settings.Reference}[/]");
+                    AnsiConsole.MarkupLine($"[red]Failed to fetch accounts: {response.StatusCode} - {response.ReasonPhrase}[/]");
+                    return 1;
+                }
+
+                var jsonResponse = response.Content.ReadAsStringAsync().Result;
+                var accounts = JsonSerializer.Deserialize<List<Account>>(jsonResponse);
+
+                if (accounts == null || !accounts.Any())
+                {
+                    AnsiConsole.MarkupLine("[yellow]No accounts found.[/]");
+                    return 1;
+                }
+
+                // Prepare account choices
+                var accountChoices = accounts.Select(a => $"{a.AccountId} - {a.AccountType.Name}").ToList();
+
+                // Prompt user to select an account
+                var selectedAccount = AnsiConsole.Prompt(
+                    new SelectionPrompt<string>()
+                        .Title("Select an [green]account[/]:")
+                        .PageSize(10)
+                        .AddChoices(accountChoices)
+                );
+
+                // Extract AccountId from the selected choice
+                var accountId = int.Parse(selectedAccount.Split(" - ")[0]);
+
+                var payload = new
+                {
+                    AccountID = accountId,
+                    Amount = settings.Amount,
+                    Reference = settings.Reference
+                };
+
+                var jsonPayload = JsonSerializer.Serialize(payload);
+                var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+                // Send the deposit/withdraw request
+                var endpoint = this.GetType().Name == nameof(DepositCommand) ? "deposit" : "withdraw";
+                var result = httpClient.PostAsync($"https://localhost:7059/{endpoint}", content).Result;
+
+                if (result.IsSuccessStatusCode)
+                {
+                    AnsiConsole.MarkupLine($"[green]{(endpoint == "deposit" ? "Deposited" : "Withdrawn")} Q {settings.Amount:n0} to account {accountId} with reference {settings.Reference}[/]");
                     return 0;
                 }
                 else
                 {
-                    AnsiConsole.MarkupLine($"[red]Failed to deposit: {response.StatusCode} - {response.ReasonPhrase}[/]");
+                    var errorMessage = result.Content.ReadAsStringAsync().Result;
+                    AnsiConsole.MarkupLine($"[red]Failed to {endpoint}: {result.StatusCode} - {result.ReasonPhrase} - {errorMessage}[/]");
                     return 1;
                 }
             }
@@ -170,37 +209,75 @@ namespace Cli.Commands
                 return 1;
             }
 
-            // Prompt user to select an account
-            var accountID = AnsiConsole.Prompt(
-                new SelectionPrompt<string>()
-                    .Title("Select an [green]account[/] to deposit into:")
-                    .PageSize(10)
-                    .AddChoices(new[] { "Check", "Savings", "Credit" }) // Fake account IDs
-            );
-
-            var depositPayload = new
-            {
-                AccountID = 1,
-                Amount = settings.Amount,
-                Reference = settings.Reference
-            };
-
-            var jsonPayload = JsonSerializer.Serialize(depositPayload);
-            var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-
             using var httpClient = new HttpClient();
+
+            // Add the Authorization header with the bearer token
+            var bearerToken = User.Token; // Replace with the actual token
+            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", bearerToken);
+
             try
             {
-                var response = httpClient.PostAsync("https://localhost:7059/withdraw", content).Result;
+                // Fetch accounts from the API
+                // TODO: fetch api from configuration
+                // TODO: Stop using email endpoint
+                // TODO: api endpoints should start with /api
+                // CUSTOM: Use account number instead
+                var userEmail = "user_1@example.com"; // Replace with the actual user email
+                var response = httpClient.GetAsync($"https://localhost:7059/accounts/user/{userEmail}").Result;
 
-                if (response.IsSuccessStatusCode)
+                if (!response.IsSuccessStatusCode)
                 {
-                    AnsiConsole.MarkupLine($"[green]Withdrawed Q {settings.Amount:n0} from account {accountID} with reference {settings.Reference}[/]");
+
+                    AnsiConsole.MarkupLine($"[red]Failed to fetch accounts: {response.StatusCode} - {response.ReasonPhrase}[/]");
+                    return 1;
+                }
+
+                var jsonResponse = response.Content.ReadAsStringAsync().Result;
+                var accounts = JsonSerializer.Deserialize<List<Account>>(jsonResponse);
+
+                if (accounts == null || !accounts.Any())
+                {
+                    AnsiConsole.MarkupLine("[yellow]No accounts found.[/]");
+                    return 1;
+                }
+
+                // Prepare account choices
+                var accountChoices = accounts.Select(a => $"{a.AccountId} - {a.AccountType.Name}").ToList();
+
+                // Prompt user to select an account
+                var selectedAccount = AnsiConsole.Prompt(
+                    new SelectionPrompt<string>()
+                        .Title("Select an [green]account[/]:")
+                        .PageSize(10)
+                        .AddChoices(accountChoices)
+                );
+
+                // Extract AccountId from the selected choice
+                var accountId = int.Parse(selectedAccount.Split(" - ")[0]);
+
+                var payload = new
+                {
+                    AccountID = accountId,
+                    Amount = settings.Amount,
+                    Reference = settings.Reference
+                };
+
+                var jsonPayload = JsonSerializer.Serialize(payload);
+                var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+                // Send the deposit/withdraw request
+                var endpoint = this.GetType().Name == nameof(DepositCommand) ? "deposit" : "withdraw";
+                var result = httpClient.PostAsync($"https://localhost:7059/{endpoint}", content).Result;
+
+                if (result.IsSuccessStatusCode)
+                {
+                    AnsiConsole.MarkupLine($"[green]{(endpoint == "deposit" ? "Deposited" : "Withdrawn")} Q {settings.Amount:n0} to account {accountId} with reference {settings.Reference}[/]");
                     return 0;
                 }
                 else
                 {
-                    AnsiConsole.MarkupLine($"[red]Failed to deposit: {response.StatusCode} - {response.ReasonPhrase}[/]");
+                    var errorMessage = result.Content.ReadAsStringAsync().Result;
+                    AnsiConsole.MarkupLine($"[red]Failed to {endpoint}: {result.StatusCode} - {result.ReasonPhrase} - {errorMessage}[/]");
                     return 1;
                 }
             }
@@ -227,6 +304,7 @@ namespace Cli.Commands
         public override int Execute(CommandContext context, Settings settings)
         {
             using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", User.Token); // Replace with the actual token
             try
             {
                 string endpoint = settings.AccountID.HasValue
@@ -295,7 +373,8 @@ namespace Cli.Commands
                 }
                 else
                 {
-                    AnsiConsole.MarkupLine($"[red]Failed to fetch transactions: {response.StatusCode} - {response.ReasonPhrase}[/]");
+                    var errorMessage = response.Content.ReadAsStringAsync().Result;
+                    AnsiConsole.MarkupLine($"[red]Failed to fetch transactions: {response.StatusCode} - {response.ReasonPhrase} - {errorMessage}[/]");
                     return 1;
                 }
             }
@@ -312,6 +391,7 @@ namespace Cli.Commands
         public override int Execute(CommandContext context)
         {
             using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", User.Token); // Replace with the actual token
             try
             {
                 // Replace with the actual API endpoint
@@ -339,7 +419,8 @@ namespace Cli.Commands
                 }
                 else
                 {
-                    AnsiConsole.MarkupLine($"[red]Failed to fetch transaction types: {response.StatusCode} - {response.ReasonPhrase}[/]");
+                    var errorMessage = response.Content.ReadAsStringAsync().Result;
+                    AnsiConsole.MarkupLine($"[red]Failed to fetch transaction types: {response.StatusCode} - {response.ReasonPhrase} - {errorMessage}[/]");
                     return 1;
                 }
             }

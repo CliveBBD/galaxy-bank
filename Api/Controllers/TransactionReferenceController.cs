@@ -1,5 +1,6 @@
 using Api.Services;
 using Microsoft.AspNetCore.Mvc;
+using Api.Shared;
 
 namespace Api.Controllers
 {
@@ -8,7 +9,7 @@ namespace Api.Controllers
     {
         private readonly ITransactionReferenceService _transactionReferenceService = transactionReferenceService;
 
-        [HttpGet("{referenceId}", Name = "GetTransactionReferencesByAccountId")]
+        [HttpGet("{referenceId}", Name = "GetTransactionsByReferenceId")]
         public async Task<IActionResult> GetTransactionReferencesByAccountId(int referenceId)
         {
             if (!ModelState.IsValid)
@@ -16,10 +17,14 @@ namespace Api.Controllers
                 return BadRequest(ModelState);
             }
 
-            string googleId = "google_id_b597e0d6d8e47ab0405e4627"; // Replace with actual Google ID from context.
-
             try
             {
+                var payload = await JwtDecoder.Decode(HttpContext);
+                if (payload == null)
+                {
+                    return Unauthorized("Invalid or missing token.");
+                }
+                var googleId = payload.Subject;
                 var transactionReferences = await _transactionReferenceService.GetTransactionsByReferenceAsync(googleId, referenceId);
                 return Ok(transactionReferences);
             }
