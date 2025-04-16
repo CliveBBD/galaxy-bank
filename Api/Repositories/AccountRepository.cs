@@ -84,6 +84,7 @@ namespace Api.Repositories
                 Console.WriteLine(connection.ConnectionString);
                 await connection.OpenAsync();
                 return await connection.QueryAsync<Account>(query);
+                
             }
             catch (Exception ex)
             {

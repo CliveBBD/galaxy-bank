@@ -7,6 +7,7 @@ namespace Cli.Models
         public AccountType AccountType { get; set; }
         public decimal Balance { get; set; }
         public DateTime CreatedAt { get; set; }
+        public  string AccountNumber { get; set; }
     }
 
     public class AccountType
