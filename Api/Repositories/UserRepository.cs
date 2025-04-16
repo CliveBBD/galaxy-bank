@@ -60,7 +60,7 @@ namespace Api.Repositories
                     r.name AS Name
                 FROM users u
                 INNER JOIN roles r ON u.role_id = r.role_id
-                WHERE u.email = @Email
+                WHERE u.email = @email
             ";
 
             using var connection = new NpgsqlConnection(Constants.ConnectionString);
@@ -72,10 +72,9 @@ namespace Api.Repositories
                     user.Role = role;
                     return user;
                 },
-                new { Email = email },
+                new { email },
                 splitOn: "RoleID"
             );
-
             return result.FirstOrDefault();
         }
 

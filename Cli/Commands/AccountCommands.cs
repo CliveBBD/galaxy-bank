@@ -1,5 +1,7 @@
 using Spectre.Console;
 using Spectre.Console.Cli;
+using Cli.Services;
+using Newtonsoft.Json;
 
 namespace Cli.Commands
 {
@@ -8,7 +10,15 @@ namespace Cli.Commands
         public override int Execute(CommandContext context)
         {
             // Placeholder for account listing logic
+            var accountsService = new AccountsService();
+            var accounts = accountsService.GetAccountTypes().Result;
+            var accountTypes = JsonConvert.DeserializeObject<List<string>>(accounts.Content.ReadAsStringAsync().Result.Trim());
             AnsiConsole.MarkupLine("[green]Listing all accounts...[/]");
+            var accountType = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title("Select account type")
+                    .AddChoices(accountTypes ?? []));
+            Console.WriteLine(accountType);
             return 0;
         }
     }

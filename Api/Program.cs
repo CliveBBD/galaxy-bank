@@ -6,7 +6,6 @@ using Api.Helpers;
 using Api.Repositories;
 using Api.Services;
 using Npgsql;
-using System.Data;
 using Api.Shared;
 using Microsoft.AspNetCore.Builder;
 
@@ -50,7 +49,7 @@ public class Program
                 throw new InvalidOperationException("Database connection string is missing.");
             }
 
-            return new NpgsqlConnection(connectionString);
+            return new NpgsqlConnection("Host=localhost,Port=5432;Database=galaxy-bank-local;Username=postgres;Password=postgres;");
         });
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IAccountRepository, AccountRepository>();

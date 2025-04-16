@@ -3,6 +3,8 @@ using Spectre.Console.Cli;
 using Cli.Models;
 using Cli.Services;
 using Google.Apis.Auth;
+using Newtonsoft.Json;
+using Namotion.Reflection;
 
 namespace Cli.Commands
 {
@@ -29,7 +31,8 @@ namespace Cli.Commands
                         payload.GivenName, 
                         payload.Email, 
                         payload.Subject, 
-                        result.Token.IdToken
+                        result.Token.IdToken,
+                        result.Token.Role
                     );
                 }
     
@@ -65,12 +68,18 @@ namespace Cli.Commands
         }
     }
 
-    public class LogoutCommand : Command
+    public class LogoutCommand : AsyncCommand
     {
-        public override int Execute(CommandContext context)
+        public override async Task<int> ExecuteAsync(CommandContext context)
         {
+            var authService = new AuthService();
             User.Clear();
-            AnsiConsole.MarkupLine($"[green]You are logged out[/]");
+            var logoutResponse = await authService.LogoutAsync("");
+            var logOut = JsonConvert.DeserializeObject(logoutResponse.Content.ReadAsStringAsync().Result);
+            if(!logOut.HasProperty("Error"))
+            {
+                AnsiConsole.MarkupLine($"[green]You are logged out[/]");
+            }
             return 0;
         }
     }
@@ -84,6 +93,7 @@ namespace Cli.Commands
                 AnsiConsole.MarkupLine($"[green]You are logged in as {User.Username}[/]");
                 AnsiConsole.MarkupLine($"[green]Email: {User.Email}[/]");
                 AnsiConsole.MarkupLine($"[green]Google ID: {User.GoogleId}[/]");
+                AnsiConsole.MarkupLine($"[green]Role: {User.Role}[/]");
             }
             else
             {

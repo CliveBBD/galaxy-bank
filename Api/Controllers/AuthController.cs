@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using Api.Services;
-using Api.Models;
 
 namespace Api.Controllers
 {
@@ -11,7 +10,8 @@ namespace Api.Controllers
  
         public AccountController(
             GoogleAuthService googleAuthService,
-            TokenService tokenService)
+            TokenService tokenService
+            )
         {
             _googleAuthService = googleAuthService;
             _tokenService = tokenService;
@@ -20,7 +20,7 @@ namespace Api.Controllers
         [Route("signin-google")]
         public async Task<IActionResult> GoogleLogin([FromQuery] string code, [FromQuery] string state)
         {
-            var token = await _googleAuthService.ExchangeCodeForTokenAsync(code);
+            var token = await _googleAuthService.ExchangeCodeForTokenAsync(code, state);
             if(token != null) { _tokenService.StoreToken(state, token); }
             return Ok(token);
         }
@@ -53,10 +53,15 @@ namespace Api.Controllers
                 return NotFound("No token found for this session.");
             }
 
-            return Ok(new StoredToken
-            {   
-                IdToken = token.IdToken
-            });
+            // Console.WriteLine(payload.Email);
+            return Ok(token);
+        }
+
+        [HttpPost("logout/{sessionId}")]
+        public IActionResult LogOut(string sessionId)
+        {
+            var logout = _tokenService.RemoveToken(sessionId);
+            return Ok(logout);
         }
     }
 }
