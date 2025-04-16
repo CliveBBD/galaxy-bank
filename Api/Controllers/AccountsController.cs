@@ -23,7 +23,7 @@ namespace Api.Controllers
             _userService = userService;
         }
 
-        [HttpPost]
+        [HttpPost("", Name = "CreateAccount")]
         public async Task<ActionResult<Account>> CreateAccount([FromBody] AccountCreateRequest request)
         {
             try
@@ -33,16 +33,16 @@ namespace Api.Controllers
                     return BadRequest(new { message = $"Invalid account data." });
                 }
 
-                var accountId = await _accountService.CreateAccount(request.UserId, request.AccountTypeName);
+                var accountNumber = await _accountService.CreateAccount(request.AccountTypeName);
 
-                var account = await _accountService.GetAccountById(accountId);
+                var account = await _accountService.GetAccountById(accountNumber);
 
-                var user = await _userService.GetUserById(account.UserId);
+                var user = await _userService.GetUserByIdAsync(account.UserId);
 
 
-                await _emailService.SendEmailAsync(user.Email, AccountCreationEmailTemplate.Subject, AccountCreationEmailTemplate.Message(user.Username, accountId));
+                await _emailService.SendEmailAsync(user.Email, AccountCreationEmailTemplate.Subject, AccountCreationEmailTemplate.Message(user.Username, accountNumber));
 
-                return Ok($"Successfully created an account with account number: {accountId}.");
+                return Ok($"Successfully created an account with account number: {accountNumber}.");
             }
             catch (Exception e)
             {
@@ -51,7 +51,7 @@ namespace Api.Controllers
 
         }
 
-        [HttpGet]
+        [HttpGet("", Name = "GetAccounts")]
         public async Task<IActionResult> GetAccounts()
         {
             try
@@ -72,8 +72,8 @@ namespace Api.Controllers
 
         }
 
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetAccount(int id)
+        [HttpGet("{id}", Name = "GetAccountByEmail")]
+        public async Task<IActionResult> GetAccountByEmail(string id)
         {
             try
             {
@@ -93,7 +93,7 @@ namespace Api.Controllers
 
         }
 
-        [HttpGet("user/{email}")]
+        [HttpGet("user/{email}", Name = "GetAccountsByUserEmail")]
         public async Task<ActionResult<IEnumerable<Account>>> GetAccountsByUserEmail(string email)
         {
 
