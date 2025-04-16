@@ -1,3 +1,4 @@
+using Cli.Helpers;
 using Cli.Models;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -404,11 +405,8 @@ namespace Cli.Commands
 
                     if (transactionTypes != null && transactionTypes.Any())
                     {
-                        AnsiConsole.MarkupLine("[green]Transaction Types:[/]");
-                        foreach (var type in transactionTypes)
-                        {
-                            AnsiConsole.MarkupLine($"- [yellow]{type.TransactionTypeID}[/]: {type.Name}");
-                        }
+                        var tableBuilder = new TableBuilder<TransactionType>(transactionTypes);
+                        AnsiConsole.Write(tableBuilder.Table);
                     }
                     else
                     {
