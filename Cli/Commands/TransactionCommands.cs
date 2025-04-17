@@ -15,41 +15,33 @@ namespace Cli.Commands
     {
         public class Settings : CommandSettings
         {
-            [CommandOption("-a|--amount <Amount>")]
-            public decimal Amount { get; set; }
-
-            [CommandOption("-f|--from <FromAccount>")]
-            public string FromAccount { get; set; } = string.Empty;
-
-            [CommandOption("-t|--to <ToAccount>")]
-            public string ToAccount { get; set; } = string.Empty;
         }
 
         public override int Execute(CommandContext context, Settings settings)
         {
-            if (string.IsNullOrEmpty(settings.FromAccount) || string.IsNullOrEmpty(settings.ToAccount))
+            var fromAccount = CliWidgets.PromptText("From which account are transacting from");
+            var toAccount = CliWidgets.PromptText("To which account are transacting to");
+            if (string.IsNullOrEmpty(fromAccount) || string.IsNullOrEmpty(toAccount))
             {
-                AnsiConsole.MarkupLine("[red]Both from and to accounts must be specified.[/]");
+                CliWidgets.RenderError("Both from and to accounts must be specified.");
                 return 1;
             }
 
-            if (settings.Amount <= 0)
+            if (!int.TryParse(CliWidgets.PromptText("Transaction amount"), out int amount) || amount <= 0)
             {
-                AnsiConsole.MarkupLine("[red]Amount must be greater than zero.[/]");
+                CliWidgets.RenderError("Amount must be greater than zero.");
                 return 1;
             }
 
             // Prompt user for FromReference and ToReference
-            AnsiConsole.Markup("Enter a [green]reference[/] for the [blue]from account[/]:");
-            var fromReference = ReadLine.Read();
-            AnsiConsole.Markup("Enter a [green]reference[/] for the [blue]to account[/]:");
-            var toReference = ReadLine.Read();
+            var fromReference = CliWidgets.PromptText("Enter a [green]reference[/] for the [blue]from account[/]:");
+            var toReference = CliWidgets.PromptText("Enter a [green]reference[/] for the [blue]to account[/]:");
 
             var transferPayload = new
             {
-                FromAccountNumber = settings.FromAccount,
-                ToAccountNumber = settings.ToAccount,
-                Amount = settings.Amount,
+                FromAccountNumber = fromAccount,
+                ToAccountNumber = toAccount,
+                Amount = amount,
                 FromReference = fromReference,
                 ToReference = toReference
             };
@@ -65,19 +57,19 @@ namespace Cli.Commands
 
                 if (response.IsSuccessStatusCode)
                 {
-                    AnsiConsole.MarkupLine($"[green]Successfully transferred Q {settings.Amount:n0} from {settings.FromAccount} to {settings.ToAccount}[/]");
+                    CliWidgets.RenderPanel($"[green]Successfully transferred Q {amount:n0} from {fromAccount} to {toAccount}[/]");
                     return 0;
                 }
                 else
                 {
                     var errorMessage = response.Content.ReadAsStringAsync().Result;
-                    AnsiConsole.MarkupLine($"[red]Failed to transfer: {response.StatusCode} - {response.ReasonPhrase} - {errorMessage}[/]");
+                    CliWidgets.RenderError($"[red]Failed to transfer: {response.StatusCode} - {response.ReasonPhrase} - {errorMessage}[/]");
                     return 1;
                 }
             }
             catch (Exception ex)
             {
-                AnsiConsole.MarkupLine($"[red]An error occurred: {ex.Message}[/]");
+                CliWidgets.RenderError($"[red]An error occurred: {ex.Message}[/]");
                 return 1;
             }
         }
@@ -87,24 +79,25 @@ namespace Cli.Commands
     {
         public class Settings : CommandSettings
         {
-            [CommandOption("-a|--amount <Amount>")]
-            public decimal Amount { get; set; }
-
-            [CommandOption("-r|--reference <Reference>")]
-            public string Reference { get; set; } = string.Empty;
         }
 
         public override int Execute(CommandContext context, Settings settings)
         {
-            if (string.IsNullOrEmpty(settings.Reference))
+            var reference = CliWidgets.PromptText("Enter a reference for your transaction");
+            if (string.IsNullOrEmpty(reference))
             {
-                AnsiConsole.MarkupLine("[red]Reference must be specified.[/]");
+                CliWidgets.RenderError("[red]Reference must be specified.[/]");
                 return 1;
             }
 
-            if (settings.Amount <= 0)
+            if (!int.TryParse(CliWidgets.PromptText("Transfer Amount"), out int amount))
             {
-                AnsiConsole.MarkupLine("[red]Amount must be greater than zero.[/]");
+                CliWidgets.RenderError("Enter a valid integer");
+                return 1;
+            }
+            if (amount <= 0)
+            {
+                CliWidgets.RenderError("[red]Amount must be greater than zero.[/]");
                 return 1;
             }
 
@@ -116,17 +109,13 @@ namespace Cli.Commands
 
             try
             {
-                // TODO: fetch api from configuration
-                // TODO: Stop using email endpoint
-                // TODO: Use account number instead
-                // TODO: Use one function for both deposit and withdraw, and move transfer out
-                // Fetch accounts from the API
+
                 var response = httpClient.GetAsync($"{Constants.ApiBaseUrl}/accounts").Result;
 
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorMessage = response.Content.ReadAsStringAsync().Result;
-                    AnsiConsole.MarkupLine($"[red]Failed to fetch accounts: {response.StatusCode} - {response.ReasonPhrase} - {errorMessage}[/]");
+                    CliWidgets.RenderError($"[red]Failed to fetch accounts: {response.StatusCode} - {response.ReasonPhrase} - {errorMessage}[/]");
                     return 1;
                 }
 
@@ -135,7 +124,7 @@ namespace Cli.Commands
 
                 if (accounts == null || !accounts.Any())
                 {
-                    AnsiConsole.MarkupLine("[yellow]No accounts found.[/]");
+                    CliWidgets.RenderWarning("[yellow]No accounts found.[/]");
                     return 1;
                 }
 
@@ -143,12 +132,7 @@ namespace Cli.Commands
                 var accountChoices = accounts.Select(a => $"{a.AccountNumber} - {a.AccountType.Name}").ToList();
 
                 // Prompt user to select an account
-                var selectedAccount = AnsiConsole.Prompt(
-                    new SelectionPrompt<string>()
-                        .Title("Select an [green]account[/]:")
-                        .PageSize(10)
-                        .AddChoices(accountChoices)
-                );
+                var selectedAccount = CliWidgets.RenderSelection("Select an account", accountChoices);
 
                 // Extract AccountId from the selected choice
                 var accountNumber = selectedAccount.Split(" - ")[0];
@@ -156,14 +140,12 @@ namespace Cli.Commands
                 var payload = new
                 {
                     AccountNumber = accountNumber,
-                    Amount = settings.Amount,
-                    Reference = settings.Reference
+                    Amount = amount,
+                    Reference = reference
                 };
 
                 var jsonPayload = JsonSerializer.Serialize(payload);
                 var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-                Console.WriteLine("This is the payload" + jsonPayload);
-                Console.WriteLine("This is the content" + content);
 
                 // Send the deposit/withdraw request
                 var endpoint = this.GetType().Name == nameof(DepositCommand) ? "deposit" : "withdraw";
@@ -171,21 +153,19 @@ namespace Cli.Commands
 
                 if (result.IsSuccessStatusCode)
                 {
-                    Console.WriteLine(result.Content.ReadAsStringAsync().Result);
-                    AnsiConsole.MarkupLine($"[green]{(endpoint == "deposit" ? "Deposited" : "Withdrawn")} Q {settings.Amount:n0} to account {accountNumber} with reference {settings.Reference}[/]");
+                    CliWidgets.RenderPanel($"[green]{(endpoint == "deposit" ? "Deposited" : "Withdrawn")} Q {amount:n0} to account {accountNumber} with reference {reference}[/]");
                     return 0;
                 }
                 else
                 {
-                    Console.WriteLine(result.Content.ReadAsStringAsync().Result);
                     var errorMessage = result.Content.ReadAsStringAsync().Result;
-                    AnsiConsole.MarkupLine($"[red]Failed to {endpoint}: {result.StatusCode} - {result.ReasonPhrase} - {errorMessage}[/]");
+                    CliWidgets.RenderError($"[red]Failed to {endpoint}: {result.StatusCode} - {result.ReasonPhrase} - {errorMessage}[/]");
                     return 1;
                 }
             }
             catch (Exception ex)
             {
-                AnsiConsole.MarkupLine($"[red]An error occurred: {ex.Message}[/]");
+                CliWidgets.RenderError($"[red]An error occurred: {ex.Message}[/]");
                 return 1;
             }
         }
@@ -196,27 +176,28 @@ namespace Cli.Commands
     {
         public class Settings : CommandSettings
         {
-            [CommandOption("-a|--amount <Amount>")]
-            public int Amount { get; set; }
 
-            [CommandOption("-r|--reference <Reference>")]
-            public string Reference { get; set; } = string.Empty;
         }
 
         public override int Execute(CommandContext context, Settings settings)
         {
-            if (string.IsNullOrEmpty(settings.Reference))
+            var reference = CliWidgets.PromptText("Enter a reference for your transaction");
+            if (string.IsNullOrEmpty(reference))
             {
-                AnsiConsole.MarkupLine("[red]Reference must be specified.[/]");
+                CliWidgets.RenderError("[red]Reference must be specified.[/]");
                 return 1;
             }
 
-            if (settings.Amount <= 0)
+            if (!int.TryParse(CliWidgets.PromptText("Transfer Amount"), out int amount))
             {
-                AnsiConsole.MarkupLine("[red]Amount must be greater than zero.[/]");
+                CliWidgets.RenderError("Enter a valid integer");
                 return 1;
             }
-
+            if (amount <= 0)
+            {
+                CliWidgets.RenderError("[red]Amount must be greater than zero.[/]");
+                return 1;
+            }
             using var httpClient = new HttpClient();
 
             // Add the Authorization header with the bearer token
@@ -234,8 +215,7 @@ namespace Cli.Commands
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    Console.WriteLine(response.Content.ReadAsStringAsync().Result);
-                    AnsiConsole.MarkupLine($"[red]Failed to fetch accounts: {response.StatusCode} - {response.ReasonPhrase}[/]");
+                    CliWidgets.RenderError($"[red]Failed to fetch accounts: {response.StatusCode} - {response.ReasonPhrase}[/]");
                     return 1;
                 }
 
@@ -244,7 +224,7 @@ namespace Cli.Commands
 
                 if (accounts == null || !accounts.Any())
                 {
-                    AnsiConsole.MarkupLine("[yellow]No accounts found.[/]");
+                    CliWidgets.RenderWarning("[yellow]No accounts found.[/]");
                     return 1;
                 }
 
@@ -252,12 +232,7 @@ namespace Cli.Commands
                 var accountChoices = accounts.Select(a => $"{a.AccountNumber} - {a.AccountType.Name}").ToList();
 
                 // Prompt user to select an account
-                var selectedAccount = AnsiConsole.Prompt(
-                    new SelectionPrompt<string>()
-                        .Title("Select an [green]account[/]:")
-                        .PageSize(10)
-                        .AddChoices(accountChoices)
-                );
+                var selectedAccount = CliWidgets.RenderSelection("Select an account", accountChoices);
 
                 // Extract AccountId from the selected choice
                 var accountNumber = selectedAccount.Split(" - ")[0];
@@ -265,8 +240,8 @@ namespace Cli.Commands
                 var payload = new
                 {
                     AccountNumber = accountNumber,
-                    Amount = settings.Amount,
-                    Reference = settings.Reference
+                    Amount = amount,
+                    Reference = reference
                 };
 
                 var jsonPayload = JsonSerializer.Serialize(payload);
@@ -278,21 +253,19 @@ namespace Cli.Commands
 
                 if (result.IsSuccessStatusCode)
                 {
-                    Console.WriteLine(result.Content.ReadAsStringAsync().Result);
-                    AnsiConsole.MarkupLine($"[green]{(endpoint == "deposit" ? "Deposited" : "Withdrawn")} Q {settings.Amount:n0} to account {accountNumber} with reference {settings.Reference}[/]");
+                    CliWidgets.RenderPanel($"[green]{(endpoint == "deposit" ? "Deposited" : "Withdrawn")} Q {amount:n0} to account {accountNumber} with reference {reference}[/]");
                     return 0;
                 }
                 else
                 {
                     var errorMessage = result.Content.ReadAsStringAsync().Result;
-                    Console.WriteLine(errorMessage);
-                    AnsiConsole.MarkupLine($"[red]Failed to {endpoint}: {result.StatusCode} - {result.ReasonPhrase} - {errorMessage}[/]");
+                    CliWidgets.RenderError($"[red]Failed to {endpoint}: {result.StatusCode} - {result.ReasonPhrase} - {errorMessage}[/]");
                     return 1;
                 }
             }
             catch (Exception ex)
             {
-                AnsiConsole.MarkupLine($"[red]An error occurred: {ex.Message}[/]");
+                CliWidgets.RenderError($"[red]An error occurred: {ex.Message}[/]");
                 return 1;
             }
         }
@@ -371,11 +344,11 @@ namespace Cli.Commands
                             );
                         }
 
-                        AnsiConsole.Write(table);
+                        CliWidgets.RenderPaginatedTable("Transaction History", table);
                     }
                     else
                     {
-                        AnsiConsole.MarkupLine("[yellow]No transactions found.[/]");
+                        CliWidgets.RenderWarning("[yellow]No transactions found.[/]");
                     }
 
                     return 0;
@@ -383,13 +356,13 @@ namespace Cli.Commands
                 else
                 {
                     var errorMessage = response.Content.ReadAsStringAsync().Result;
-                    AnsiConsole.MarkupLine($"[red]Failed to fetch transactions: {response.StatusCode} - {response.ReasonPhrase} - {errorMessage}[/]");
+                    CliWidgets.RenderError($"[red]Failed to fetch transactions: {response.StatusCode} - {response.ReasonPhrase} - {errorMessage}[/]");
                     return 1;
                 }
             }
             catch (Exception ex)
             {
-                AnsiConsole.MarkupLine($"[red]An error occurred: {ex.Message}[/]");
+                CliWidgets.RenderError($"[red]An error occurred: {ex.Message}[/]");
                 return 1;
             }
         }
@@ -414,11 +387,11 @@ namespace Cli.Commands
                     if (transactionTypes != null && transactionTypes.Any())
                     {
                         var tableBuilder = new TableBuilder<TransactionType>(transactionTypes);
-                        AnsiConsole.Write(tableBuilder.Table);
+                        CliWidgets.RenderTable("Transaction Types", tableBuilder.Table);
                     }
                     else
                     {
-                        AnsiConsole.MarkupLine("[yellow]No transaction types found.[/]");
+                        CliWidgets.RenderWarning("[yellow]No transaction types found.[/]");
                     }
 
                     return 0;
@@ -426,13 +399,13 @@ namespace Cli.Commands
                 else
                 {
                     var errorMessage = response.Content.ReadAsStringAsync().Result;
-                    AnsiConsole.MarkupLine($"[red]Failed to fetch transaction types: {response.StatusCode} - {response.ReasonPhrase} - {errorMessage}[/]");
+                    CliWidgets.RenderError($"[red]Failed to fetch transaction types: {response.StatusCode} - {response.ReasonPhrase} - {errorMessage}[/]");
                     return 1;
                 }
             }
             catch (Exception ex)
             {
-                AnsiConsole.MarkupLine($"[red]An error occurred: {ex.Message}[/]");
+                CliWidgets.RenderError($"[red]An error occurred: {ex.Message}[/]");
                 return 1;
             }
         }
@@ -457,24 +430,27 @@ namespace Cli.Commands
 
         public override int Execute(CommandContext context, Settings settings)
         {
-            if (string.IsNullOrEmpty(settings.StartDate))
+            var startDateString = CliWidgets.PromptText("Statement start date in the format YYYY-MM-DD");
+            if (string.IsNullOrEmpty(startDateString))
             {
-                AnsiConsole.MarkupLine("[red]Start date is required.[/]");
+                CliWidgets.RenderError("[red]Start date is required.[/]");
                 return 1;
             }
 
-            if (!DateTime.TryParseExact(settings.StartDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var startDate))
+            if (!DateTime.TryParseExact(startDateString, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var startDate))
             {
-                AnsiConsole.MarkupLine("[red]Invalid start date format. Use yyyy-MM-dd.[/]");
+                CliWidgets.RenderError("[red]Invalid start date format. Use yyyy-MM-dd.[/]");
                 return 1;
             }
 
             DateTime? endDate = null;
-            if (!string.IsNullOrEmpty(settings.EndDate))
+            var endDateString = CliWidgets.PromptText("Statement end date in the format YYYY-MM-DD");
+
+            if (!string.IsNullOrEmpty(endDateString))
             {
-                if (!DateTime.TryParseExact(settings.EndDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedEndDate))
+                if (!DateTime.TryParseExact(endDateString, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedEndDate))
                 {
-                    AnsiConsole.MarkupLine("[red]Invalid end date format. Use yyyy-MM-dd.[/]");
+                    CliWidgets.RenderError("[red]Invalid end date format. Use yyyy-MM-dd.[/]");
                     return 1;
                 }
                 endDate = parsedEndDate;
@@ -493,10 +469,8 @@ namespace Cli.Commands
                     var jsonResponse = response.Content.ReadAsStringAsync().Result;
                     var transactions = JsonSerializer.Deserialize<List<Transaction>>(jsonResponse);
 
-                    Console.WriteLine("This is the response" + jsonResponse);
                     if (transactions != null && transactions.Any())
                     {
-                        Console.WriteLine(transactions);
                         // Filter transactions by date range
                         transactions = transactions
                             .Where(t => t.CreatedAt >= startDate && (!endDate.HasValue || t.CreatedAt <= endDate.Value))
@@ -512,7 +486,7 @@ namespace Cli.Commands
 
                         if (!transactions.Any())
                         {
-                            AnsiConsole.MarkupLine("[yellow]No transactions found for the specified filters.[/]");
+                            CliWidgets.RenderWarning("[yellow]No transactions found for the specified filters.[/]");
                             return 0;
                         }
 
@@ -547,7 +521,7 @@ namespace Cli.Commands
                             );
                         }
 
-                        AnsiConsole.Write(table);
+                        CliWidgets.RenderPaginatedTable("Transactions", table);
 
                         // Save to PDF if output file is specified
                         if (!string.IsNullOrEmpty(settings.OutputFile))
@@ -575,12 +549,12 @@ namespace Cli.Commands
                             }
 
                             pdfDocument.Save(settings.OutputFile);
-                            AnsiConsole.MarkupLine($"[green]Statement saved to {settings.OutputFile}[/]");
+                            CliWidgets.RenderPanel($"[green]Statement saved to {settings.OutputFile}[/]");
                         }
                     }
                     else
                     {
-                        AnsiConsole.MarkupLine("[yellow]No transactions found.[/]");
+                        CliWidgets.RenderWarning("[yellow]No transactions found.[/]");
                     }
 
                     return 0;
@@ -588,13 +562,13 @@ namespace Cli.Commands
                 else
                 {
                     var errorMessage = response.Content.ReadAsStringAsync().Result;
-                    AnsiConsole.MarkupLine($"[red]Failed to fetch transactions: {response.StatusCode} - {response.ReasonPhrase} - {errorMessage}[/]");
+                    CliWidgets.RenderError($"[red]Failed to fetch transactions: {response.StatusCode} - {response.ReasonPhrase} - {errorMessage}[/]");
                     return 1;
                 }
             }
             catch (Exception ex)
             {
-                AnsiConsole.MarkupLine($"[red]An error occurred: {ex.Message}[/]");
+                CliWidgets.RenderError($"[red]An error occurred: {ex.Message}[/]");
                 return 1;
             }
         }
