@@ -1,16 +1,17 @@
-using System.Text;
 using Api.DTOs;
 using Api.Helpers;
 using Api.Models;
 using Api.Repositories;
 using Api.Services;
 using Api.Shared;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers
 {
-    [Route("accounts")]
+    [Authorize]
     [ApiController]
+    [Route("accounts")]
     public class AccountsController : ControllerBase
     {
         private readonly IAccountService _accountService;

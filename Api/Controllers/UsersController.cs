@@ -1,10 +1,12 @@
 using Api.Models;
 using Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers
 {
 
+    [Authorize]
     [ApiController]
     [Route("users")]
     public class UsersController : ControllerBase

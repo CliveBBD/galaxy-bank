@@ -1,10 +1,11 @@
 using Api.Models;
 using Api.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers
 {
-
+    [Authorize]
     [ApiController]
     [Route("account_types")]
     public class AccountTypesController : ControllerBase

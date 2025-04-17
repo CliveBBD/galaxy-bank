@@ -1,10 +1,16 @@
 using Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Api.Shared;
+<<<<<<< Updated upstream
 using Api.DTOs;
+=======
+using Microsoft.AspNetCore.Authorization;
+>>>>>>> Stashed changes
 
 namespace Api.Controllers
 {
+    [Authorize]
+    [ApiController]
     [Route("transactions")]
     public class TransactionsController(ITransactionService transactionService, IUserService userService) : Controller
     {

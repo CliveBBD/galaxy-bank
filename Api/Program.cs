@@ -8,6 +8,8 @@ using Api.Services;
 using Npgsql;
 using Api.Shared;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 
 public class Program
 {
@@ -28,6 +30,22 @@ public class Program
 
     public static void ConfigureServices(IServiceCollection services)
     {
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.Authority = "https://accounts.google.com";
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidIssuer = "https://accounts.google.com",
+                ValidateAudience = true,
+                ValidAudiences = new[] {"438794123703-9aqbuhmv0asuhr074hqd5o2lf7c7rpap.apps.googleusercontent.com"}, // Important!
+                ValidateLifetime = true
+            };
+        });
+
+        services.AddAuthorization();
+        services.AddCors();
         services.AddHttpClient<GoogleAuthService>();
         services.AddSingleton<TokenService>();
         services.AddScoped<GoogleAuthService>();
@@ -37,7 +55,7 @@ public class Program
         services.AddControllers().AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-            options.JsonSerializerOptions.PropertyNamingPolicy = null; // Preserve original property names
+            options.JsonSerializerOptions.PropertyNamingPolicy = null;
         });
         services.AddOpenApi();
         services.AddScoped<IDbConnection>(sp =>
@@ -52,6 +70,7 @@ public class Program
 
             return new NpgsqlConnection("Host=localhost,Port=5432;Database=galaxy-bank-local;Username=postgres;Password=postgres;");
         });
+        
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IAccountRepository, AccountRepository>();
         services.AddScoped<IAccountTypeRepository, AccountTypeRepository>();
@@ -89,10 +108,12 @@ public class Program
             });
         }
 
-        app.UseCors();
+        app.UseRouting();
+        app.UseAuthentication();
         app.UseAuthorization();
+        app.UseCors();
         app.MapControllers();
-
+        
         return app;
     }
     
