@@ -5,6 +5,7 @@ using Cli.Services;
 using Google.Apis.Auth;
 using Newtonsoft.Json;
 using Namotion.Reflection;
+using Cli.Helpers;
 
 namespace Cli.Commands
 {
@@ -17,11 +18,10 @@ namespace Cli.Commands
                 var isTokenValid = await IsTokenValid(User.Token);
                 if (isTokenValid)
                 {
-                    Console.WriteLine("Already authenticated, proceed.");
+                    CliWidgets.RenderWarning("Already authenticated, proceed.");
                     return 0;
                 }
                 var authService = new AuthService();
-                Console.WriteLine("Initiating Google authentication...");
 
                 var result = await authService.LoginAsync();
                 var payload = await GoogleJsonWebSignature.ValidateAsync(result.Token.IdToken);
@@ -42,18 +42,19 @@ namespace Cli.Commands
 
                 if (result.Success)
                 {
-                    Console.WriteLine("Authentication successful!");
+                    CliWidgets.RenderPanel("Authentication successful!");
                 }
                 else
                 {
-                    Console.WriteLine("Authentication failed or timed out.");
+                    CliWidgets.RenderError("Authentication failed or timed out.");
                 }
 
                 return 0;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error: {ex.Message}");
+
+                CliWidgets.RenderError($"Error: {ex.Message}");
                 return 1;
             }
         }
@@ -94,14 +95,11 @@ namespace Cli.Commands
         {
             if (User.Username.Length > 0)
             {
-                AnsiConsole.MarkupLine($"[green]You are logged in as {User.Username}[/]");
-                AnsiConsole.MarkupLine($"[green]Email: {User.Email}[/]");
-                AnsiConsole.MarkupLine($"[green]Google ID: {User.GoogleId}[/]");
-                AnsiConsole.MarkupLine($"[green]Role: {User.Role}[/]");
+                CliWidgets.RenderPanel($"You are logged in as {User.Username}\nEmail: {User.Email}\nGoogle ID: {User.GoogleId}", "whoami");
             }
             else
             {
-                AnsiConsole.MarkupLine($"[red]You are not logged in[/]");
+                CliWidgets.RenderError("You are not logged in");
             }
             return 0;
         }

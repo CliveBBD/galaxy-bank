@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using Cli.Helpers;
 using Cli.Models;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -26,8 +27,8 @@ namespace Cli.Commands
             try
             {
                 string endpoint = !string.IsNullOrWhiteSpace(settings.AccountNumber)
-                    ? $"https://localhost:7059/accounts/{settings.AccountNumber}"
-                    : "https://localhost:7059/accounts";
+                    ? $"{Constants.ApiBaseUrl}/accounts/{settings.AccountNumber}"
+                    : $"{Constants.ApiBaseUrl}/accounts";
 
                 var response = httpClient.GetAsync(endpoint).Result;
 
@@ -71,11 +72,11 @@ namespace Cli.Commands
                             );
                         }
 
-                        AnsiConsole.Write(table);
+                        CliWidgets.RenderTable("Accounts", table);
                     }
                     else
                     {
-                        AnsiConsole.MarkupLine("[yellow]No accounts found.[/]");
+                        CliWidgets.RenderWarning("[yellow]No accounts found.[/]");
                     }
 
                     return 0;
@@ -83,16 +84,15 @@ namespace Cli.Commands
                 else
                 {
                     var errorMessage = response.Content.ReadAsStringAsync().Result;
-                    AnsiConsole.MarkupLine($"[red]Failed to fetch accounts: {response.StatusCode} - {response.ReasonPhrase} - {errorMessage}[/]");
+                    CliWidgets.RenderError($"[red]Failed to fetch accounts: {response.StatusCode} - {response.ReasonPhrase} - {errorMessage}[/]");
                     return 1;
                 }
             }
             catch (Exception ex)
             {
-                AnsiConsole.MarkupLine($"[red]An error occurred: {ex.Message}[/]");
+                CliWidgets.RenderError($"[red]An error occurred: {ex.Message}[/]");
                 return 1;
             }
-
 
         }
     }
@@ -114,15 +114,15 @@ namespace Cli.Commands
             try
             {
                 string endpoint = !string.IsNullOrWhiteSpace(settings.AccountNumber)
-                    ? $"https://localhost:7059/accounts/{settings.AccountNumber}"
-                    : "https://localhost:7059/accounts";
+                    ? $"{Constants.ApiBaseUrl}/accounts/{settings.AccountNumber}"
+                    : $"{Constants.ApiBaseUrl}/accounts";
 
                 var response = httpClient.GetAsync(endpoint).Result;
 
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorMessage = response.Content.ReadAsStringAsync().Result;
-                    AnsiConsole.MarkupLine($"[red]Failed to fetch accounts: {response.StatusCode} - {response.ReasonPhrase} - {errorMessage}[/]");
+                    CliWidgets.RenderError($"[red]Failed to fetch accounts: {response.StatusCode} - {response.ReasonPhrase} - {errorMessage}[/]");
                     return 1;
                 }
 
@@ -154,14 +154,14 @@ namespace Cli.Commands
                 }
                 else
                 {
-                    AnsiConsole.MarkupLine("[yellow]No accounts found.[/]");
+                    CliWidgets.RenderWarning("[yellow]No accounts found.[/]");
                 }
 
                 return 0;
             }
             catch (Exception ex)
             {
-                AnsiConsole.MarkupLine($"[red]An error occurred: {ex.Message}[/]");
+                CliWidgets.RenderError($"[red]An error occurred: {ex.Message}[/]");
                 return 1;
             }
 
@@ -200,21 +200,20 @@ namespace Cli.Commands
     {
         public class Settings : CommandSettings
         {
-            [CommandOption("-a|--account-type <AccountTypeName>")]
-            public string AccountTypeName { get; set; }
-
         }
         public override int Execute(CommandContext context, Settings settings)
         {
-            if (string.IsNullOrEmpty(settings.AccountTypeName))
+
+            var accountType = CliWidgets.RenderSelection("Select an account type", new List<string> { "checking", "savings", "credit_card" });
+            if (string.IsNullOrEmpty(accountType))
             {
-                AnsiConsole.MarkupLine("[red]Account type must be specified, valid account types are 'checking', 'savings', and 'credit_card'.[/]");
+                CliWidgets.RenderError("[red]Account type must be specified, valid account types are 'checking', 'savings', and 'credit_card'.[/]");
                 return 1;
             }
 
             var accountCreationPayload = new
             {
-                AccountTypeName = settings.AccountTypeName
+                AccountTypeName = accountType
             };
 
             var jsonPayload = System.Text.Json.JsonSerializer.Serialize(accountCreationPayload);
@@ -225,24 +224,23 @@ namespace Cli.Commands
 
             try
             {
-                AnsiConsole.MarkupLine("[yellow]Creating an account...[/]");
-                var response = httpClient.PostAsync("https://localhost:7059/accounts", content).Result;
+                var response = httpClient.PostAsync($"{Constants.ApiBaseUrl}/accounts", content).Result;
 
                 if (response.IsSuccessStatusCode)
                 {
-                    AnsiConsole.MarkupLine($"[green]Successfully created a {settings.AccountTypeName} account[/]");
+                    CliWidgets.RenderPanel($"[green]Successfully created a {accountType} account[/]");
                     return 0;
                 }
                 else
                 {
                     var errorMessage = response.Content.ReadAsStringAsync().Result;
-                    AnsiConsole.MarkupLine($"[red]Failed to created an account, please make sure that you are passing 'checking', 'savings', or 'credit_card' as account type[/]");
+                    CliWidgets.RenderError($"[red]Failed to created an account, please make sure that you are passing 'checking', 'savings', or 'credit_card' as account type[/]");
                     return 1;
                 }
             }
             catch (Exception ex)
             {
-                AnsiConsole.MarkupLine($"[red]An error occurred: {ex.Message}[/]");
+                CliWidgets.RenderError($"[red]An error occurred: {ex.Message}[/]");
                 return 1;
             }
         }
@@ -274,7 +272,7 @@ namespace Cli.Commands
             table.AddRow("[green]Checking Account[/]", $"[yellow]Q {balance}[/]");
 
             // Render the table to the console
-            AnsiConsole.Write(table);
+            CliWidgets.RenderTable("Account balance", table);
 
             return 0;
         }

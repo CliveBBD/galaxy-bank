@@ -2,6 +2,7 @@ using Newtonsoft.Json;
 using System.Diagnostics;
 using Cli.Models;
 using Microsoft.Extensions.Configuration;
+using Cli.Helpers;
 
 namespace Cli.Services;
  
@@ -18,7 +19,7 @@ public class AuthService
         var config = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true).Build();
-        _apiBaseUrl = config["ApiBaseUrl"] ?? "";
+        _apiBaseUrl = Constants.ApiBaseUrl;
     }
  
     public async Task<LoginResult> LoginAsync()
@@ -48,8 +49,8 @@ public class AuthService
         if(loginResponse != null)
         {
             OpenBrowser(loginResponse.AuthUrl);
-            Console.WriteLine("A browser window has been opened. Please complete the authentication process there.");
-            Console.WriteLine("Waiting for authentication to complete...");
+            CliWidgets.RenderWarning("A browser window has been opened. Please complete the authentication process there.\nWaiting for authentication to complete...");
+
             token = await PollForTokenAsync(loginResponse.SessionId);
         }
     
