@@ -25,8 +25,8 @@ namespace Cli.Commands
             try
             {
                 string endpoint = !string.IsNullOrWhiteSpace(settings.AccountNumber)
-                    ? $"https://localhost:7059/accounts/{settings.AccountNumber}"
-                    : "https://localhost:7059/accounts";
+                    ? $"{Constants.ApiBaseUrl}/accounts/{settings.AccountNumber}"
+                    : $"{Constants.ApiBaseUrl}/accounts";
 
                 var response = httpClient.GetAsync(endpoint).Result;
 
@@ -112,8 +112,8 @@ namespace Cli.Commands
             try
             {
                 string endpoint = !string.IsNullOrWhiteSpace(settings.AccountNumber)
-                    ? $"https://localhost:7059/accounts/{settings.AccountNumber}"
-                    : "https://localhost:7059/accounts";
+                    ? $"{Constants.ApiBaseUrl}/accounts/{settings.AccountNumber}"
+                    : $"{Constants.ApiBaseUrl}/accounts";
 
                 var response = httpClient.GetAsync(endpoint).Result;
 
@@ -222,7 +222,7 @@ namespace Cli.Commands
 
             try
             {
-                var response = httpClient.PostAsync("https://localhost:7059/accounts", content).Result;
+                var response = httpClient.PostAsync($"{Constants.ApiBaseUrl}/accounts", content).Result;
 
                 if (response.IsSuccessStatusCode)
                 {

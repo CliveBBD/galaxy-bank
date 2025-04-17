@@ -17,7 +17,7 @@ public class AuthService
         var config = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true).Build();
-        _apiBaseUrl = "https://localhost:7059";
+        _apiBaseUrl = Constants.ApiBaseUrl;
     }
  
     public async Task<LoginResult> LoginAsync()
