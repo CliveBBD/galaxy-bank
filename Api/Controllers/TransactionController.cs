@@ -1,11 +1,8 @@
 using Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Api.Shared;
-<<<<<<< Updated upstream
 using Api.DTOs;
-=======
 using Microsoft.AspNetCore.Authorization;
->>>>>>> Stashed changes
 
 namespace Api.Controllers
 {

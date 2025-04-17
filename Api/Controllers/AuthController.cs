@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Api.Controllers
 {
-    [Authorize]
     [ApiController]
     public class AccountController : ControllerBase
     {
@@ -20,7 +19,6 @@ namespace Api.Controllers
             _tokenService = tokenService;
         }
 
-        [AllowAnonymous]
         [Route("signin-google")]
         public async Task<IActionResult> GoogleLogin([FromQuery] string code, [FromQuery] string state)
         {
@@ -29,7 +27,6 @@ namespace Api.Controllers
             return Ok(token);
         }
 
-        [AllowAnonymous]
         [Route("login")]
         public IActionResult Login()
         {
@@ -48,7 +45,6 @@ namespace Api.Controllers
             });
         }
 
-        [AllowAnonymous]
         [HttpGet("token/{sessionId}")]
         public IActionResult GetToken(string sessionId)
         {
@@ -63,7 +59,6 @@ namespace Api.Controllers
             return Ok(token);
         }
 
-        [Authorize]
         [HttpPost("logout")]
         public IActionResult LogOut([FromForm] string sessionId)
         {
