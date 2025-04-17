@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using Api.Models;
 using Newtonsoft.Json;
 using Namotion.Reflection;
+using System.Text.Json;
 
 namespace Api.Services;
  
@@ -34,7 +35,7 @@ public class GoogleAuthService
 
         _clientId = Environment.GetEnvironmentVariable("GoogleClientId") ?? _configuration["Authentication:Google:ClientId"];
         _clientSecret = Environment.GetEnvironmentVariable("GoogleClientSecret") ?? _configuration["Authentication:Google:ClientSecret"];
-        _redirectUri = $"http://galaxybank-api-load-balancer-849035789.af-south-1.elb.amazonaws.com{Environment.GetEnvironmentVariable("GoogleRedirectUri")}" ?? _configuration["Authentication:Google:RedirectUri"];
+        _redirectUri = $"https://d11dblihl6n2a9.cloudfront.net{GetKey(Environment.GetEnvironmentVariable("GoogleRedirectUri"))}" ?? _configuration["Authentication:Google:RedirectUri"];
         _scopes = [
             "https://www.googleapis.com/auth/userinfo.email",
             "https://www.googleapis.com/auth/userinfo.profile"
@@ -44,7 +45,19 @@ public class GoogleAuthService
         TokenEndpoint = _configuration["Authentication:TokenEndpoint"];
         TokenInfoEndpoint = _configuration["Authentication:TokenInfoEndpoint"];
     }
- 
+
+    private static string GetKey(string json)
+    {
+        using (JsonDocument doc = JsonDocument.Parse(json))
+        {
+            foreach (var property in doc.RootElement.EnumerateObject())
+            {
+                return property.Name; // Return the first (and only) key
+            }
+        }
+        return string.Empty; // In case the JSON is empty
+    }
+
     public string GenerateAuthUrl(string sessionId)
     {
         // Generate a state parameter to prevent CSRF
