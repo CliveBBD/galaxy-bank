@@ -48,15 +48,15 @@ resource "aws_ecs_task_definition" "api" {
         },
         {
           name      = "GoogleClientId"
-          valueFrom = data.aws_secretsmanager_secret_version.google_client_id.secret_string
+          valueFrom = jsondecode(data.aws_secretsmanager_secret_version.google_client_id.secret_string)
         },
         {
           name      = "GoogleClientSecret"
-          valueFrom = data.aws_secretsmanager_secret_version.google_client_secret.secret_string
+          valueFrom = jsondecode(data.aws_secretsmanager_secret_version.google_client_secret.secret_string)
         },
         {
           name      = "GoogleRedirectUri"
-          valueFrom = data.aws_secretsmanager_secret_version.google_redirect_uri.secret_string
+          valueFrom = jsondecode(data.aws_secretsmanager_secret_version.google_redirect_uri.secret_string)
         }
       ]
       logConfiguration = {

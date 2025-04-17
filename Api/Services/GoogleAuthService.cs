@@ -34,7 +34,7 @@ public class GoogleAuthService
 
         _clientId = Environment.GetEnvironmentVariable("GoogleClientId") ?? _configuration["Authentication:Google:ClientId"];
         _clientSecret = Environment.GetEnvironmentVariable("GoogleClientSecret") ?? _configuration["Authentication:Google:ClientSecret"];
-        _redirectUri = $"http://galaxybank-api-load-balancer-849035789.af-south-1.elb.amazonaws.com{Environment.GetEnvironmentVariable("GoogleRedirectUri")}" ?? _configuration["Authentication:Google:RedirectUri"];
+        _redirectUri = Environment.GetEnvironmentVariable("GoogleRedirectUri") ?? _configuration["Authentication:Google:RedirectUri"];
         _scopes = [
             "https://www.googleapis.com/auth/userinfo.email",
             "https://www.googleapis.com/auth/userinfo.profile"
