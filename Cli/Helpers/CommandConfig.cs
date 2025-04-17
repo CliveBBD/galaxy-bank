@@ -20,7 +20,6 @@ namespace Cli.Helpers
             new() { Name = "show-dispute-history", Description = "Retrieve a dispute by its ID", CommandType = typeof(GetDisputeHistoryByIdCommand) },
             new() { Name = "review-dispute", Description = "Review an existing dispute", CommandType = typeof(ResolveDisputeCommand) },
             new() { Name = "transfer", Description = "Transfer money between accounts", CommandType = typeof(TransferCommand) },
-            new() { Name = "show-balance", Description = "Display the current account balance", CommandType = typeof(BalanceCommand) },
             new() { Name = "show-accounts", Description = "List all accounts", CommandType = typeof(ListAccountsCommand) },
             new() { Name = "create-account", Description = "Create a new account", CommandType = typeof(CreateAccountCommand) },
             new() {Name = "deposit", Description = "Deposit money into an account", CommandType = typeof(DepositCommand) },
