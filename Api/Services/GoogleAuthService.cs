@@ -4,6 +4,8 @@ using Api.Models;
 using Newtonsoft.Json;
 using Api.Repositories;
 using Api.Shared;
+using Namotion.Reflection;
+using System.Text.Json;
 
 namespace Api.Services;
  
@@ -31,9 +33,11 @@ public class GoogleAuthService
         _configuration = configuration;
         _httpClient = httpClient;
 
-        _clientId = Environment.GetEnvironmentVariable("GoogleClientId") ?? _configuration["Authentication:Google:ClientId"];
-        _clientSecret = Environment.GetEnvironmentVariable("GoogleClientSecret") ?? _configuration["Authentication:Google:ClientSecret"];
-        _redirectUri = $"http://galaxybank-api-load-balancer-849035789.af-south-1.elb.amazonaws.com{Environment.GetEnvironmentVariable("GoogleRedirectUri")}" ?? _configuration["Authentication:Google:RedirectUri"];
+
+        _clientId = GetValueByKey(Environment.GetEnvironmentVariable("GoogleClientId") ?? _configuration["Authentication:Google:ClientId"], "GoogleClientId");
+        _clientSecret = GetValueByKey(Environment.GetEnvironmentVariable("GoogleClientSecret") ?? _configuration["Authentication:Google:ClientSecret"], "GoogleClientSecret");
+
+        _redirectUri = $"https://d11dblihl6n2a9.cloudfront.net/signin-google" ?? _configuration["Authentication:Google:RedirectUri"];
         _scopes = [
             "https://www.googleapis.com/auth/userinfo.email",
             "https://www.googleapis.com/auth/userinfo.profile"
@@ -42,7 +46,27 @@ public class GoogleAuthService
         AuthorizationEndpoint = _configuration["Authentication:AuthorizationEndpoint"];
         TokenEndpoint = _configuration["Authentication:TokenEndpoint"];
     }
- 
+
+    private static string GetValueByKey(string jsonString, string key)
+    {
+        try
+        {
+            using JsonDocument doc = JsonDocument.Parse(jsonString);
+            if (doc.RootElement.TryGetProperty(key, out JsonElement value))
+            {
+                return value.ToString();
+            }
+            else
+            {
+                return null; // Key not found
+            }
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return null; // Invalid JSON
+        }
+    }
+
     public string GenerateAuthUrl(string sessionId)
     {
         // Generate a state parameter to prevent CSRF
