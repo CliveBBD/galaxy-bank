@@ -16,6 +16,7 @@ namespace Api.Repositories
         {
             _dbConnection = dbConnection;
         }
+
         public async Task<(int TransactionResult, string ReceiverName, string ReceiverEmail)> TransferAsync(TransferRequest transferRequest, string googleId)
         {
             if (transferRequest.Amount <= 0)
@@ -50,15 +51,15 @@ namespace Api.Repositories
 
                 int senderUserId = senderUser.UserId;
 
-                // Step 2: Verify that the sender's account ID belongs to the user
+                // Step 2: Verify that the sender's account number belongs to the user
                 string verifyAccountOwnershipQuery = """
                 SELECT COUNT(1)
                 FROM accounts
-                WHERE account_id = @AccountId AND user_id = @UserId;
+                WHERE account_number = @AccountNumber AND user_id = @UserId;
                 """;
                 int ownershipCount = await _dbConnection.ExecuteScalarAsync<int>(
                     verifyAccountOwnershipQuery,
-                    new { AccountId = transferRequest.FromAccountID, UserId = senderUserId },
+                    new { AccountNumber = transferRequest.FromAccountNumber, UserId = senderUserId },
                     transaction: transaction
                 );
 
@@ -67,15 +68,15 @@ namespace Api.Repositories
                     throw new InvalidOperationException("The sender's account does not belong to the user.");
                 }
 
-                // Step 3: Retrieve the sender's current balance
-                string senderBalanceQuery = """
-                SELECT balance AS "CurrentBalance"
+                // Step 3: Retrieve the sender's current balance and account ID
+                string senderAccountQuery = """
+                SELECT account_id AS "AccountId", balance AS "CurrentBalance"
                 FROM accounts
-                WHERE account_id = @AccountId;
+                WHERE account_number = @AccountNumber;
                 """;
                 var senderAccount = await _dbConnection.QuerySingleOrDefaultAsync<dynamic>(
-                    senderBalanceQuery,
-                    new { AccountId = transferRequest.FromAccountID },
+                    senderAccountQuery,
+                    new { AccountNumber = transferRequest.FromAccountNumber },
                     transaction: transaction
                 );
 
@@ -84,6 +85,7 @@ namespace Api.Repositories
                     throw new InvalidOperationException("No account found for the sender.");
                 }
 
+                int senderAccountId = senderAccount.AccountId;
                 int senderCurrentBalance = senderAccount.CurrentBalance;
 
                 // Step 4: Validate that the transfer amount does not exceed the sender's current balance
@@ -92,18 +94,34 @@ namespace Api.Repositories
                     throw new InvalidOperationException("Insufficient funds. Transfer amount exceeds the sender's current balance.");
                 }
 
-                // Step 5: Use the receiver's account ID directly from the request
-                int receiverAccountId = transferRequest.ToAccountID;
+                // Step 5: Retrieve the receiver's account ID
+                string receiverAccountQuery = """
+                SELECT account_id AS "AccountId"
+                FROM accounts
+                WHERE account_number = @AccountNumber;
+                """;
+                var receiverAccount = await _dbConnection.QuerySingleOrDefaultAsync<dynamic>(
+                    receiverAccountQuery,
+                    new { AccountNumber = transferRequest.ToAccountNumber },
+                    transaction: transaction
+                );
+
+                if (receiverAccount == null)
+                {
+                    throw new InvalidOperationException("No account found for the receiver.");
+                }
+
+                int receiverAccountId = receiverAccount.AccountId;
 
                 // Step 6: Deduct the amount from the sender's account
                 string deductBalanceQuery = """
                 UPDATE accounts
                 SET balance = balance - @Amount
-                WHERE account_id = @AccountId AND balance >= @Amount;
+                WHERE account_number = @AccountNumber AND balance >= @Amount;
                 """;
                 int deductResult = await _dbConnection.ExecuteAsync(
                     deductBalanceQuery,
-                    new { Amount = transferRequest.Amount, AccountId = transferRequest.FromAccountID },
+                    new { Amount = transferRequest.Amount, AccountNumber = transferRequest.FromAccountNumber },
                     transaction: transaction
                 );
 
@@ -116,11 +134,11 @@ namespace Api.Repositories
                 string addBalanceQuery = """
                 UPDATE accounts
                 SET balance = balance + @Amount
-                WHERE account_id = @AccountId;
+                WHERE account_number = @AccountNumber;
                 """;
                 int addResult = await _dbConnection.ExecuteAsync(
                     addBalanceQuery,
-                    new { Amount = transferRequest.Amount, AccountId = receiverAccountId },
+                    new { Amount = transferRequest.Amount, AccountNumber = transferRequest.ToAccountNumber },
                     transaction: transaction
                 );
 
@@ -150,9 +168,9 @@ namespace Api.Repositories
                 """;
                 var senderTransactionParameters = new
                 {
-                    AccountId = transferRequest.FromAccountID,
+                    AccountId = senderAccountId,
                     TransactionReferenceId = transactionReferenceId,
-                    TransactionTypeId = 3, // Assuming 1 represents "Transfer" in the transaction types table
+                    TransactionTypeId = 3, // Assuming 3 represents "Transfer" in the transaction types table
                     Amount = transferRequest.Amount,
                     BalanceAfterTransaction = senderCurrentBalance - transferRequest.Amount,
                     CreatedAt = DateTime.UtcNow,
@@ -166,26 +184,7 @@ namespace Api.Repositories
                     throw new InvalidOperationException("Failed to insert the sender's transaction record.");
                 }
 
-                // Step 10: Retrieve the receiver's current balance
-                string receiverBalanceQuery = """
-                SELECT balance AS "CurrentBalance"
-                FROM accounts
-                WHERE account_id = @AccountId;
-                """;
-                var receiverAccount = await _dbConnection.QuerySingleOrDefaultAsync<dynamic>(
-                    receiverBalanceQuery,
-                    new { AccountId = receiverAccountId },
-                    transaction: transaction
-                );
-
-                if (receiverAccount == null)
-                {
-                    throw new InvalidOperationException("No account found for the receiver.");
-                }
-
-                int receiverCurrentBalance = receiverAccount.CurrentBalance;
-
-                // Step 11: Insert the receiver's transaction record
+                // Step 10: Insert the receiver's transaction record
                 string receiverTransactionQuery = """
                 INSERT INTO transactions (account_id, transaction_reference_id, transaction_type_id, amount, balance_after_transaction, created_at, reference)
                 VALUES (@AccountId, @TransactionReferenceId, @TransactionTypeId, @Amount, @BalanceAfterTransaction, @CreatedAt, @Reference);
@@ -194,9 +193,9 @@ namespace Api.Repositories
                 {
                     AccountId = receiverAccountId,
                     TransactionReferenceId = transactionReferenceId,
-                    TransactionTypeId = 4, // Assuming 2 represents "Receive" in the transaction types table
+                    TransactionTypeId = 4, // Assuming 4 represents "Receive" in the transaction types table
                     Amount = transferRequest.Amount,
-                    BalanceAfterTransaction = receiverCurrentBalance + transferRequest.Amount,
+                    BalanceAfterTransaction = receiverAccount.CurrentBalance + transferRequest.Amount,
                     CreatedAt = DateTime.UtcNow,
                     Reference = transferRequest.ToReference
                 };
@@ -208,16 +207,16 @@ namespace Api.Repositories
                     throw new InvalidOperationException("Failed to insert the receiver's transaction record.");
                 }
 
-                // Step 12: Retrieve the receiver's name and email
+                // Step 11: Retrieve the receiver's name and email
                 string receiverDetailsQuery = """
                 SELECT u.username AS "Name", u.email AS "Email"
                 FROM users u
                 INNER JOIN accounts a ON u.user_id = a.user_id
-                WHERE a.account_id = @AccountId;
+                WHERE a.account_number = @AccountNumber;
                 """;
                 var receiverDetails = await _dbConnection.QuerySingleOrDefaultAsync<dynamic>(
                     receiverDetailsQuery,
-                    new { AccountId = receiverAccountId },
+                    new { AccountNumber = transferRequest.ToAccountNumber },
                     transaction: transaction
                 );
 

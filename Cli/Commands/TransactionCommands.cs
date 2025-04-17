@@ -47,8 +47,8 @@ namespace Cli.Commands
 
             var transferPayload = new
             {
-                FromAccountID = settings.FromAccount,
-                ToAccountID = settings.ToAccount,
+                FromAccountNumber = settings.FromAccount,
+                ToAccountNumber = settings.ToAccount,
                 Amount = settings.Amount,
                 FromReference = fromReference,
                 ToReference = toReference
@@ -61,7 +61,7 @@ namespace Cli.Commands
             httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", User.Token); // Replace with the actual token
             try
             {
-                var response = httpClient.PostAsync("https://localhost:7059/transfer", content).Result;
+                var response = httpClient.PostAsync($"{Constants.ApiBaseUrl}/transfer", content).Result;
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -121,12 +121,12 @@ namespace Cli.Commands
                 // TODO: Use account number instead
                 // TODO: Use one function for both deposit and withdraw, and move transfer out
                 // Fetch accounts from the API
-                var userEmail = "user_1@example.com"; // Replace with the actual user email
-                var response = httpClient.GetAsync($"https://localhost:7059/accounts/user/{userEmail}").Result;
+                var response = httpClient.GetAsync($"{Constants.ApiBaseUrl}/accounts").Result;
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    AnsiConsole.MarkupLine($"[red]Failed to fetch accounts: {response.StatusCode} - {response.ReasonPhrase}[/]");
+                    var errorMessage = response.Content.ReadAsStringAsync().Result;
+                    AnsiConsole.MarkupLine($"[red]Failed to fetch accounts: {response.StatusCode} - {response.ReasonPhrase} - {errorMessage}[/]");
                     return 1;
                 }
 
@@ -140,7 +140,7 @@ namespace Cli.Commands
                 }
 
                 // Prepare account choices
-                var accountChoices = accounts.Select(a => $"{a.AccountId} - {a.AccountType.Name}").ToList();
+                var accountChoices = accounts.Select(a => $"{a.AccountNumber} - {a.AccountType.Name}").ToList();
 
                 // Prompt user to select an account
                 var selectedAccount = AnsiConsole.Prompt(
@@ -151,29 +151,33 @@ namespace Cli.Commands
                 );
 
                 // Extract AccountId from the selected choice
-                var accountId = int.Parse(selectedAccount.Split(" - ")[0]);
+                var accountNumber = selectedAccount.Split(" - ")[0];
 
                 var payload = new
                 {
-                    AccountID = accountId,
+                    AccountNumber = accountNumber,
                     Amount = settings.Amount,
                     Reference = settings.Reference
                 };
 
                 var jsonPayload = JsonSerializer.Serialize(payload);
                 var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+                Console.WriteLine("This is the payload" + jsonPayload);
+                Console.WriteLine("This is the content" + content);
 
                 // Send the deposit/withdraw request
                 var endpoint = this.GetType().Name == nameof(DepositCommand) ? "deposit" : "withdraw";
-                var result = httpClient.PostAsync($"https://localhost:7059/{endpoint}", content).Result;
+                var result = httpClient.PostAsync($"{Constants.ApiBaseUrl}/{endpoint}", content).Result;
 
                 if (result.IsSuccessStatusCode)
                 {
-                    AnsiConsole.MarkupLine($"[green]{(endpoint == "deposit" ? "Deposited" : "Withdrawn")} Q {settings.Amount:n0} to account {accountId} with reference {settings.Reference}[/]");
+                    Console.WriteLine(result.Content.ReadAsStringAsync().Result);
+                    AnsiConsole.MarkupLine($"[green]{(endpoint == "deposit" ? "Deposited" : "Withdrawn")} Q {settings.Amount:n0} to account {accountNumber} with reference {settings.Reference}[/]");
                     return 0;
                 }
                 else
                 {
+                    Console.WriteLine(result.Content.ReadAsStringAsync().Result);
                     var errorMessage = result.Content.ReadAsStringAsync().Result;
                     AnsiConsole.MarkupLine($"[red]Failed to {endpoint}: {result.StatusCode} - {result.ReasonPhrase} - {errorMessage}[/]");
                     return 1;
@@ -193,7 +197,7 @@ namespace Cli.Commands
         public class Settings : CommandSettings
         {
             [CommandOption("-a|--amount <Amount>")]
-            public decimal Amount { get; set; }
+            public int Amount { get; set; }
 
             [CommandOption("-r|--reference <Reference>")]
             public string Reference { get; set; } = string.Empty;
@@ -226,12 +230,11 @@ namespace Cli.Commands
                 // TODO: Stop using email endpoint
                 // TODO: api endpoints should start with /api
                 // CUSTOM: Use account number instead
-                var userEmail = "user_1@example.com"; // Replace with the actual user email
-                var response = httpClient.GetAsync($"https://localhost:7059/accounts/user/{userEmail}").Result;
+                var response = httpClient.GetAsync($"{Constants.ApiBaseUrl}/accounts").Result;
 
                 if (!response.IsSuccessStatusCode)
                 {
-
+                    Console.WriteLine(response.Content.ReadAsStringAsync().Result);
                     AnsiConsole.MarkupLine($"[red]Failed to fetch accounts: {response.StatusCode} - {response.ReasonPhrase}[/]");
                     return 1;
                 }
@@ -246,7 +249,7 @@ namespace Cli.Commands
                 }
 
                 // Prepare account choices
-                var accountChoices = accounts.Select(a => $"{a.AccountId} - {a.AccountType.Name}").ToList();
+                var accountChoices = accounts.Select(a => $"{a.AccountNumber} - {a.AccountType.Name}").ToList();
 
                 // Prompt user to select an account
                 var selectedAccount = AnsiConsole.Prompt(
@@ -257,11 +260,11 @@ namespace Cli.Commands
                 );
 
                 // Extract AccountId from the selected choice
-                var accountId = int.Parse(selectedAccount.Split(" - ")[0]);
+                var accountNumber = selectedAccount.Split(" - ")[0];
 
                 var payload = new
                 {
-                    AccountID = accountId,
+                    AccountNumber = accountNumber,
                     Amount = settings.Amount,
                     Reference = settings.Reference
                 };
@@ -271,16 +274,18 @@ namespace Cli.Commands
 
                 // Send the deposit/withdraw request
                 var endpoint = this.GetType().Name == nameof(DepositCommand) ? "deposit" : "withdraw";
-                var result = httpClient.PostAsync($"https://localhost:7059/{endpoint}", content).Result;
+                var result = httpClient.PostAsync($"{Constants.ApiBaseUrl}/{endpoint}", content).Result;
 
                 if (result.IsSuccessStatusCode)
                 {
-                    AnsiConsole.MarkupLine($"[green]{(endpoint == "deposit" ? "Deposited" : "Withdrawn")} Q {settings.Amount:n0} to account {accountId} with reference {settings.Reference}[/]");
+                    Console.WriteLine(result.Content.ReadAsStringAsync().Result);
+                    AnsiConsole.MarkupLine($"[green]{(endpoint == "deposit" ? "Deposited" : "Withdrawn")} Q {settings.Amount:n0} to account {accountNumber} with reference {settings.Reference}[/]");
                     return 0;
                 }
                 else
                 {
                     var errorMessage = result.Content.ReadAsStringAsync().Result;
+                    Console.WriteLine(errorMessage);
                     AnsiConsole.MarkupLine($"[red]Failed to {endpoint}: {result.StatusCode} - {result.ReasonPhrase} - {errorMessage}[/]");
                     return 1;
                 }
@@ -302,7 +307,7 @@ namespace Cli.Commands
             public int? Top { get; set; }
 
             [CommandOption("-i|--id <AccountID>")]
-            public int? AccountID { get; set; }
+            public string? AccountNumber { get; set; }
         }
 
         public override int Execute(CommandContext context, Settings settings)
@@ -311,9 +316,9 @@ namespace Cli.Commands
             httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", User.Token); // Replace with the actual token
             try
             {
-                string endpoint = settings.AccountID.HasValue
-                    ? $"https://localhost:7059/transactions/account/{settings.AccountID}"
-                    : "https://localhost:7059/transactions";
+                string endpoint = !string.IsNullOrEmpty(settings.AccountNumber)
+                    ? $"{Constants.ApiBaseUrl}/transactions/account/{settings.AccountNumber}"
+                    : $"{Constants.ApiBaseUrl}/transactions";
 
                 var response = httpClient.GetAsync(endpoint).Result;
 
@@ -338,7 +343,7 @@ namespace Cli.Commands
                         table.AddColumn("Transaction ID");
                         table.AddColumn("Transaction Reference ID");
                         table.AddColumn("Reference");
-                        table.AddColumn("Account ID");
+                        table.AddColumn("Account Number");
                         table.AddColumn("Amount");
                         table.AddColumn("Type");
                         table.AddColumn("Balance After");
@@ -358,7 +363,7 @@ namespace Cli.Commands
                                 transaction.TransactionID.ToString(),
                                 transaction.TransactionReferenceID.ToString(),
                                 transaction.Reference,
-                                transaction.AccountID.ToString(),
+                                transaction.AccountNumber.ToString(),
                                 formattedAmount,
                                 transaction.TransactionType.Name,
                                 formattedBalance,
@@ -399,7 +404,7 @@ namespace Cli.Commands
             try
             {
                 // Replace with the actual API endpoint
-                var response = httpClient.GetAsync("https://localhost:7059/transaction-types").Result;
+                var response = httpClient.GetAsync($"{Constants.ApiBaseUrl}/transaction-types").Result;
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -446,8 +451,8 @@ namespace Cli.Commands
             [CommandOption("-o|--output <OutputFile>")]
             public string? OutputFile { get; set; }
 
-            [CommandOption("-i|--id <AccountID>")]
-            public int? AccountID { get; set; }
+            [CommandOption("-n|--id <AccountNumber>")]
+            public string? AccountNumber { get; set; }
         }
 
         public override int Execute(CommandContext context, Settings settings)
@@ -480,7 +485,7 @@ namespace Cli.Commands
 
             try
             {
-                var endpoint = "https://localhost:7059/transactions";
+                var endpoint = $"{Constants.ApiBaseUrl}/transactions";
                 var response = httpClient.GetAsync(endpoint).Result;
 
                 if (response.IsSuccessStatusCode)
@@ -498,10 +503,10 @@ namespace Cli.Commands
                             .ToList();
 
                         // Filter by AccountID if provided
-                        if (settings.AccountID.HasValue)
+                        if (!string.IsNullOrEmpty(settings.AccountNumber))
                         {
                             transactions = transactions
-                                .Where(t => t.AccountID == settings.AccountID.Value)
+                                .Where(t => t.AccountNumber == settings.AccountNumber)
                                 .ToList();
                         }
 
@@ -534,7 +539,7 @@ namespace Cli.Commands
                             table.AddRow(
                                 transaction.TransactionID.ToString(),
                                 transaction.Reference,
-                                transaction.AccountID.ToString(),
+                                transaction.AccountNumber.ToString(),
                                 formattedAmount,
                                 transaction.TransactionType.Name,
                                 formattedBalance,
@@ -557,7 +562,7 @@ namespace Cli.Commands
                             int yOffset = 50;
                             foreach (var transaction in transactions)
                             {
-                                var line = $"ID: {transaction.TransactionID}, Ref: {transaction.Reference}, Account: {transaction.AccountID}, Amount: {transaction.Amount}, Type: {transaction.TransactionType.Name}, Balance: {transaction.BalanceAfterTransaction}, Date: {transaction.CreatedAt:yyyy-MM-dd HH:mm:ss}";
+                                var line = $"ID: {transaction.TransactionID}, Ref: {transaction.Reference}, Account: {transaction.AccountNumber}, Amount: {transaction.Amount}, Type: {transaction.TransactionType.Name}, Balance: {transaction.BalanceAfterTransaction}, Date: {transaction.CreatedAt:yyyy-MM-dd HH:mm:ss}";
                                 graphics.DrawString(line, font, XBrushes.Black, new XRect(20, yOffset, page.Width - 40, 20), XStringFormats.TopLeft);
                                 yOffset += 20;
 

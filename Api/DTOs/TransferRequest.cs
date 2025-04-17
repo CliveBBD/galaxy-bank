@@ -5,9 +5,9 @@ namespace Api.DTOs
     public class TransferRequest
     {
         [Required]
-        public required int FromAccountID { get; set; }
+        public required string FromAccountNumber { get; set; }
         [Required]
-        public required int ToAccountID { get; set; }
+        public required string ToAccountNumber { get; set; }
         [Required]
         [Range(1, int.MaxValue, ErrorMessage = "The amount must be a positive.")]
         public required int Amount { get; set; }

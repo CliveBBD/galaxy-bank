@@ -16,6 +16,7 @@ public class Program
         Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
         var builder = WebApplication.CreateBuilder(args);
         builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+        builder.Configuration.AddEnvironmentVariables();
         var configurationBuilder = new ConfigurationBuilder();
         configurationBuilder.SetBasePath(Directory.GetCurrentDirectory()).AddUserSecrets<Program>();
         configurationBuilder.AddJsonFile("appsettings.json").AddEnvironmentVariables();

@@ -5,7 +5,7 @@ namespace Api.DTOs
     public class DepositRequest
     {
         [Required]
-        public required int AccountID { get; set; }
+        public required string AccountNumber { get; set; }
         [Required]
         [Range(1, int.MaxValue, ErrorMessage = "The amount must be a positive.")]
         public required int Amount { get; set; }

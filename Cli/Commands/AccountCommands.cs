@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using Cli.Models;
 using Spectre.Console;
@@ -95,31 +96,155 @@ namespace Cli.Commands
 
         }
     }
-    public class ListAccountsCommand : Command
+    public class ListAccountsCommand : Command<ListAccountsCommand.Settings>
     {
-        public override int Execute(CommandContext context)
+        public class Settings : CommandSettings
         {
-            // Placeholder for account listing logic
-            var accountsService = new AccountsService();
-            var accounts = accountsService.GetAccountTypes().Result;
-            var accountTypes = JsonConvert.DeserializeObject<List<string>>(accounts.Content.ReadAsStringAsync().Result.Trim());
-            AnsiConsole.MarkupLine("[green]Listing all accounts...[/]");
-            var accountType = AnsiConsole.Prompt(
-                new SelectionPrompt<string>()
-                    .Title("Select account type")
-                    .AddChoices(accountTypes ?? []));
-            Console.WriteLine(accountType);
-            return 0;
+            [CommandOption("-t|--top <Top>")]
+            public int? Top { get; set; }
+
+            [CommandOption("-a|--account-number <AccountNumber>")]
+            public string? AccountNumber { get; set; }
         }
+        public override int Execute(CommandContext context, Settings settings)
+        {
+            using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", User.Token);
+
+            try
+            {
+                string endpoint = !string.IsNullOrWhiteSpace(settings.AccountNumber)
+                    ? $"https://localhost:7059/accounts/{settings.AccountNumber}"
+                    : "https://localhost:7059/accounts";
+
+                var response = httpClient.GetAsync(endpoint).Result;
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorMessage = response.Content.ReadAsStringAsync().Result;
+                    AnsiConsole.MarkupLine($"[red]Failed to fetch accounts: {response.StatusCode} - {response.ReasonPhrase} - {errorMessage}[/]");
+                    return 1;
+                }
+
+                var jsonResponse = response.Content.ReadAsStringAsync().Result;
+
+                List<Account> accounts;
+
+                if (!string.IsNullOrWhiteSpace(settings.AccountNumber))
+                {
+                    var account = System.Text.Json.JsonSerializer.Deserialize<Account>(jsonResponse);
+                    accounts = account != null ? new List<Account> { account } : new List<Account>();
+                }
+                else
+                {
+                    accounts = System.Text.Json.JsonSerializer.Deserialize<List<Account>>(jsonResponse) ?? new List<Account>();
+                }
+
+                if (settings.Top.HasValue)
+                {
+                    accounts = accounts
+                        .OrderByDescending(t => t.CreatedAt)
+                        .Take(settings.Top.Value)
+                        .ToList();
+                }
+
+                if (accounts.Any())
+                {
+                    DisplayAccounts(accounts);
+                }
+                else
+                {
+                    AnsiConsole.MarkupLine("[yellow]No accounts found.[/]");
+                }
+
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[red]An error occurred: {ex.Message}[/]");
+                return 1;
+            }
+
+        }
+        private void DisplayAccounts(List<Account> accounts)
+        {
+            var table = new Table();
+            table.AddColumn("UserId");
+            table.AddColumn("AccountType");
+            table.AddColumn("Balance");
+            table.AddColumn("Created At");
+            table.AddColumn("AccountNumber");
+
+            foreach (var account in accounts)
+            {
+                string formattedBalance = account.Balance < 0
+                    ? $"[red]-Q {Math.Abs(account.Balance)}[/]"
+                    : $"[green]Q {account.Balance}[/]";
+
+                table.AddRow(
+                    account.UserId.ToString(),
+                    account.AccountType?.Name ?? "N/A",
+                    formattedBalance,
+                    account.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"),
+                    account.AccountNumber
+                );
+            }
+
+            AnsiConsole.Write(table);
+        }
+
     }
 
-    public class CreateAccountCommand : Command
+
+    public class CreateAccountCommand : Command<CreateAccountCommand.Settings>
     {
-        public override int Execute(CommandContext context)
+        public class Settings : CommandSettings
         {
-            // Placeholder for account creation logic
-            AnsiConsole.MarkupLine("[green]Creating a new account...[/]");
-            return 0;
+            [CommandOption("-a|--account-type <AccountTypeName>")]
+            public string AccountTypeName { get; set; }
+
+        }
+        public override int Execute(CommandContext context, Settings settings)
+        {
+            if (string.IsNullOrEmpty(settings.AccountTypeName))
+            {
+                AnsiConsole.MarkupLine("[red]Account type must be specified, valid account types are 'checking', 'savings', and 'credit_card'.[/]");
+                return 1;
+            }
+
+            var accountCreationPayload = new
+            {
+                AccountTypeName = settings.AccountTypeName
+            };
+
+            var jsonPayload = System.Text.Json.JsonSerializer.Serialize(accountCreationPayload);
+            var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+            using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", User.Token);
+
+            try
+            {
+                AnsiConsole.MarkupLine("[yellow]Creating an account...[/]");
+                var response = httpClient.PostAsync("https://localhost:7059/accounts", content).Result;
+
+                if (response.IsSuccessStatusCode)
+                {
+                    AnsiConsole.MarkupLine($"[green]Successfully created a {settings.AccountTypeName} account[/]");
+                    return 0;
+                }
+                else
+                {
+                    var errorMessage = response.Content.ReadAsStringAsync().Result;
+                    AnsiConsole.MarkupLine($"[red]Failed to created an account, please make sure that you are passing 'checking', 'savings', or 'credit_card' as account type[/]");
+                    return 1;
+                }
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[red]An error occurred: {ex.Message}[/]");
+                return 1;
+            }
         }
     }
 
@@ -132,7 +257,6 @@ namespace Cli.Commands
             return 0;
         }
     }
-
     public class BalanceCommand : Command
     {
         public override int Execute(CommandContext context)
