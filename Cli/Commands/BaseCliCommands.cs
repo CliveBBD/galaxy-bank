@@ -16,7 +16,7 @@ namespace Cli.Commands
             {
                 table.AddRow($"[green]{command.Name}[/]", command.Description);
             }
-            AnsiConsole.Write(table);
+            CliWidgets.RenderTable("Help", table);
             return 0;
         }
     }
@@ -25,8 +25,7 @@ namespace Cli.Commands
     {
         public override int Execute(CommandContext context)
         {
-            CliWidgets.RenderText("[bold cyan]Galaxy Bank CLI v1.0[/]");
-            CliWidgets.RenderText("Manage your accounts, check balances, and move money in the terminal.");
+            CliWidgets.RenderPanel("[bold cyan]Galaxy Bank CLI v1.0[/]\nManage your accounts, check balances, and move money in the terminal.", "About");
             return 0;
         }
     }
