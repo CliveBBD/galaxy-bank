@@ -22,6 +22,7 @@ namespace Cli.Models
             Username = string.Empty;
             Email = string.Empty;
             GoogleId = string.Empty;
+            Token = "No token";
         }
     }
 }
