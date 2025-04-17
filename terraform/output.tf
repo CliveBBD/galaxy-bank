@@ -33,3 +33,7 @@ output "alb_dns_name" {
   description = "The DNS name of the load balancer"
 }
 
+output "cloudfront_dns_name" {
+  value       = aws_cloudfront_distribution.api_distribution.domain_name
+  description = "The DNS name of the CloudFront distribution"
+}

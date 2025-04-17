@@ -43,20 +43,16 @@ resource "aws_ecs_task_definition" "api" {
       ]
       secrets = [
         {
-          name      = "ConnectionStrings__DefaultConnection"
-          valueFrom = aws_secretsmanager_secret.db_connection.arn
-        },
-        {
           name      = "GoogleClientId"
-          valueFrom = jsondecode(data.aws_secretsmanager_secret_version.google_client_id.secret_string)
+          valueFrom = aws_secretsmanager_secret.google_client_id.arn
         },
         {
           name      = "GoogleClientSecret"
-          valueFrom = jsondecode(data.aws_secretsmanager_secret_version.google_client_secret.secret_string)
+          valueFrom = aws_secretsmanager_secret.google_client_secret.arn
         },
         {
           name      = "GoogleRedirectUri"
-          valueFrom = jsondecode(data.aws_secretsmanager_secret_version.google_redirect_uri.secret_string)
+          valueFrom = aws_secretsmanager_secret.google_redirect_uri.arn
         }
       ]
       logConfiguration = {
