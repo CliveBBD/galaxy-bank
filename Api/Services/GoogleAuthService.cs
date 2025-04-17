@@ -33,9 +33,9 @@ public class GoogleAuthService
         _httpClient = httpClient;
         _tokenService = tokenService;
 
-        _clientId = Environment.GetEnvironmentVariable("GoogleClientId") ?? _configuration["Authentication:Google:ClientId"];
-        _clientSecret = Environment.GetEnvironmentVariable("GoogleClientSecret") ?? _configuration["Authentication:Google:ClientSecret"];
-        _redirectUri = $"https://d11dblihl6n2a9.cloudfront.net{GetKey(Environment.GetEnvironmentVariable("GoogleRedirectUri"))}" ?? _configuration["Authentication:Google:RedirectUri"];
+        _clientId = GetValueByKey(Environment.GetEnvironmentVariable("GoogleClientId") ?? _configuration["Authentication:Google:ClientId"], "GoogleClientId");
+        _clientSecret = GetValueByKey(Environment.GetEnvironmentVariable("GoogleClientSecret") ?? _configuration["Authentication:Google:ClientSecret"], "GoogleClientSecret");
+        _redirectUri = $"https://d11dblihl6n2a9.cloudfront.net/signin-google" ?? _configuration["Authentication:Google:RedirectUri"];
         _scopes = [
             "https://www.googleapis.com/auth/userinfo.email",
             "https://www.googleapis.com/auth/userinfo.profile"
@@ -46,16 +46,24 @@ public class GoogleAuthService
         TokenInfoEndpoint = _configuration["Authentication:TokenInfoEndpoint"];
     }
 
-    private static string GetKey(string json)
+    private static string GetValueByKey(string jsonString, string key)
     {
-        using (JsonDocument doc = JsonDocument.Parse(json))
+        try
         {
-            foreach (var property in doc.RootElement.EnumerateObject())
+            using JsonDocument doc = JsonDocument.Parse(jsonString);
+            if (doc.RootElement.TryGetProperty(key, out JsonElement value))
             {
-                return property.Name; // Return the first (and only) key
+                return value.ToString();
+            }
+            else
+            {
+                return null; // Key not found
             }
         }
-        return string.Empty; // In case the JSON is empty
+        catch (System.Text.Json.JsonException)
+        {
+            return null; // Invalid JSON
+        }
     }
 
     public string GenerateAuthUrl(string sessionId)
