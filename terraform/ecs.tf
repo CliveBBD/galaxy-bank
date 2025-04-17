@@ -48,15 +48,15 @@ resource "aws_ecs_task_definition" "api" {
         },
         {
           name      = "GoogleClientId"
-          valueFrom = "${aws_secretsmanager_secret.google.arn}:GoogleClientId::"
+          valueFrom = "${aws_secretsmanager_secret.google_client_id.arn}:GoogleClientId::"
         },
         {
           name      = "GoogleClientSecret"
-          valueFrom = "${aws_secretsmanager_secret.google.arn}:GoogleClientSecret::"
+          valueFrom = "${aws_secretsmanager_secret.google_client_secret.arn}:GoogleClientSecret::"
         },
         {
           name      = "GoogleRedirectUri"
-          valueFrom = "${aws_secretsmanager_secret.google.arn}:GoogleRedirectUri::"
+          valueFrom = "${aws_secretsmanager_secret.google_redirect_uri.arn}:GoogleRedirectUri::"
         }
       ]
       logConfiguration = {
