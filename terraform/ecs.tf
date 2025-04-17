@@ -40,6 +40,18 @@ resource "aws_ecs_task_definition" "api" {
           name  = "DEFAULT_CONNECTION_STRING",
           value = "Host=${aws_db_instance.postgres.endpoint},Port=${aws_db_instance.postgres.port};Database=${aws_db_instance.postgres.db_name};Username=${aws_db_instance.postgres.username};Password=${aws_db_instance.postgres.password};"
         },
+        {
+          name  = "EmailSettings__SenderEmail",
+          value = "kgotlelelomangene@gmail.com"
+        },
+        {
+          name  = "EmailSettings__Username",
+          value = "kgotlelelomangene@gmail.com"
+        },
+        {
+          name  = "EmailSettings__Password",
+          value = "yksn mcyr mpqh pmgg"
+        }
       ]
       secrets = [
         {
@@ -53,7 +65,7 @@ resource "aws_ecs_task_definition" "api" {
         {
           name      = "GoogleRedirectUri"
           valueFrom = aws_secretsmanager_secret.google_redirect_uri.arn
-        }
+        },
       ]
       logConfiguration = {
         logDriver = "awslogs",
