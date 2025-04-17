@@ -5,17 +5,17 @@ using Npgsql;
 
 namespace Api.Services
 {
-    public interface IDisputeService
-    {
-        Task<IEnumerable<Dispute>> GetAllDisputesAsync(Pagination? pagination = null, int? userId = null, string? status = null, string? email = null);
-        Task<Dispute?> GetDisputeAsync(int disputeId, int? userId = null);
-        Task<IEnumerable<DisputeHistoryEntry>> GetDisputeHistoryAsync(Pagination? pagination, int disputeId, int? userId = null);
-        Task<Dispute?> CreateDisputeAsync(int transactionReferenceID, string reason, int userID);
-        Task<DisputeHistoryEntry?> UpdateDisputeStatus(int disputeID, int newStatusID, int updatedByID);
-        Task<IEnumerable<DisputeStatus?>> GetAllowedNextStatusesAsync(int disputeID);
-    }
+  public interface IDisputeService
+  {
+    Task<IEnumerable<Dispute>> GetAllDisputesAsync(Pagination? pagination = null, int? userId = null, string? status = null, string? email = null);
+    Task<Dispute?> GetDisputeAsync(int disputeId, int? userId = null);
+    Task<IEnumerable<DisputeHistoryEntry>> GetDisputeHistoryAsync(Pagination? pagination, int disputeId, int? userId = null);
+    Task<Dispute?> CreateDisputeAsync(int transactionReferenceID, string reason, int userID);
+    Task<DisputeHistoryEntry?> UpdateDisputeStatus(int disputeID, int newStatusID, int updatedByID);
+    Task<IEnumerable<DisputeStatus?>> GetAllowedNextStatusesAsync(int disputeID);
+  }
 
-  public class DisputeService (IDisputeRepository disputeRepository, ITransactionRepository transactionRepository) : IDisputeService
+  public class DisputeService(IDisputeRepository disputeRepository, ITransactionRepository transactionRepository) : IDisputeService
   {
     private readonly IDisputeRepository _disputeRepository = disputeRepository;
     private readonly ITransactionRepository _transactionRepository = transactionRepository;
@@ -31,7 +31,7 @@ namespace Api.Services
     }
 
     public async Task<IEnumerable<Dispute>> GetAllDisputesAsync(Pagination? pagination, int? userId, string? status, string? email = null)
-    {      
+    {
       return await _disputeRepository.GetAllDisputesAsync(pagination ?? new Pagination(), userId, status, email);
     }
 
@@ -48,7 +48,6 @@ namespace Api.Services
     public async Task<DisputeHistoryEntry?> UpdateDisputeStatus(int disputeID, int newStatusID, int updatedByID)
     {
       bool isProgressionAllowed = await _disputeRepository.IsDisputeProgressionAllowedAsync(disputeID, newStatusID);
-      Console.WriteLine("Progression allowed " + isProgressionAllowed);
       int acceptedStatusID = Constants.DisputeAcceptedId;
 
       if (isProgressionAllowed && newStatusID != acceptedStatusID)
@@ -56,14 +55,15 @@ namespace Api.Services
         return await _disputeRepository.CreateDisputeStatusHistoryEntryAsync(disputeID, newStatusID, updatedByID);
       }
       else if (isProgressionAllowed && newStatusID == acceptedStatusID)
-      {        
+      {
         using var connection = new NpgsqlConnection(Constants.ConnectionString);
         await connection.OpenAsync();
         using var databaseTransaction = await connection.BeginTransactionAsync();
-        try {
+        try
+        {
           var dispute = await _disputeRepository.GetDisputeAsync(disputeID);
-          
-          if (dispute == null) 
+
+          if (dispute == null)
           {
             return null;
           }
@@ -72,15 +72,18 @@ namespace Api.Services
             var createdDisputeHistoryEntry = await _disputeRepository.CreateDisputeStatusHistoryEntryAsync(disputeID, newStatusID, updatedByID, databaseTransaction);
             var transactionsForReference = await _transactionRepository.GetTransactionsByTransactionReferenceIdAsync(dispute.DisputedTransactionReferenceID, databaseTransaction);
             var insertedReversalTransactions = await _transactionRepository.InsertReversalTransactions(transactionsForReference.Select(transaction => transaction.TransactionID), databaseTransaction);
-            
+
             return createdDisputeHistoryEntry;
           }
 
-        } catch (Exception exception) {
+        }
+        catch (Exception exception)
+        {
           await databaseTransaction.RollbackAsync();
-          Console.WriteLine(exception.ToString());
           throw;
-        } finally {
+        }
+        finally
+        {
           try
           {
             await databaseTransaction.CommitAsync();

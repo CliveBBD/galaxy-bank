@@ -14,7 +14,6 @@ namespace Api.Controllers
             try
             {
                 var transactionTypes = await _transactionTypeService.GetTransactionTypesAsync();
-                Console.WriteLine(transactionTypes);
                 return Ok(transactionTypes);
             }
             catch (Exception e)

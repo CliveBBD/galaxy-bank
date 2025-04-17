@@ -20,12 +20,10 @@ namespace Api.Controllers
         [HttpPost("", Name = "Transfer")]
         public async Task<IActionResult> Transfer([FromBody] TransferRequest request)
         {
-            Console.WriteLine("I'm here!");
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
-            Console.WriteLine("I'm here! 2");
 
             try
             {
@@ -36,10 +34,8 @@ namespace Api.Controllers
                 }
                 var googleId = payload.Subject;
                 var result = await _transferService.TransferAsync(request, googleId);
-                Console.WriteLine("To email result: " + result.ReceiverEmail);
                 await _emailService.SendEmailAsync(payload.Email, TransferEmailTemplate.Subject, TransferSenderEmailTemplate.Message(payload.GivenName, result.ReceiverName, request.Amount.ToString(), request.FromAccountNumber.ToString(), request.ToAccountNumber.ToString()));
                 await _emailService.SendEmailAsync(result.ReceiverEmail, TransferEmailTemplate.Subject, TransferReceiverEmailTemplate.Message(payload.GivenName, result.ReceiverName, request.Amount.ToString(), request.FromAccountNumber.ToString(), request.ToAccountNumber.ToString()));
-                Console.WriteLine(result);
                 return Ok(result);
             }
             catch (Exception e)

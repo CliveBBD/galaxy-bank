@@ -71,7 +71,7 @@ namespace Api.Repositories
 
             return accountNumber;
         }
-        
+
         public async Task<IEnumerable<Account>> GetAccountsAsync(string googleId)
         {
             var query = $@"
@@ -92,7 +92,6 @@ namespace Api.Repositories
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"An error occurred while fetching accounts: {ex.Message}");
                 throw;
             }
         }
@@ -117,7 +116,6 @@ namespace Api.Repositories
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"An error occurred while fetching accounts: {ex.Message}");
                 throw;
             }
         }

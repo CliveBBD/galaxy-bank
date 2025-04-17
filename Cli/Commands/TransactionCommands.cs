@@ -162,8 +162,6 @@ namespace Cli.Commands
 
                 var jsonPayload = JsonSerializer.Serialize(payload);
                 var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-                Console.WriteLine("This is the payload" + jsonPayload);
-                Console.WriteLine("This is the content" + content);
 
                 // Send the deposit/withdraw request
                 var endpoint = this.GetType().Name == nameof(DepositCommand) ? "deposit" : "withdraw";
@@ -171,13 +169,11 @@ namespace Cli.Commands
 
                 if (result.IsSuccessStatusCode)
                 {
-                    Console.WriteLine(result.Content.ReadAsStringAsync().Result);
                     AnsiConsole.MarkupLine($"[green]{(endpoint == "deposit" ? "Deposited" : "Withdrawn")} Q {settings.Amount:n0} to account {accountNumber} with reference {settings.Reference}[/]");
                     return 0;
                 }
                 else
                 {
-                    Console.WriteLine(result.Content.ReadAsStringAsync().Result);
                     var errorMessage = result.Content.ReadAsStringAsync().Result;
                     AnsiConsole.MarkupLine($"[red]Failed to {endpoint}: {result.StatusCode} - {result.ReasonPhrase} - {errorMessage}[/]");
                     return 1;
@@ -226,10 +222,7 @@ namespace Cli.Commands
             try
             {
                 // Fetch accounts from the API
-                // TODO: fetch api from configuration
-                // TODO: Stop using email endpoint
                 // TODO: api endpoints should start with /api
-                // CUSTOM: Use account number instead
                 var response = httpClient.GetAsync($"{Constants.ApiBaseUrl}/accounts").Result;
 
                 if (!response.IsSuccessStatusCode)
@@ -278,14 +271,12 @@ namespace Cli.Commands
 
                 if (result.IsSuccessStatusCode)
                 {
-                    Console.WriteLine(result.Content.ReadAsStringAsync().Result);
                     AnsiConsole.MarkupLine($"[green]{(endpoint == "deposit" ? "Deposited" : "Withdrawn")} Q {settings.Amount:n0} to account {accountNumber} with reference {settings.Reference}[/]");
                     return 0;
                 }
                 else
                 {
                     var errorMessage = result.Content.ReadAsStringAsync().Result;
-                    Console.WriteLine(errorMessage);
                     AnsiConsole.MarkupLine($"[red]Failed to {endpoint}: {result.StatusCode} - {result.ReasonPhrase} - {errorMessage}[/]");
                     return 1;
                 }
@@ -493,10 +484,8 @@ namespace Cli.Commands
                     var jsonResponse = response.Content.ReadAsStringAsync().Result;
                     var transactions = JsonSerializer.Deserialize<List<Transaction>>(jsonResponse);
 
-                    Console.WriteLine("This is the response" + jsonResponse);
                     if (transactions != null && transactions.Any())
                     {
-                        Console.WriteLine(transactions);
                         // Filter transactions by date range
                         transactions = transactions
                             .Where(t => t.CreatedAt >= startDate && (!endDate.HasValue || t.CreatedAt <= endDate.Value))

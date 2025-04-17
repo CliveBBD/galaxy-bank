@@ -24,7 +24,6 @@ namespace Api.Controllers
                 }
                 var googleId = payload.Subject;
                 var transactions = await _transactionService.GetTransactionsAsync(googleId);
-                Console.WriteLine(transactions);
                 return Ok(transactions);
             }
             catch (Exception e)
