@@ -14,7 +14,6 @@ namespace Api.Controllers
             try
             {
                 var roles = await _roleService.GetRolesAsync();
-                Console.WriteLine(roles);
                 return Ok(roles);
             }
             catch (Exception e)

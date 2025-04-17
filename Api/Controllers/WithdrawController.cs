@@ -20,12 +20,10 @@ namespace Api.Controllers
         [HttpPost("", Name = "Withdraw")]
         public async Task<IActionResult> Withdraw([FromBody] WithdrawRequest request)
         {
-            Console.WriteLine("I'm here!");
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
-            Console.WriteLine("I'm here! 2");
 
             try
             {
@@ -38,7 +36,6 @@ namespace Api.Controllers
 
                 var result = await _withdrawService.WithdrawAsync(request, googleId);
                 await _emailService.SendEmailAsync(payload.Email, WithdrawEmailTemplate.Subject, WithdrawEmailTemplate.Message(payload.GivenName, request.AccountNumber.ToString(), request.Amount.ToString()));
-                Console.WriteLine(result);
                 return Ok(result);
             }
             catch (Exception e)
