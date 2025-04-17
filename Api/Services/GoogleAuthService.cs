@@ -33,8 +33,10 @@ public class GoogleAuthService
         _httpClient = httpClient;
         _tokenService = tokenService;
 
-        _clientId = Environment.GetEnvironmentVariable("GoogleClientId") ?? _configuration["Authentication:Google:ClientId"];
-        _clientSecret = Environment.GetEnvironmentVariable("GoogleClientSecret") ?? _configuration["Authentication:Google:ClientSecret"];
+
+        _clientId = GetValueByKey(Environment.GetEnvironmentVariable("GoogleClientId") ?? _configuration["Authentication:Google:ClientId"], "GoogleClientId");
+        _clientSecret = GetValueByKey(Environment.GetEnvironmentVariable("GoogleClientSecret") ?? _configuration["Authentication:Google:ClientSecret"], "GoogleClientSecret");
+
         _redirectUri = $"https://d11dblihl6n2a9.cloudfront.net/signin-google" ?? _configuration["Authentication:Google:RedirectUri"];
         _scopes = [
             "https://www.googleapis.com/auth/userinfo.email",
@@ -44,6 +46,26 @@ public class GoogleAuthService
         AuthorizationEndpoint = _configuration["Authentication:AuthorizationEndpoint"];
         TokenEndpoint = _configuration["Authentication:TokenEndpoint"];
         TokenInfoEndpoint = _configuration["Authentication:TokenInfoEndpoint"];
+    }
+
+    private static string GetValueByKey(string jsonString, string key)
+    {
+        try
+        {
+            using JsonDocument doc = JsonDocument.Parse(jsonString);
+            if (doc.RootElement.TryGetProperty(key, out JsonElement value))
+            {
+                return value.ToString();
+            }
+            else
+            {
+                return null; // Key not found
+            }
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return null; // Invalid JSON
+        }
     }
 
     public string GenerateAuthUrl(string sessionId)
