@@ -34,10 +34,10 @@ public class GoogleAuthService
         _httpClient = httpClient;
 
 
-        _clientId = GetValueByKey(Environment.GetEnvironmentVariable("GoogleClientId") ?? _configuration["Authentication:Google:ClientId"], "GoogleClientId");
-        _clientSecret = GetValueByKey(Environment.GetEnvironmentVariable("GoogleClientSecret") ?? _configuration["Authentication:Google:ClientSecret"], "GoogleClientSecret");
+        _clientId =  _configuration["Authentication:Google:ClientId"];
+        _clientSecret =  _configuration["Authentication:Google:ClientSecret"];
 
-        _redirectUri = $"https://d11dblihl6n2a9.cloudfront.net/signin-google" ?? _configuration["Authentication:Google:RedirectUri"];
+        _redirectUri = _configuration["Authentication:RedirectUri"];
         _scopes = [
             "https://www.googleapis.com/auth/userinfo.email",
             "https://www.googleapis.com/auth/userinfo.profile"

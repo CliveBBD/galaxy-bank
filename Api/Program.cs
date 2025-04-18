@@ -22,41 +22,41 @@ public class Program
         var configurationBuilder = new ConfigurationBuilder();
         configurationBuilder.SetBasePath(Directory.GetCurrentDirectory()).AddUserSecrets<Program>();
         configurationBuilder.AddJsonFile("appsettings.json").AddEnvironmentVariables();
-        configurationBuilder.Build();
-        ConfigureServices(builder.Services);
+        var configuration = configurationBuilder.Build();
+        ConfigureServices(builder.Services, configuration);
         WebApplication app = ConfigureApp(builder);
         app.Run();            
     }
 
-    public static void ConfigureServices(IServiceCollection services)
+    public static void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-        .AddJwtBearer(options =>
-        {
-            options.Authority = "https://accounts.google.com";
-            options.TokenValidationParameters = new TokenValidationParameters
-            {
-                ValidateIssuer = true,
-                ValidIssuer = "https://accounts.google.com",
-                ValidateAudience = true,
-                ValidAudiences = new[] {"438794123703-9aqbuhmv0asuhr074hqd5o2lf7c7rpap.apps.googleusercontent.com"}, // Important!
-                ValidateLifetime = true
-            };
-        });
-
-        services.AddAuthorization();
-        services.AddCors();
-        services.AddHttpClient<GoogleAuthService>();
-        services.AddSingleton<TokenService>();
-        services.AddScoped<GoogleAuthService>();
-        services.AddScoped<IRoleRepository, RoleRepository>();
-        services.AddScoped<IRoleService, RoleService>();
-        services.AddControllers();
         services.AddControllers().AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
             options.JsonSerializerOptions.PropertyNamingPolicy = null;
         });
+        services.AddCors();
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.Authority = configuration["Authorization:TokenAuthority"];
+            options.Audience = configuration["Authorization:Audience"];
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidIssuer = configuration["Authorization:TokenAuthority"],
+                ValidateAudience = true,
+                ValidAudiences = new[] {configuration["Authorization:Audience"]},
+                ValidateLifetime = true
+            };
+        });
+
+        services.AddAuthorization();
+        services.AddHttpClient<GoogleAuthService>();
+        services.AddSingleton<TokenService>();
+        services.AddScoped<GoogleAuthService>();
+        services.AddScoped<IRoleRepository, RoleRepository>();
+        services.AddScoped<IRoleService, RoleService>();
         services.AddOpenApi();
         services.AddScoped<IDbConnection>(sp =>
         {
