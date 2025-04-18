@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Api.Services;
+using Api.Shared;
 
 namespace Api.Controllers
 {
@@ -21,7 +22,18 @@ namespace Api.Controllers
         [Route("signin-google")]
         public async Task<ContentResult> GoogleLogin([FromQuery] string code, [FromQuery] string state)
         {
-            var token = await _googleAuthService.ExchangeCodeForTokenAsync(code, state);
+            if(string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(state)) 
+            {
+                return new ContentResult
+                {
+                    Content = "<h2>Either state or code is null. Please try authenticating again!</h2>",
+                    ContentType = "text/html",
+                    StatusCode = 200
+                };
+            }
+            try
+            {
+                var token = await _googleAuthService.ExchangeCodeForTokenAsync(code, state);
             if(token != null) { _tokenService.StoreToken(state, token); }
             var html = @"<!DOCTYPE html>
                 <html lang=""en"">
@@ -91,6 +103,16 @@ namespace Api.Controllers
                     ContentType = "text/html",
                     StatusCode = 200
                 };
+            }
+            catch(Exception ex)
+            {
+                return new ContentResult
+                {
+                    Content = $"<h2>Authentication failed: {ex}></h2>",
+                    ContentType = "text/html",
+                    StatusCode = 200
+                };
+            }
         }
 
         [Route("login")]
