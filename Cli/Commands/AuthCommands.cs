@@ -95,7 +95,7 @@ namespace Cli.Commands
         {
             if (User.Username.Length > 0)
             {
-                CliWidgets.RenderPanel($"You are logged in as {User.Username}\nEmail: {User.Email}\nGoogle ID: {User.GoogleId}", "whoami");
+                CliWidgets.RenderPanel($"You are logged in as {User.Username}\nEmail: {User.Email}\nGoogle ID: {User.GoogleId}\nJWT: {User.Token}", "whoami");
             }
             else
             {

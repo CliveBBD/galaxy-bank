@@ -69,13 +69,10 @@ namespace Api.Controllers
         {
             try
             {
+                var requestingUser = await _userService.GetCurrentUser(HttpContext);
 
-                var payload = await JwtDecoder.Decode(HttpContext);
-                if (payload == null)
-                {
-                    return Unauthorized("Invalid or missing token.");
-                }
-                var googleId = payload.Subject;
+
+                var googleId = requestingUser.GoogleID;
                 var accounts = await _accountService.GetAccounts(googleId);
 
                 if (accounts != null)

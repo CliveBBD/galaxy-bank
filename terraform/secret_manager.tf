@@ -22,3 +22,12 @@ resource "aws_secretsmanager_secret" "google_redirect_uri" {
   description = "Google OAuth Redirect URI"
 }
 
+resource "aws_secretsmanager_secret" "email_settings_username" {
+  name        = "email-settings-username"
+  description = "Email settings username"
+}
+
+resource "aws_secretsmanager_secret" "email_settings_password" {
+  name        = "email-settings-password"
+  description = "Email settings password"
+}
