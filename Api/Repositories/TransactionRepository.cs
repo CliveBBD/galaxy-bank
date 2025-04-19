@@ -118,12 +118,6 @@ namespace Api.Repositories
                 splitOn: "TransactionTypeId"
             );
 
-            // Log each transaction to the console
-            foreach (var transaction in transactions)
-            {
-                Console.WriteLine($"Transaction ID: {transaction.AccountNumber}, Reference: {transaction.Reference}, Amount: {transaction.Amount}, Account Number: {transaction.AccountNumber}, Created At: {transaction.CreatedAt}");
-            }
-
             return transactions;
         }
 
