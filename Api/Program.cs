@@ -8,6 +8,7 @@ using Api.Services;
 using Npgsql;
 using Api.Shared;
 using Microsoft.AspNetCore.Builder;
+using Api.Middleware;
 
 public class Program
 {
@@ -23,11 +24,15 @@ public class Program
         configurationBuilder.Build();
         ConfigureServices(builder.Services);
         WebApplication app = ConfigureApp(builder);
+        app.UseMiddleware<InternalServerErrorHandler>();
+        app.UseMiddleware<RequestingUserHandler>();
         app.Run();            
     }
 
     public static void ConfigureServices(IServiceCollection services)
     {
+        services.AddScoped<InternalServerErrorHandler>();
+        services.AddScoped<RequestingUserHandler>();
         services.AddHttpClient<GoogleAuthService>();
         services.AddSingleton<TokenService>();
         services.AddScoped<GoogleAuthService>();

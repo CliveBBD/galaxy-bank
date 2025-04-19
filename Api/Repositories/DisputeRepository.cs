@@ -14,10 +14,11 @@ namespace Api.Repositories
         public Task<IEnumerable<Dispute>> GetAllDisputesAsync(Pagination pagination, int? userId = null, string? status = null, string? email = null);
         public Task<Dispute?> GetDisputeAsync(int disputeId, int? userId = null);
         public Task<IEnumerable<DisputeHistoryEntry>> GetDisputeHistoryAsync(Pagination pagination, int disputeId, int? userId = null);
-        public Task<Dispute?> CreateDisputeAsync(int transactionReferenceID, string reason, int userID);
+        public Task<Dispute?> CreateDisputeAsync(int transactionReferenceID, string details, int userID, int disputeReasonId);
         public Task<bool> IsDisputeProgressionAllowedAsync(int disputeID, int newStatusID);
         public Task<DisputeHistoryEntry?> CreateDisputeStatusHistoryEntryAsync(int disputeID, int newStatusID, int updatedByID, NpgsqlTransaction? transaction = null);
         Task<IEnumerable<DisputeStatus>> GetAllowedNextStatusesAsync(int disputeId);
+        public Task<IEnumerable<DisputeReason>> GetAllDisputeReasons();
     }
 
   public class DisputeRepository : IDisputeRepository
@@ -45,9 +46,9 @@ namespace Api.Repositories
         };
         return disputeHistoryEntry;
     };
-    public async Task<Dispute?> CreateDisputeAsync(int transactionReferenceID, string reason, int userID)
-    {
-        string insertDisputeQuery = $@"
+        public async Task<Dispute?> CreateDisputeAsync(int transactionReferenceID, string details, int userID, int disputeReasonId)
+        {
+            string insertDisputeQuery = $@"
             WITH
                 candidate_transactions_for_user AS (
                     SELECT t.transaction_reference_id, t.transaction_type_id, tt.name as transaction_type_name
@@ -72,10 +73,10 @@ namespace Api.Repositories
                     FROM candidate_transactions_for_user
                     WHERE transaction_reference_id NOT IN (SELECT transaction_reference_id FROM undisputable_transaction_references_for_user)
                 )
-                INSERT INTO disputes (reason, disputed_transaction_reference_id, created_at)
-                SELECT @reason, transaction_reference_id, NOW()
-                FROM disputable_transaction_for_user
-                RETURNING dispute_id;
+            INSERT INTO disputes (dispute_reason_id, details, disputed_transaction_reference_id, created_at)
+            SELECT @disputeReasonId, @details, transaction_reference_id, NOW()
+            FROM disputable_transaction_for_user
+            RETURNING dispute_id;
         ";
 
         string insertDisputeHistoryQuery = $@"
@@ -89,14 +90,15 @@ namespace Api.Repositories
         string getCreatedDisputeQuery = $@"
             SELECT 
                 d.dispute_id AS { nameof(Dispute.DisputeID) },
-                d.reason AS { nameof(Dispute.Reason) },
+                dr.description AS {nameof(Dispute.Reason)},
                 d.disputed_transaction_reference_id AS { nameof(Dispute.DisputedTransactionReferenceID) },
                 d.created_at AS { nameof(Dispute.CreatedAt) },
                 dsh.dispute_status_id AS { nameof(Dispute.CurrentStatus.DisputeStatusID) },
                 ds.name AS { nameof(Dispute.CurrentStatus.Name) }
             FROM disputes d
-				INNER JOIN dispute_status_history dsh ON d.dispute_id = dsh.dispute_id
-				INNER JOIN dispute_statuses ds ON dsh.dispute_status_id = ds.dispute_status_id
+                INNER JOIN dispute_reasons dr ON d.dispute_reason_id = dr.dispute_reason_id
+                INNER JOIN dispute_status_history dsh ON d.dispute_id = dsh.dispute_id
+                INNER JOIN dispute_statuses ds ON dsh.dispute_status_id = ds.dispute_status_id
             WHERE dsh.dispute_history_id = @disputeHistoryID
         ";
 
@@ -110,8 +112,9 @@ namespace Api.Repositories
             var insertDisputeQueryParameters = new
             {
                 transactionReferenceID,
-                reason,
-                userID
+                details,
+                userID,
+                disputeReasonId
             };
 
             var disputeID = await connection.ExecuteScalarAsync<int>(insertDisputeQuery, insertDisputeQueryParameters, transaction);
@@ -276,7 +279,7 @@ namespace Api.Repositories
             dispute_with_current_status_and_user AS (
                 SELECT
                     d.dispute_id,
-                    d.reason,
+                    dr.description AS reason,
                     d.disputed_transaction_reference_id,
                     d.created_at,
                     dsh.dispute_status_id,
@@ -284,6 +287,7 @@ namespace Api.Repositories
                     u.user_id,
                     u.email
                 FROM disputes d
+                INNER JOIN dispute_reasons dr ON d.dispute_reason_id = dr.dispute_reason_id
                 INNER JOIN dispute_status_history_with_to_date dsh ON d.dispute_id = dsh.dispute_id
                 INNER JOIN dispute_statuses ds ON dsh.dispute_status_id = ds.dispute_status_id
                 INNER JOIN transactions t ON d.disputed_transaction_reference_id = t.transaction_reference_id
@@ -293,17 +297,17 @@ namespace Api.Repositories
             )
             SELECT DISTINCT
                 dwcs.dispute_id AS { nameof(Dispute.DisputeID) },
-                dwcs.reason { nameof(Dispute.Reason) },
-                dwcs.disputed_transaction_reference_id { nameof(Dispute.DisputedTransactionReferenceID) },
-                dwcs.created_at { nameof(Dispute.CreatedAt) },
-                dwcs.dispute_status_id { nameof(Dispute.CurrentStatus.DisputeStatusID) },
-                dwcs.name { nameof(Dispute.CurrentStatus.Name) }
+                dwcs.reason AS {nameof(Dispute.Reason)},
+                dwcs.disputed_transaction_reference_id AS {nameof(Dispute.DisputedTransactionReferenceID)},
+                dwcs.created_at AS {nameof(Dispute.CreatedAt)},
+                dwcs.dispute_status_id AS {nameof(Dispute.CurrentStatus.DisputeStatusID)},
+                dwcs.name AS {nameof(Dispute.CurrentStatus.Name)}
             FROM dispute_with_current_status_and_user dwcs
             WHERE 
-                ((@userId is NULL OR dwcs.user_id = @userId) AND (@email is NULL OR dwcs.email = @email))
-                AND (@status is NULL OR dwcs.name = @status)
+                ((@userId IS NULL OR dwcs.user_id = @userId) AND (@email IS NULL OR dwcs.email = @email))
+                AND (@status IS NULL OR dwcs.name = @status)
             LIMIT @limit
-            OFFSET @offset
+            OFFSET @offset;
         ";
 
         var parameters = new
@@ -445,6 +449,19 @@ namespace Api.Repositories
 
         return result.HasValue;
 
+        }
+
+        public async Task<IEnumerable<DisputeReason>> GetAllDisputeReasons()
+        {
+            string query = @$"
+                SELECT 
+                    dispute_reason_id AS {nameof(DisputeReason.DisputeReasonID)},
+                    description AS {nameof(DisputeReason.Description)}
+                FROM dispute_reasons;
+            ";
+
+            using var connection = new NpgsqlConnection(Constants.ConnectionString);
+            return await connection.QueryAsync<DisputeReason>(query);
+        }
     }
-  }
 }

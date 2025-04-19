@@ -5,7 +5,7 @@ namespace Api.DTOs
 {
     public class AccountCreateRequest
     {
-
+        [Required]
         public string AccountTypeName { get; set; } = String.Empty;
 
     }

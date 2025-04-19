@@ -7,14 +7,14 @@ namespace Api.Repositories
 {
     public interface IAccountTypeRepository
     {
-        Task<AccountType> GetAccountTypeByIdAsync(int id);
+        Task<AccountType?> GetAccountTypeByIdAsync(int id);
         Task<IEnumerable<AccountType>> GetAllAccountTypesAsync();
-        Task<AccountType> GetAccountTypeByNameAsync(string name);
+        Task<AccountType?> GetAccountTypeByNameAsync(string name);
     }
     public class AccountTypeRepository : IAccountTypeRepository
     {
 
-        public async Task<AccountType> GetAccountTypeByIdAsync(int id)
+        public async Task<AccountType?> GetAccountTypeByIdAsync(int id)
         {
             var query = $@"
                 SELECT account_type_id AS AccountTypeId, name
@@ -26,7 +26,7 @@ namespace Api.Repositories
             return await connection.QueryFirstOrDefaultAsync<AccountType>(query, new { Id = id });
         }
 
-        public async Task<AccountType> GetAccountTypeByNameAsync(string name)
+        public async Task<AccountType?> GetAccountTypeByNameAsync(string name)
         {
             var query = $@"
                 SELECT account_type_id AS AccountTypeId, name

@@ -8,14 +8,16 @@ namespace Cli.Helpers
 {
     using Spectre.Console;
     using System.Collections.Generic;
-  using System.Text.Json;
+    using System.Text;
+    using System.Text.Json;
 
-  public static class CliWidgets
+    public static class CliWidgets
     {
         private static class GalaxyStyle
         {
             public static Color Primary = Color.MediumPurple;
             public static Color Accent = Color.DeepSkyBlue1;
+            public static Color Success = Color.Green;
             public static Color Background = Color.Black;
             public static Color Text = Color.Silver;
             public static Color Border = Color.Plum4;
@@ -39,8 +41,32 @@ namespace Cli.Helpers
             AnsiConsole.Write(panel);
         }
 
+        public static void RenderError(Exception ex)
+        {
+            string userMessage = "Something went wrong. Please try again or contact support.";
+            string detail = ex?.Message ?? "No additional details are available.";
+
+            // Optional: log full exception elsewhere here, if needed for diagnostics
+
+            var content = new StringBuilder();
+            content.AppendLine($"[red]{userMessage}[/]");
+            content.AppendLine();
+            content.AppendLine($"[grey]Details: {detail}[/]");
+
+            var panel = new Panel(new Markup(content.ToString().Trim()))
+                .Border(BoxBorder.Rounded)
+                .BorderStyle(new Style(foreground: Color.Red))
+                .Padding(1, 1)
+                .Header("❌ Error", Justify.Center)
+                .Expand();
+
+            AnsiConsole.Write(panel);
+        }
+
+
         public static string RenderSelection(string title, IEnumerable<string> options)
         {
+            AnsiConsole.Clear();
             var panel = new Panel($"[bold {GalaxyStyle.Accent}]{title}[/]")
                 .Header("☄️ Select an Option", Justify.Center)
                 .Border(BoxBorder.Rounded)
@@ -244,51 +270,69 @@ namespace Cli.Helpers
             AnsiConsole.Write(panel);
         }
 
+        public static void RenderSuccess(string message)
+        {
+            var panel = new Panel($"[green]{message}[/]")
+                .Border(BoxBorder.Rounded)
+                .BorderStyle(new Style(foreground: Color.Green))
+                .Padding(1, 1)
+                .Header("✅ Success", Justify.Center).Expand();
+
+            AnsiConsole.Write(panel);
+        }
+
 
         public static void RenderHttpResponseAsync(HttpResponseMessage response)
         {
+            var content = response.Content.ReadAsStringAsync().Result;
+
             if (response.IsSuccessStatusCode)
             {
-                var content = response.Content.ReadAsStringAsync().Result;
-
                 var panel = new Panel($"[white]{content}[/]")
                     .Border(BoxBorder.Rounded)
                     .BorderStyle(new Style(foreground: Color.Green))
                     .Padding(1, 1)
-                    .Header("✅ Success", Justify.Center).Expand();
-                    
+                    .Header("✅ Success", Justify.Center)
+                    .Expand();
+
                 AnsiConsole.Write(panel);
             }
             else
             {
-                string raw = response.Content.ReadAsStringAsync().Result;
-
-                string message = "An error occurred.";
-                string details = raw;
+                string title = "An error occurred.";
+                string detail = $@"
+                    We could not figure out what went wrong. 
+                    Please log this error with support staff. 
+                    You can do this by screenshotting the full error message or copying and pasting the full error message and emailing it to the support email.
+                    \n\n{content}";
 
                 try
                 {
-                    var error = JsonSerializer.Deserialize<Api.DTOs.ErrorResponse>(raw, new JsonSerializerOptions
+                    var error = JsonSerializer.Deserialize<Api.DTOs.ErrorResponse>(content, new JsonSerializerOptions
                     {
                         PropertyNameCaseInsensitive = true
                     });
 
                     if (error != null)
                     {
-                        message = error.Message;
-                        details = error.Details;
+                        title = !string.IsNullOrWhiteSpace(error.Title)
+                            ? error.Title
+                            : "There was an error performing that action. Please try again later.";
+
+                        detail = error.Detail ?? detail;
                     }
                 }
                 catch
                 {
-                    // If JSON parsing fails, fall back to raw response
+                    // If deserialization fails, fallback values will be used
                 }
 
-                var panel = new Panel($"[red]{details}[/]")
+                var panel = new Panel($"[red]{detail}[/]")
                     .Border(BoxBorder.Rounded)
                     .BorderStyle(new Style(foreground: Color.Red))
                     .Padding(1, 1)
-                    .Header($"❌ {message}", Justify.Center).Expand();
+                    .Header($"❌ {title}", Justify.Center)
+                    .Expand();
 
                 AnsiConsole.Write(panel);
             }

@@ -4,6 +4,7 @@ using Api.Models;
 using Newtonsoft.Json;
 using Namotion.Reflection;
 using System.Text.Json;
+using static Api.Shared.SharedMethods;
 
 namespace Api.Services;
  
@@ -37,7 +38,7 @@ public class GoogleAuthService
         _clientId = GetValueByKey(Environment.GetEnvironmentVariable("GoogleClientId") ?? _configuration["Authentication:Google:ClientId"], "GoogleClientId");
         _clientSecret = GetValueByKey(Environment.GetEnvironmentVariable("GoogleClientSecret") ?? _configuration["Authentication:Google:ClientSecret"], "GoogleClientSecret");
 
-        _redirectUri = $"https://d11dblihl6n2a9.cloudfront.net/signin-google" ?? _configuration["Authentication:Google:RedirectUri"];
+        _redirectUri = GetValueByKey(Environment.GetEnvironmentVariable("GoogleRedirectUri") ?? _configuration["Authentication:Google:RedirectUri"], "GoogleRedirectUri") ?? $"https://localhost:7059/signin-google";
         _scopes = [
             "https://www.googleapis.com/auth/userinfo.email",
             "https://www.googleapis.com/auth/userinfo.profile"
@@ -48,25 +49,6 @@ public class GoogleAuthService
         TokenInfoEndpoint = _configuration["Authentication:TokenInfoEndpoint"];
     }
 
-    private static string GetValueByKey(string jsonString, string key)
-    {
-        try
-        {
-            using JsonDocument doc = JsonDocument.Parse(jsonString);
-            if (doc.RootElement.TryGetProperty(key, out JsonElement value))
-            {
-                return value.ToString();
-            }
-            else
-            {
-                return null; // Key not found
-            }
-        }
-        catch (System.Text.Json.JsonException)
-        {
-            return null; // Invalid JSON
-        }
-    }
 
     public string GenerateAuthUrl(string sessionId)
     {

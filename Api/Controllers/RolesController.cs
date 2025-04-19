@@ -1,38 +1,46 @@
+using Api.DTOs;
 using Api.Services;
+using Api.Shared;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers
 {
+    [ApiController]
     [Route("roles")]
-    public class RolesController(IRoleService roleService) : Controller
+    public class RolesController(IRoleService roleService, IUserService userService) : Controller
     {
         private readonly IRoleService _roleService = roleService;
+        private readonly IUserService _userService = userService;
 
         [HttpGet("", Name = "GetRoles")]
         public async Task<IActionResult> GetRoles()
         {
-            try
+            var requestingUser = HttpContext.GetCurrentUser();
+            if (requestingUser != null && (requestingUser.Role.Name == Constants.DisputeOfficerRoleName || requestingUser.Role.Name == Constants.SystemAdminRoleName))
             {
                 var roles = await _roleService.GetRolesAsync();
-                Console.WriteLine(roles);
                 return Ok(roles);
             }
-            catch (Exception e)
+            else
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+                return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Resource access forbidden", "Accessing this resource is forbidden", StatusCodes.Status403Forbidden));
             }
         }
 
         [HttpGet("{name}", Name = "GetRoleByName")]
         public async Task<IActionResult> GetRoleByName(string name)
         {
-            var role = await _roleService.GetRoleByNameAsync(name);
-
-            if (role == null)
-                return NotFound(new { message = $"Role '{name}' not found." });
-
-            return Ok(role);
+            var requestingUser = HttpContext.GetCurrentUser();
+            if (requestingUser != null && (requestingUser.Role.Name == Constants.DisputeOfficerRoleName || requestingUser.Role.Name == Constants.SystemAdminRoleName))
+            {
+                var role = await _roleService.GetRoleByNameAsync(name);
+                if (role == null) return NotFound(new ErrorResponse("Role not found", $"Role '{name}' not found.", StatusCodes.Status404NotFound));
+                else return Ok(role);
+            }
+            else
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Accessing resource forbidden", "Accessing this resource is forbidden", StatusCodes.Status403Forbidden));
+            }
         }
-
     }
 }

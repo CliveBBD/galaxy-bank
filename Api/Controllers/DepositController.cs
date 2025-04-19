@@ -5,7 +5,8 @@ using Api.Shared;
 
 namespace Api.Controllers
 {
-    [Route("deposit")]
+    [ApiController]
+    [Route("deposits")]
     public class DepositController : Controller
     {
         private readonly IDepositService _depositService;
@@ -18,47 +19,28 @@ namespace Api.Controllers
         }
 
         [HttpPost("", Name = "Deposit")]
-        public async Task<IActionResult> Deposit([FromBody] DepositRequest request)
+        public async Task<IActionResult> Deposit([FromBody] DepositRequest depositRequest)
         {
-            if (!ModelState.IsValid)
+            var currentUser = HttpContext.GetCurrentUser();
+
+            if (currentUser == null)
             {
-                return BadRequest(ModelState);
+                return Unauthorized(new ErrorResponse("User not authenticated", "You need to be logged in to make a deposit", StatusCodes.Status401Unauthorized));
             }
-
-
-            try
+            else
             {
-                var payload = await JwtDecoder.Decode(HttpContext);
-
-                if (payload == null)
+                var result = await _depositService.DepositAsync(depositRequest, currentUser.GoogleID);
+                try
                 {
-                    return Unauthorized("Invalid or missing token.");
+                    _ = _emailService.SendEmailAsync(currentUser.Email, DepositEmailTemplate.Subject, DepositEmailTemplate.Message(currentUser.Username, depositRequest.AccountNumber.ToString(), depositRequest.Amount.ToString()));
+                }
+                catch
+                {
+                    // errors thrown by the emailing services should not cause the request to fail
                 }
 
-                var googleId = payload.Subject;
-                Console.WriteLine($"Google ID: {googleId}");
-
-                var result = await _depositService.DepositAsync(request, googleId);
-                Console.WriteLine("To email result: " + payload.Email);
-                await _emailService.SendEmailAsync(payload.Email, DepositEmailTemplate.Subject, DepositEmailTemplate.Message(payload.GivenName, request.AccountNumber.ToString(), request.Amount.ToString()));
-                Console.WriteLine(result);
-                return Ok(result);
+                return StatusCode(StatusCodes.Status201Created, result);
             }
-            catch (Exception e)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
-            }
-        }
-
-        public IActionResult Index()
-        {
-            return View();
-        }
-
-        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        public IActionResult Error()
-        {
-            return View("Error!");
         }
     }
 }

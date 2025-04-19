@@ -119,8 +119,7 @@ namespace Cli.Commands
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    var errorMessage = response.Content.ReadAsStringAsync().Result;
-                    CliWidgets.RenderError($"[red]Failed to fetch accounts: {response.StatusCode} - {response.ReasonPhrase} - {errorMessage}[/]");
+                    CliWidgets.RenderHttpResponseAsync(response);
                     return 1;
                 }
 

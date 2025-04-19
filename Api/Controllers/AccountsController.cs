@@ -27,109 +27,127 @@ namespace Api.Controllers
         [HttpPost("", Name = "CreateAccount")]
         public async Task<ActionResult<Account>> CreateAccount([FromBody] AccountCreateRequest request)
         {
-            try
+            var payload = await JwtDecoder.Decode(HttpContext);
+
+            if (payload == null)
             {
-                if (request == null)
-                {
-                    return BadRequest(new { message = $"Invalid account data." });
-                }
+                return Unauthorized(new ErrorResponse("You must be authenticated in order to create an account.", StatusCodes.Status401Unauthorized));
+            }
+            else
+            {
+                // Using this as a guard clause. If there is a payload continue with the normal flow. 
+            }
 
-                var payload = await JwtDecoder.Decode(HttpContext);
+            var userDto = new CreateUserDto(
+                payload.Subject,
+                payload.GivenName,
+                payload.Email
+            );
 
-                var userDto = new CreateUserDto(
-                    payload.Subject,
-                    payload.GivenName,
-                    payload.Email
+            var accountNumber = await _accountService.CreateAccount(request.AccountTypeName, userDto);
+
+            if (accountNumber == null)
+            {
+                return StatusCode(
+                    StatusCodes.Status500InternalServerError,
+                    new ErrorResponse(
+                        "Account could not be created",
+                        $"We could not create an account for {userDto.Username}. Please try again later.",
+                        StatusCodes.Status500InternalServerError
+                    )
                 );
-
-                var accountNumber = await _accountService.CreateAccount(request.AccountTypeName, userDto);
-
+            }
+            else
+            {
                 var account = await _accountService.GetAccountByAccountNumber(accountNumber);
 
-                var user = await _userService.GetUserByIdAsync(account.UserId);
+                if (account == null)
+                {
+                    return StatusCode(
+                        StatusCodes.Status500InternalServerError,
+                        new ErrorResponse(
+                            "Created account could not be found",
+                            $"We could not find the newly created account with the account number {accountNumber}. Please try again later.",
+                            StatusCodes.Status500InternalServerError
+                        )
+                    );
+                }
+                else
+                {
+                    try
+                    {
+                        // We do not need to wait for the email to be sent
+                        _ = _emailService.SendEmailAsync(userDto.Email, AccountCreationEmailTemplate.Subject, AccountCreationEmailTemplate.Message(userDto.Username, accountNumber));
+                    }
+                    catch
+                    {
+                        // Exceptions thrown by the emailing service shouldn't stop the normal flow of the endpoint
+                    }
 
-
-                await _emailService.SendEmailAsync(user.Email, AccountCreationEmailTemplate.Subject, AccountCreationEmailTemplate.Message(user.Username, accountNumber));
-
-                return Ok($"Successfully created an account with account number: {accountNumber}.");
+                    return StatusCode(StatusCodes.Status201Created, account);
+                }
             }
-            catch (Exception e)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
-            }
-
         }
 
         [HttpGet("", Name = "GetAccounts")]
         public async Task<IActionResult> GetAccounts()
         {
-            try
+            var requestingUser = HttpContext.GetCurrentUser();
+
+            if (requestingUser == null)
             {
-                var requestingUser = await _userService.GetCurrentUser(HttpContext);
-
-
-                var googleId = requestingUser.GoogleID;
-                var accounts = await _accountService.GetAccounts(googleId);
+                return Unauthorized(new ErrorResponse("User is not authorized", "You must be authenticated in order to get a list of accounts.", StatusCodes.Status401Unauthorized));
+            }
+            else
+            {
+                var accounts = await _accountService.GetAccounts(requestingUser.GoogleID);
 
                 if (accounts != null)
                 {
-                    var response = await _accountMapper.ToAccountResponseList(accounts);
-                    return Ok(response);
+                    var responseAccounts = await _accountMapper.ToAccountResponseList(accounts);
+                    return Ok(responseAccounts);
                 }
                 else
                 {
-                    return NotFound(new ErrorResponse($"No accounts found"));
+                    return NotFound(new ErrorResponse($"No accounts found for {requestingUser.Username}", StatusCodes.Status404NotFound));
                 }
-
-
             }
-            catch (Exception e)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
-            }
-
         }
 
         [HttpGet("{accountNumber}", Name = "GetAccountByAccountNumber")]
         public async Task<IActionResult> GetAccountByAccountNumber(string accountNumber)
         {
-            try
+            var account = await _accountService.GetAccountByAccountNumber(accountNumber);
+
+            if (account == null)
             {
-                var account = await _accountService.GetAccountByAccountNumber(accountNumber);
-
-                if (account == null)
-                    return NotFound(new { message = $"Account with account number: {accountNumber} not found." });
-
+                return NotFound(new ErrorResponse(
+                        "Account not found",
+                        $"Account with account number: {accountNumber} not found.",
+                        StatusCodes.Status404NotFound
+                    )
+                );
+            }
+            else
+            {
                 var response = await _accountMapper.ToAccountResponse(account);
                 return Ok(response);
-
             }
-            catch (Exception e)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
-            }
-
         }
 
         [HttpGet("user/{email}", Name = "GetAccountsByUserEmail")]
         public async Task<ActionResult<IEnumerable<Account>>> GetAccountsByUserEmail(string email)
         {
+            var accounts = await _accountService.GetAccountsByUserEmail(email);
 
-            try
+            if (!accounts.Any())
             {
-                var accounts = await _accountService.GetAccountsByUserEmail(email);
-
-                if (!accounts.Any())
-                    return NotFound(new { message = $"No accounts found for {email}." });
-
-                var response = await _accountMapper.ToAccountResponseList(accounts);
-                return Ok(response);
-
-
+                return NotFound(new ErrorResponse("No accounts found", $"No accounts found for {email}.", StatusCodes.Status404NotFound));
             }
-            catch (Exception e)
+            else
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+                var responseAccounts = await _accountMapper.ToAccountResponseList(accounts);
+                return Ok(responseAccounts);
             }
         }
     }

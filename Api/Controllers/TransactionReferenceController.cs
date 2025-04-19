@@ -1,10 +1,12 @@
 using Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Api.Shared;
+using Api.DTOs;
 
 namespace Api.Controllers
 {
     [Route("transaction-references")]
+    [ApiController]
     public class TransactionReferencesController(ITransactionReferenceService transactionReferenceService) : Controller
     {
         private readonly ITransactionReferenceService _transactionReferenceService = transactionReferenceService;
@@ -12,36 +14,17 @@ namespace Api.Controllers
         [HttpGet("{referenceId}", Name = "GetTransactionsByReferenceId")]
         public async Task<IActionResult> GetTransactionReferencesByAccountId(int referenceId)
         {
-            if (!ModelState.IsValid)
+            var requestingUser = HttpContext.GetCurrentUser();
+            if (requestingUser == null)
             {
-                return BadRequest(ModelState);
+                return Unauthorized(new ErrorResponse("User not authorized to view transactions by reference id", "You need to be authorized to view transactions by transaction id", StatusCodes.Status401Unauthorized));
             }
-
-            try
+            else
             {
-                var payload = await JwtDecoder.Decode(HttpContext);
-                if (payload == null)
-                {
-                    return Unauthorized("Invalid or missing token.");
-                }
-                var googleId = payload.Subject;
+                var googleId = requestingUser.GoogleID;
                 var transactionReferences = await _transactionReferenceService.GetTransactionsByReferenceAsync(googleId, referenceId);
                 return Ok(transactionReferences);
             }
-            catch (Exception e)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
-            }
-        }
-        public IActionResult Index()
-        {
-            return View();
-        }
-
-        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        public IActionResult Error()
-        {
-            return View("Error!");
         }
     }
 }

@@ -26,10 +26,6 @@ namespace Api.Repositories
             using var transaction = _dbConnection.BeginTransaction();
             try
             {
-                Console.WriteLine($"Google ID: {googleId}");
-                Console.WriteLine($"Deposit Amount: {depositRequest.Amount}");
-                Console.WriteLine($"Deposit Reference: {depositRequest.Reference}");
-                Console.WriteLine($"Account Number: {depositRequest.AccountNumber}");
                 // Step 1: Retrieve the internal user ID using the Google ID
                 string userQuery = """
                 SELECT user_id AS "UserId"
@@ -41,8 +37,6 @@ namespace Api.Repositories
                     new { GoogleId = googleId },
                     transaction: transaction
                 );
-
-                Console.WriteLine($"User: {user}");
 
                 if (user == null)
                 {
@@ -60,8 +54,6 @@ namespace Api.Repositories
                     transaction: transaction
                 );
 
-                Console.WriteLine($"Transaction Reference ID: {transactionReferenceId}");
-
                 if (transactionReferenceId <= 0)
                 {
                     throw new InvalidOperationException("Failed to create a transaction reference.");
@@ -78,8 +70,6 @@ namespace Api.Repositories
                     new { AccountNumber = depositRequest.AccountNumber, UserId = userId },
                     transaction: transaction
                 );
-
-                Console.WriteLine($"Account: {account}");
 
                 if (account == null)
                 {
@@ -108,11 +98,7 @@ namespace Api.Repositories
                     Reference = depositRequest.Reference // Assuming the reference is part of the request
                 };
 
-                Console.WriteLine($"Transaction Parameters: {transactionParameters}");
-
                 int rowsAffected = await _dbConnection.ExecuteAsync(transactionQuery, transactionParameters, transaction: transaction);
-
-                Console.WriteLine($"Rows Affected: {rowsAffected}");
 
                 if (rowsAffected <= 0)
                 {
@@ -131,7 +117,6 @@ namespace Api.Repositories
                     transaction: transaction
                 );
 
-                Console.WriteLine($"Balance Update Result: {balanceUpdateResult}");
 
                 if (balanceUpdateResult <= 0)
                 {
