@@ -32,12 +32,12 @@ namespace Api.Controllers
         {
             var requestingUser = HttpContext.GetCurrentUser();
 
-            if (requestingUser != null && requestingUser.Role.Name == Constants.AdminRoleName)
+            if (requestingUser != null && requestingUser.Role.Name == Constants.DisputeOfficerRoleName)
             {
                 var transactions = await _transactionService.GetDisputableTransactionsAsync();
                 return Ok(transactions);
             }
-            else if (requestingUser != null && requestingUser.Role.Name != Constants.AdminRoleName)
+            else if (requestingUser != null && requestingUser.Role.Name != Constants.DisputeOfficerRoleName)
             {
                 var transactions = await _transactionService.GetDisputableTransactionsAsync(requestingUser.UserID);
                 return Ok(transactions);

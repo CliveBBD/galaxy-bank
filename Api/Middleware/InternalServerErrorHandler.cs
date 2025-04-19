@@ -15,12 +15,12 @@ namespace Api.Middleware
             {
                 await next(context);
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
                 context.Response.StatusCode = StatusCodes.Status500InternalServerError;
                 context.Response.ContentType = "application/json";
 
-                var errorResponse = new ErrorResponse(ex);
+                var errorResponse = new ErrorResponse(exception);
 
                 var json = JsonSerializer.Serialize(errorResponse);
                 await context.Response.WriteAsync(json);

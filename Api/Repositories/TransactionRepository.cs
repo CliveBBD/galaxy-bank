@@ -129,13 +129,24 @@ namespace Api.Repositories
 
         public async Task<IEnumerable<TransactionRequest>> GetTransactionsByAccountNumberAsync(string accountNumber, string googleId)
         {
-            string adminCheckQuery = """
-            SELECT COUNT(1)
-            FROM users
-            WHERE google_id = @GoogleId AND role_id = 2;
-            """;
+            string adminCheckQuery = @"
+                SELECT COUNT(1)
+                FROM users
+                INNER JOIN roles on users.role_id = roles.role_id
+                WHERE google_id = @GoogleId AND roles.name = ANY(@adminRoles);
+            ";
 
-            var isAdmin = await _dbConnection.ExecuteScalarAsync<bool>(adminCheckQuery, new { GoogleId = googleId });
+            var isAdmin = await _dbConnection.ExecuteScalarAsync<bool>(
+                adminCheckQuery,
+                new
+                {
+                    GoogleId = googleId,
+                    adminRoles = new[]
+                    {
+                        Constants.SystemAdminRoleName,
+                        Constants.DisputeOfficerRoleName
+                    }
+                });
 
             string query;
 
@@ -196,13 +207,24 @@ namespace Api.Repositories
 
         public async Task<IEnumerable<TransactionRequest>> GetTransactionsByIdAsync(int transactionId, string googleId)
         {
-            string adminCheckQuery = """
-            SELECT COUNT(1)
-            FROM users
-            WHERE google_id = @GoogleId AND role_id = 2;
-            """;
+            string adminCheckQuery = @"
+                SELECT COUNT(1)
+                FROM users
+                INNER JOIN roles on users.role_id = roles.role_id
+                WHERE google_id = @GoogleId AND roles.name = ANY(@adminRoles);
+            ";
 
-            var isAdmin = await _dbConnection.ExecuteScalarAsync<bool>(adminCheckQuery, new { GoogleId = googleId });
+            var isAdmin = await _dbConnection.ExecuteScalarAsync<bool>(
+                adminCheckQuery,
+                new
+                {
+                    GoogleId = googleId,
+                    adminRoles = new[]
+                    {
+                        Constants.SystemAdminRoleName,
+                        Constants.DisputeOfficerRoleName
+                    }
+                });
 
             string query;
 

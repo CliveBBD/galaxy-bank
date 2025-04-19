@@ -45,12 +45,12 @@ namespace Api.Controllers
 
             var requestingUser = HttpContext.GetCurrentUser();
 
-            if (requestingUser != null && requestingUser.Role.Name == Constants.AdminRoleName)
+            if (requestingUser != null && requestingUser.Role.Name == Constants.DisputeOfficerRoleName)
             {
                 var disputes = await _disputeService.GetAllDisputesAsync(pagination: pagination, userId: userId, status: status, email: email);
                 return Ok(disputes);
             }
-            else if (requestingUser != null && requestingUser.Role.Name != Constants.AdminRoleName)
+            else if (requestingUser != null && requestingUser.Role.Name != Constants.DisputeOfficerRoleName)
             {
                 var disputes = await _disputeService.GetAllDisputesAsync(pagination: pagination, status: status, email: requestingUser.Email);
                 return Ok(disputes);
@@ -68,12 +68,12 @@ namespace Api.Controllers
         {
             var requestingUser = HttpContext.GetCurrentUser();
 
-            if (requestingUser != null && requestingUser.Role.Name == Constants.AdminRoleName)
+            if (requestingUser != null && requestingUser.Role.Name == Constants.DisputeOfficerRoleName)
             {
                 var dispute = await _disputeService.GetDisputeAsync(disputeId);
                 return dispute == null ? NotFound(new ErrorResponse($"Dispute with disputeId={disputeId} not found.")) : Ok(dispute);
             }
-            else if (requestingUser != null && requestingUser.Role.Name != Constants.AdminRoleName)
+            else if (requestingUser != null && requestingUser.Role.Name != Constants.DisputeOfficerRoleName)
             {
                 var dispute = await _disputeService.GetDisputeAsync(disputeId, requestingUser.UserID);
                 return dispute == null ? NotFound(new ErrorResponse($"Dispute with disputeId={disputeId} not found.")) : Ok(dispute);
@@ -82,6 +82,16 @@ namespace Api.Controllers
             {
                 return Unauthorized(UnauthorizedErrorResponse);
             }
+        }
+
+        [HttpGet("reasons", Name = "GetDisputeReasons")]
+        public async Task<IActionResult> GetDisputeReasons(
+            int disputeId
+        )
+        {
+            var disputeReasons = await _disputeService.GetAllDisputeReasons();
+            if (disputeReasons != null) return Ok(disputeReasons);
+            else return NotFound(new ErrorResponse("Dispute reasons not found", "We could not find any dispute reasons at this time. Please try again later.", StatusCodes.Status404NotFound));
         }
 
         [HttpGet("{disputeId}/history", Name = "GetDisputeStatusHistory")]
@@ -97,12 +107,12 @@ namespace Api.Controllers
 
             var requestingUser = HttpContext.GetCurrentUser();
 
-            if (requestingUser != null && requestingUser.Role.Name == Constants.AdminRoleName)
+            if (requestingUser != null && requestingUser.Role.Name == Constants.DisputeOfficerRoleName)
             {
                 var disputes = await _disputeService.GetDisputeHistoryAsync(pagination, disputeId);
                 return Ok(disputes);
             }
-            else if (requestingUser != null && requestingUser.Role.Name != Constants.AdminRoleName)
+            else if (requestingUser != null && requestingUser.Role.Name != Constants.DisputeOfficerRoleName)
             {
                 var disputes = await _disputeService.GetDisputeHistoryAsync(pagination, disputeId, requestingUser.UserID);
                 return Ok(disputes);
@@ -120,7 +130,7 @@ namespace Api.Controllers
         {
             var requestingUser = HttpContext.GetCurrentUser();
 
-            if (requestingUser != null && requestingUser.Role.Name == Constants.AdminRoleName)
+            if (requestingUser != null && requestingUser.Role.Name == Constants.DisputeOfficerRoleName)
             {
                 var allowedNextStatuses = await _disputeService.GetAllowedNextStatusesAsync(
                     disputeId
@@ -152,7 +162,7 @@ namespace Api.Controllers
         {
             var requestingUser = HttpContext.GetCurrentUser();
 
-            if (requestingUser != null && requestingUser.Role.Name == Constants.AdminRoleName)
+            if (requestingUser != null && requestingUser.Role.Name == Constants.DisputeOfficerRoleName)
             {
                 var createdDisputeHistoryEntry = await _disputeService.UpdateDisputeStatus(
                     disputeId,
@@ -208,8 +218,9 @@ namespace Api.Controllers
                     {
                         var createdDispute = await _disputeService.CreateDisputeAsync(
                             disputeCreateRequest.DisputedTransactionReferenceID,
-                            disputeCreateRequest.Reason,
-                            requestingUser.UserID
+                            disputeCreateRequest.Details,
+                            requestingUser.UserID,
+                            disputeCreateRequest.DisputeReasonId
                         );
                         if (createdDispute != null)
                         {

@@ -10,10 +10,11 @@ namespace Api.Services
         Task<IEnumerable<Dispute>> GetAllDisputesAsync(Pagination? pagination = null, int? userId = null, string? status = null, string? email = null);
         Task<Dispute?> GetDisputeAsync(int disputeId, int? userId = null);
         Task<IEnumerable<DisputeHistoryEntry>> GetDisputeHistoryAsync(Pagination? pagination, int disputeId, int? userId = null);
-        Task<Dispute?> CreateDisputeAsync(int transactionReferenceID, string reason, int userID);
-        Task<DisputeHistoryEntry?> UpdateDisputeStatus(int disputeID, int newStatusID, int updatedByID);
-        Task<IEnumerable<DisputeStatus?>> GetAllowedNextStatusesAsync(int disputeID);
-    }
+    Task<Dispute?> CreateDisputeAsync(int transactionReferenceID, string reason, int userID, int disputeReasonId);
+    Task<DisputeHistoryEntry?> UpdateDisputeStatus(int disputeID, int newStatusID, int updatedByID);
+    Task<IEnumerable<DisputeStatus?>> GetAllowedNextStatusesAsync(int disputeID);
+    Task<IEnumerable<DisputeReason>> GetAllDisputeReasons();
+  }
 
   public class DisputeService (IDisputeRepository disputeRepository, ITransactionRepository transactionRepository) : IDisputeService
   {
@@ -25,9 +26,9 @@ namespace Api.Services
       return await _disputeRepository.GetAllowedNextStatusesAsync(disputeID);
     }
 
-    public async Task<Dispute?> CreateDisputeAsync(int transactionReferenceID, string reason, int userID)
+    public async Task<Dispute?> CreateDisputeAsync(int transactionReferenceID, string reason, int userID, int disputeReasonId)
     {
-      return await _disputeRepository.CreateDisputeAsync(transactionReferenceID, reason, userID);
+      return await _disputeRepository.CreateDisputeAsync(transactionReferenceID, reason, userID, disputeReasonId);
     }
 
     public async Task<IEnumerable<Dispute>> GetAllDisputesAsync(Pagination? pagination, int? userId, string? status, string? email = null)
@@ -96,6 +97,11 @@ namespace Api.Services
       {
         return null;
       }
+    }
+
+    public async Task<IEnumerable<DisputeReason>> GetAllDisputeReasons()
+    {
+      return await _disputeRepository.GetAllDisputeReasons();
     }
   }
 }

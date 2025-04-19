@@ -16,7 +16,7 @@ namespace Api.Controllers
         public async Task<IActionResult> GetRoles()
         {
             var requestingUser = HttpContext.GetCurrentUser();
-            if (requestingUser != null && requestingUser.Role.Name == Constants.AdminRoleName)
+            if (requestingUser != null && (requestingUser.Role.Name == Constants.DisputeOfficerRoleName || requestingUser.Role.Name == Constants.SystemAdminRoleName))
             {
                 var roles = await _roleService.GetRolesAsync();
                 return Ok(roles);
@@ -31,7 +31,7 @@ namespace Api.Controllers
         public async Task<IActionResult> GetRoleByName(string name)
         {
             var requestingUser = HttpContext.GetCurrentUser();
-            if (requestingUser != null && requestingUser.Role.Name == Constants.AdminRoleName)
+            if (requestingUser != null && (requestingUser.Role.Name == Constants.DisputeOfficerRoleName || requestingUser.Role.Name == Constants.SystemAdminRoleName))
             {
                 var role = await _roleService.GetRoleByNameAsync(name);
                 if (role == null) return NotFound(new ErrorResponse("Role not found", $"Role '{name}' not found.", StatusCodes.Status404NotFound));

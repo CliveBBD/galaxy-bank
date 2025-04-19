@@ -26,7 +26,7 @@ namespace Api.Controllers
             {
                 return Unauthorized(new ErrorResponse("Not authorized to create users", "You must be logged in and have appropriate permissions to create a user", StatusCodes.Status401Unauthorized));
             }
-            else if (currentUser.Role.Name != Constants.AdminRoleName)
+            else if (currentUser.Role.Name != Constants.SystemAdminRoleName)
             {
                 return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Not authorized to create users", "You are not authorized to create a user", StatusCodes.Status403Forbidden));
             }

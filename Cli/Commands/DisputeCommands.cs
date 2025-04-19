@@ -32,35 +32,49 @@ namespace Cli.Commands
                     string selectedTransaction = CliWidgets.RenderSelection("Choose a transaction to dispute", disputableTransactions.Select(transaction => $"{transaction.TransactionReferenceID}: {transaction.Reference}. Payment of Q {-transaction.Amount}"));
                     string selectedTransactionReferenceId = selectedTransaction.Split(':')[0];
 
-                    string reason = CliWidgets.PromptText("Please provide a reason for your dispute.");
+                    var disputeReasonsUrl = $"{Constants.ApiBaseUrl}/disputes/reasons";
+                    HttpResponseMessage disputeReasonsResponse = http.httpClient.GetAsync(disputeReasonsUrl).Result;
 
-                    Dictionary<string, string?> payload = new Dictionary<string, string?>
+                    if (disputeReasonsResponse.IsSuccessStatusCode)
                     {
-                        { "disputedTransactionReferenceID", selectedTransactionReferenceId },
-                        { "reason", reason },
-                    };
-                    requestUrl = $"{Constants.ApiBaseUrl}/disputes";
-                    response = http.httpClient.PostAsync(requestUrl, JsonContent.Create(payload)).Result;
-
-                    if (response.IsSuccessStatusCode)
-                    {
-                        jsonResponse = response.Content.ReadAsStringAsync().Result;
-                        Api.Models.Dispute? createdDispute = JsonSerializer.Deserialize<Api.Models.Dispute>(jsonResponse);
-                        if (createdDispute != null)
+                        string disputeReasonsJsonResponse = disputeReasonsResponse.Content.ReadAsStringAsync().Result;
+                        var disputeReasons = JsonSerializer.Deserialize<IEnumerable<Api.Models.DisputeReason>>(disputeReasonsJsonResponse);
+                        string reason = CliWidgets.RenderSelection("Please select a category for your dispute.", disputeReasons!.Select(reason => $"{reason.DisputeReasonID}: {reason.Description}"));
+                        string disputeReasonDetails = CliWidgets.PromptText("Please provide more details about your dispute.");
+                        Dictionary<string, string?> payload = new Dictionary<string, string?>
                         {
-                            TableBuilder<Api.Models.Dispute> tableBuilder = new TableBuilder<Api.Models.Dispute>(new List<Api.Models.Dispute>() { createdDispute });
-                            CliWidgets.RenderTable("New Dispute", tableBuilder.Table);
-                            return 0;
+                            { "disputedTransactionReferenceID", selectedTransactionReferenceId },
+                            { "details", disputeReasonDetails },
+                            { "disputeReasonId", reason.Split(":")[0]}
+                        };
+                        requestUrl = $"{Constants.ApiBaseUrl}/disputes";
+                        response = http.httpClient.PostAsync(requestUrl, JsonContent.Create(payload)).Result;
+
+                        if (response.IsSuccessStatusCode)
+                        {
+                            jsonResponse = response.Content.ReadAsStringAsync().Result;
+                            Api.Models.Dispute? createdDispute = JsonSerializer.Deserialize<Api.Models.Dispute>(jsonResponse);
+                            if (createdDispute != null)
+                            {
+                                TableBuilder<Api.Models.Dispute> tableBuilder = new TableBuilder<Api.Models.Dispute>(new List<Api.Models.Dispute>() { createdDispute });
+                                CliWidgets.RenderTable("New Dispute", tableBuilder.Table);
+                                return 0;
+                            }
+                            else
+                            {
+                                CliWidgets.RenderError("We had trouble creating the dispute. Please try again later.");
+                                return 1;
+                            }
                         }
                         else
                         {
-                            CliWidgets.RenderError("We had trouble creating the dispute. Please try again later.");
+                            CliWidgets.RenderHttpResponseAsync(response);
                             return 1;
                         }
                     }
                     else
                     {
-                        CliWidgets.RenderHttpResponseAsync(response);
+                        CliWidgets.RenderHttpResponseAsync(disputeReasonsResponse);
                         return 1;
                     }
                 }

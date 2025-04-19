@@ -66,6 +66,7 @@ namespace Cli.Helpers
 
         public static string RenderSelection(string title, IEnumerable<string> options)
         {
+            AnsiConsole.Clear();
             var panel = new Panel($"[bold {GalaxyStyle.Accent}]{title}[/]")
                 .Header("☄️ Select an Option", Justify.Center)
                 .Border(BoxBorder.Rounded)
