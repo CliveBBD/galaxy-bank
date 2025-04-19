@@ -50,7 +50,7 @@ namespace Api.Repositories
             );
 
             // If user is not an admin, only fetch their transactions
-            if (roleName != Constants.DisputeOfficerRoleName)
+            if (roleName != Constants.DisputeOfficerRoleName && roleName != Constants.SystemAdminRoleName)
             {
                 // Query to fetch transactions
                 string query = """
