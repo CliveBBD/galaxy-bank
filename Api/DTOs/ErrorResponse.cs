@@ -1,51 +1,67 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace Api.DTOs
 {
-    public class ErrorResponse
+    public class ErrorResponse : ProblemDetails
     {
-        private static readonly string DEFAULT_ERROR_MESSAGE = "There was a problem handling your request";
-        [Required]
-        public string Message { get; set; }
-        public string Details { get; set; }
+        private const string DEFAULT_ERROR_TITLE = "There was a problem handling your request";
 
         public ErrorResponse()
         {
-            Message = DEFAULT_ERROR_MESSAGE;
-            Details = DEFAULT_ERROR_MESSAGE;
+            Title = DEFAULT_ERROR_TITLE;
+            Detail = DEFAULT_ERROR_TITLE;
+            Status = 400;
         }
 
-        public ErrorResponse(string details)
+        public ErrorResponse(string detail, int statusCode = 400)
         {
-            Message = DEFAULT_ERROR_MESSAGE;
-            Details = details;
-        }
-        
-        public ErrorResponse(string message, string details)
-        {
-            Message = message;
-            Details = details;
+            Title = DEFAULT_ERROR_TITLE;
+            Detail = detail;
+            Status = statusCode;
         }
 
-        public ErrorResponse(ModelStateDictionary modelState) 
+        public ErrorResponse(string title, string detail, int statusCode = 400)
         {
-            var errors = modelState
-                .Where(state => state.Value.Errors.Count > 0)
-                .SelectMany(state => state.Value.Errors.Select(error => $"{state.Key}: {error.ErrorMessage.TrimEnd('.')}.{error.Exception?.Message ?? ""};"))
-                .ToList();
-
-            Message = DEFAULT_ERROR_MESSAGE;
-            Details = string.Join(" ", errors);
+            Title = title;
+            Detail = detail;
+            Status = statusCode;
         }
 
-        public ErrorResponse(IEnumerable<ValidationResult> validationResult)
+        public ErrorResponse(IEnumerable<ValidationResult> validationResults, int statusCode = 400)
         {
-            var errors = validationResult
-                .Select(validationError => $"[{string.Join(", ", validationError.MemberNames.Select(member => member.ToString()))}]: {validationError.ErrorMessage};");
+            var errors = validationResults
+                .Select(validationError => $"[{string.Join(", ", validationError.MemberNames)}]: {validationError.ErrorMessage};");
 
-            Message = DEFAULT_ERROR_MESSAGE;
-            Details = string.Join(" ", errors);
+            Title = DEFAULT_ERROR_TITLE;
+            Detail = string.Join(" ", errors);
+            Status = statusCode;
+        }
+
+        public ErrorResponse(Exception ex, int statusCode = 500)
+        {
+            Title = DEFAULT_ERROR_TITLE;
+            Detail = ex.Message;
+            Status = statusCode;
+
+            if (!string.IsNullOrWhiteSpace(ex.StackTrace))
+            {
+                Extensions["stackTrace"] = ex.StackTrace;
+            }
+            else
+            {
+                Extensions["stackTrace"] = "No stack trace available.";
+            }
+
+            if (ex.InnerException != null)
+            {
+                Extensions["innerException"] = ex.InnerException.Message;
+            }
+            else
+            {
+                Extensions["innerException"] = "No inner exception.";
+            }
         }
     }
 }

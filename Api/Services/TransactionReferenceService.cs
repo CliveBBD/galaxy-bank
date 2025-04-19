@@ -6,11 +6,18 @@ namespace Api.Services
     public interface ITransactionReferenceService
     {
         Task<IEnumerable<Transaction>> GetTransactionsByReferenceAsync(string googleId, int referenceId);
+        Task<TransactionReference?> GetTransactionReferenceById(int transactionReferenceId);
     }
 
     public class TransactionReferenceService(ITransactionReferenceRepository transactionReferenceRepository) : ITransactionReferenceService
     {
         private readonly ITransactionReferenceRepository _transactionReferenceRepository = transactionReferenceRepository;
+
+        public async Task<TransactionReference?> GetTransactionReferenceById(int transactionReferenceId)
+        {
+            return await _transactionReferenceRepository.GetTransactionReferenceById(transactionReferenceId);
+        }
+
         public async Task<IEnumerable<Transaction>> GetTransactionsByReferenceAsync(string googleId, int referenceId)
         {
             if (referenceId <= 0)

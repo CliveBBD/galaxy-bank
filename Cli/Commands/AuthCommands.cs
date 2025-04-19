@@ -38,7 +38,7 @@ namespace Cli.Commands
 
                 if (result.Success)
                 {
-                    CliWidgets.RenderPanel("Authentication successful!");
+                    CliWidgets.RenderSuccess("Authentication successful!");
                 }
                 else
                 {
@@ -74,7 +74,7 @@ namespace Cli.Commands
         public override int Execute(CommandContext context)
         {
             User.Clear();
-            AnsiConsole.MarkupLine($"[green]You are logged out[/]");
+            CliWidgets.RenderSuccess($"[green]You are logged out[/]");
             return 0;
         }
     }

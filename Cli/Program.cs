@@ -24,7 +24,8 @@ class Program
                     {
                         var addCommandMethod = typeof(IConfigurator)
                         .GetMethod("AddCommand")
-                        .MakeGenericMethod(commandType);
+                        ?? throw new InvalidOperationException("AddCommand method not found on IConfigurator");
+                        addCommandMethod = addCommandMethod.MakeGenericMethod(commandType);
 
                         addCommandMethod.Invoke(config, [commandName]);
                     }

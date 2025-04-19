@@ -7,10 +7,10 @@ namespace Api.Repositories
 {
     public interface IAccountRepository
     {
-        Task<string> CreateAccountAsync(string accountTypeName, CreateUserDto userDto);
+        Task<string?> CreateAccountAsync(string accountTypeName, CreateUserDto userDto);
         Task<IEnumerable<Account>> GetAccountsAsync(string googleId);
         Task<IEnumerable<Account>> GetAccountsAsync(int? userId = null);
-        Task<Account> GetAccountByAccountNumberAsync(string accountNumber);
+        Task<Account?> GetAccountByAccountNumberAsync(string accountNumber);
         Task<IEnumerable<Account>> GetAccountsByUserEmailAsync(string email);
 
     }
@@ -26,7 +26,7 @@ namespace Api.Repositories
             _userRepository = userRepository;
 
         }
-        public async Task<string> CreateAccountAsync(string accountTypeName, CreateUserDto userDto)
+        public async Task<string?> CreateAccountAsync(string accountTypeName, CreateUserDto userDto)
         {
             var newUser = userDto;
 
@@ -39,10 +39,10 @@ namespace Api.Repositories
 
             bool exists = await _userRepository.UserExistsAsync(newUser.GoogleID, newUser.Email);
 
-            int userId;
+            User? user;
             if (!exists)
             {
-                userId = await _userRepository.CreateUserAsync(newUser.GoogleID, newUser.Username, newUser.Email, "customer");
+                user = await _userRepository.CreateUserAsync(newUser.GoogleID, newUser.Username, newUser.Email, "customer");
             }
             else
             {
@@ -50,7 +50,7 @@ namespace Api.Repositories
                 if (existingUser == null)
                     throw new Exception("User exists but could not be retrieved.");
 
-                userId = existingUser.UserID;
+                user = existingUser;
             }
 
             var query = @"
@@ -61,13 +61,15 @@ namespace Api.Repositories
 
             using var connection = new NpgsqlConnection(Constants.ConnectionString);
 
-            var accountNumber = await connection.ExecuteScalarAsync<string>(query, new
-            {
-                UserId = userId,
-                AccountType = accountType.AccountTypeId,
-                Balance = openingBalance
-            }
-             );
+            var accountNumber = await connection.ExecuteScalarAsync<string>(
+                query,
+                new
+                {
+                    UserId = user,
+                    AccountType = accountType.AccountTypeId,
+                    Balance = openingBalance
+                }
+            );
 
             return accountNumber;
         }
@@ -122,7 +124,7 @@ namespace Api.Repositories
             }
         }
 
-        public async Task<Account> GetAccountByAccountNumberAsync(string accountNumber)
+        public async Task<Account?> GetAccountByAccountNumberAsync(string accountNumber)
         {
             var query = $@"
                 SELECT account_id AS {nameof(Account.AccountId)}, user_id AS {nameof(Account.UserId)}, account_type_id AS {nameof(Account.AccountTypeId)}, balance AS {nameof(Account.Balance)}, created_at AS {nameof(Account.CreatedAt)}, account_number AS {nameof(Account.AccountNumber)}

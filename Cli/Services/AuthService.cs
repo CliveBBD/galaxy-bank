@@ -49,7 +49,6 @@ public class AuthService
         {
             OpenBrowser(loginResponse.AuthUrl);
             CliWidgets.RenderWarning("A browser window has been opened. Please complete the authentication process there.\nWaiting for authentication to complete...");
-
             token = await PollForTokenAsync(loginResponse.SessionId);
         }
  

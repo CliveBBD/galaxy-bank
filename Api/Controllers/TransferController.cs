@@ -5,7 +5,8 @@ using Api.Shared;
 
 namespace Api.Controllers
 {
-    [Route("transfer")]
+    [Route("transfers")]
+    [ApiController]
     public class TransferController : Controller
     {
         private readonly ITransferService _transferService;
@@ -20,43 +21,28 @@ namespace Api.Controllers
         [HttpPost("", Name = "Transfer")]
         public async Task<IActionResult> Transfer([FromBody] TransferRequest request)
         {
-            Console.WriteLine("I'm here!");
-            if (!ModelState.IsValid)
+            var requestingUser = HttpContext.GetCurrentUser();
+            if (requestingUser == null)
             {
-                return BadRequest(ModelState);
+                return Unauthorized("Invalid or missing token.");
             }
-            Console.WriteLine("I'm here! 2");
-
-            try
+            else
             {
-                var payload = await JwtDecoder.Decode(HttpContext);
-                if (payload == null)
-                {
-                    return Unauthorized("Invalid or missing token.");
-                }
-                var googleId = payload.Subject;
+                var googleId = requestingUser.GoogleID;
                 var result = await _transferService.TransferAsync(request, googleId);
-                Console.WriteLine("To email result: " + result.ReceiverEmail);
-                await _emailService.SendEmailAsync(payload.Email, TransferEmailTemplate.Subject, TransferSenderEmailTemplate.Message(payload.GivenName, result.ReceiverName, request.Amount.ToString(), request.FromAccountNumber.ToString(), request.ToAccountNumber.ToString()));
-                await _emailService.SendEmailAsync(result.ReceiverEmail, TransferEmailTemplate.Subject, TransferReceiverEmailTemplate.Message(payload.GivenName, result.ReceiverName, request.Amount.ToString(), request.FromAccountNumber.ToString(), request.ToAccountNumber.ToString()));
-                Console.WriteLine(result);
-                return Ok(result);
-            }
-            catch (Exception e)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
-            }
-        }
 
-        public IActionResult Index()
-        {
-            return View();
-        }
+                try
+                {
+                    _ = _emailService.SendEmailAsync(requestingUser.Email, TransferEmailTemplate.Subject, TransferSenderEmailTemplate.Message(requestingUser.Username, result.ReceiverName, request.Amount.ToString(), request.FromAccountNumber.ToString(), request.ToAccountNumber.ToString()));
+                    _ = _emailService.SendEmailAsync(result.ReceiverEmail, TransferEmailTemplate.Subject, TransferReceiverEmailTemplate.Message(requestingUser.Username, result.ReceiverName, request.Amount.ToString(), request.FromAccountNumber.ToString(), request.ToAccountNumber.ToString()));
+                }
+                catch
+                {
+                    // errors thrown by the email service shouldn't affect the regular flow
+                }
 
-        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        public IActionResult Error()
-        {
-            return View("Error!");
+                return StatusCode(StatusCodes.Status201Created, result);
+            }
         }
     }
 }

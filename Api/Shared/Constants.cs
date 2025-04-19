@@ -9,6 +9,7 @@ namespace Api.Shared
     {
         public static string ConnectionString = Environment.GetEnvironmentVariable("DEFAULT_CONNECTION_STRING") ?? "Host=localhost,Port=5432;Database=gbank;Username=postgres;Password=root;";
         public static string AdminRoleName = Environment.GetEnvironmentVariable("ADMIN_ROLE_NAME") ?? "admin";
+        public static string DefaultRoleName = Environment.GetEnvironmentVariable("DEFAULT_ROLE_NAME") ?? "customer";
         public static int DisputeAcceptedId = int.TryParse(Environment.GetEnvironmentVariable("ACCEPTED_STATUS_ID"), out var result) ? result : 3;
 
     }

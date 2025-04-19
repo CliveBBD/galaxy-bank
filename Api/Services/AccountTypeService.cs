@@ -5,7 +5,7 @@ namespace Api.Services
 {
     public interface IAccountTypeService
     {
-        Task<AccountType> GetAccountTypeByName(string name);
+        Task<AccountType?> GetAccountTypeByName(string name);
     }
     public class AccountTypeService : IAccountTypeService
     {
@@ -14,7 +14,7 @@ namespace Api.Services
         {
             _accountTypeRepository = accountTypeRepository;
         }
-        public async Task<AccountType> GetAccountTypeByName(string name)
+        public async Task<AccountType?> GetAccountTypeByName(string name)
         {
 
             return await _accountTypeRepository.GetAccountTypeByNameAsync(name);

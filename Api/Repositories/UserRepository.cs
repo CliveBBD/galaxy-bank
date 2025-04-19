@@ -8,7 +8,7 @@ namespace Api.Repositories
     public interface IUserRepository
     {
 
-        Task<int> CreateUserAsync(string googleID, string username, string email, string roleName);
+        Task<User?> CreateUserAsync(string googleID, string username, string email, string roleName);
         Task<User?> GetUserByIdAsync(int userId);
         Task<User?> GetUserByEmailAsync(string email);
         Task<bool> UserExistsAsync(string googleId, string email);
@@ -27,29 +27,41 @@ namespace Api.Repositories
         }
 
 
-        public async Task<int> CreateUserAsync(string googleID, string username, string email, string roleName)
+        public async Task<User?> CreateUserAsync(string googleID, string username, string email, string roleName)
         {
             var role = await _roleRepository.GetRoleByNameAsync(roleName);
 
             if (role == null)
                 throw new ArgumentException($"Role {roleName} does not exist.");
 
-            var sql = @"
-            INSERT INTO Users (google_id, username, email, role_id)
-            VALUES (@GoogleID, @Username, @Email, @RoleName)
-            RETURNING user_id";
+            var sql = @$"
+                WITH
+                    inserted_user AS
+                    (
+                        INSERT INTO Users (google_id, username, email, role_id)
+                        VALUES (@GoogleID, @Username, @Email, @RoleId)
+                        RETURNING user_id, google_id, username, email, role_id
+                    )
+                    SELECT u.user_id, u.google_id, u.username, u.email, r.role_id, r.name
+                    FROM inserted_user u
+                    INNER JOIN roles r ON u.role_id = r.role_id
+            ";
 
             using var connection = new NpgsqlConnection(Constants.ConnectionString);
-            var userId = await connection.ExecuteScalarAsync<int>(sql, new
-            {
-                GoogleID = googleID,
-                Username = username,
-                Email = email,
-                RoleName = role.RoleID,
+            var user = await connection.QueryAsync<User, Role, User>(
+                sql,
+                (user, role) => { user.Role = role; return user; },
+                new
+                {
+                    GoogleID = googleID,
+                    Username = username,
+                    Email = email,
+                    RoleId = role.RoleID,
+                },
+                splitOn: "RoleID"
+            );
 
-            }
-             );
-            return userId;
+            return user.FirstOrDefault();
         }
 
         public async Task<User?> GetUserByIdAsync(int userId)

@@ -20,14 +20,15 @@ namespace Api.Controllers
 {
     [ApiController]
     [Route("disputes")]
-    public class DisputesController(IDisputeService disputeService, IUserService userService) : ControllerBase
+    public class DisputesController(IDisputeService disputeService, IUserService userService, ITransactionReferenceService transactionReferenceService) : ControllerBase
     {
         
         private readonly IDisputeService _disputeService = disputeService;
         private readonly IUserService _userService = userService;
+        private readonly ITransactionReferenceService _transactionReferenceService = transactionReferenceService;
 
-        private static readonly ErrorResponse UnauthorizedErrorResponse = new ErrorResponse("You are not authorized to perform actions on disputes. Please log in and try again.");
-        private static readonly ErrorResponse ForbiddenErrorResponse = new ErrorResponse("User is not authorized to perform this action");
+        private static readonly ErrorResponse UnauthorizedErrorResponse = new ErrorResponse("User not authorized.", "You are not authorized to perform actions on disputes. Please log in and try again.", StatusCodes.Status401Unauthorized);
+        private static readonly ErrorResponse ForbiddenErrorResponse = new ErrorResponse("User is not allowed to perform this action", "User is not authorized to perform this action", StatusCodes.Status403Forbidden);
 
         [HttpGet("", Name = "GetAllDisputes")]
         public async Task<IActionResult> GetAllDisputes(
@@ -38,42 +39,25 @@ namespace Api.Controllers
             [FromQuery] int? offset = null
         )
         {
-            try
-            {
-                if (ModelState.IsValid) 
-                {
-                    Pagination? pagination = new Pagination();
-                    if (limit.HasValue) pagination.Limit = limit;
-                    if (offset.HasValue) pagination.Offset = offset;
+            Pagination pagination = new Pagination();
+            if (limit.HasValue) pagination.Limit = limit;
+            if (offset.HasValue) pagination.Offset = offset;
 
-                    var requestingUser = await _userService.GetCurrentUser(HttpContext);
+            var requestingUser = HttpContext.GetCurrentUser();
 
-                    if (requestingUser != null && requestingUser.Role.Name == Constants.AdminRoleName)
-                    {
-                        var disputes = await _disputeService.GetAllDisputesAsync(pagination: pagination, userId: userId, status: status, email: email);
-                        return Ok(disputes);
-                    }
-                    else if (requestingUser != null && requestingUser.Role.Name != Constants.AdminRoleName)
-                    {
-                        var disputes = await _disputeService.GetAllDisputesAsync(pagination: pagination, status: status, email: requestingUser.Email);
-                        return Ok(disputes);
-                    }
-                    else
-                    {
-                        return Unauthorized(UnauthorizedErrorResponse);
-                    }
-                }
-                else
-                {
-                    return BadRequest(new ErrorResponse(ModelState));
-                }
-            } 
-            catch (Exception e)
+            if (requestingUser != null && requestingUser.Role.Name == Constants.AdminRoleName)
             {
-                return StatusCode(
-                    StatusCodes.Status500InternalServerError, 
-                    new ErrorResponse(e.Message)
-                );
+                var disputes = await _disputeService.GetAllDisputesAsync(pagination: pagination, userId: userId, status: status, email: email);
+                return Ok(disputes);
+            }
+            else if (requestingUser != null && requestingUser.Role.Name != Constants.AdminRoleName)
+            {
+                var disputes = await _disputeService.GetAllDisputesAsync(pagination: pagination, status: status, email: requestingUser.Email);
+                return Ok(disputes);
+            }
+            else
+            {
+                return Unauthorized(UnauthorizedErrorResponse);
             }
         }
 
@@ -82,38 +66,21 @@ namespace Api.Controllers
             int disputeId
         )
         {
-            try
-            {
-                if (ModelState.IsValid) 
-                {
-                    var requestingUser = await _userService.GetCurrentUser(HttpContext);
+            var requestingUser = HttpContext.GetCurrentUser();
 
-                    if (requestingUser != null && requestingUser.Role.Name == Constants.AdminRoleName)
-                    {
-                        var dispute = await _disputeService.GetDisputeAsync(disputeId);
-                        return dispute == null ? NotFound(new ErrorResponse($"Dispute with disputeId={disputeId} not found.")) : Ok(dispute);
-                    }
-                    else if (requestingUser != null && requestingUser.Role.Name != Constants.AdminRoleName)
-                    {
-                        var dispute = await _disputeService.GetDisputeAsync(disputeId, requestingUser.UserID);
-                        return dispute == null ? NotFound(new ErrorResponse($"Dispute with disputeId={disputeId} not found.")) : Ok(dispute);
-                    }
-                    else
-                    {
-                        return Unauthorized(UnauthorizedErrorResponse);
-                    }
-                }
-                else
-                {
-                    return BadRequest(new ErrorResponse(ModelState));
-                }
-            } 
-            catch (Exception e)
+            if (requestingUser != null && requestingUser.Role.Name == Constants.AdminRoleName)
             {
-                return StatusCode(
-                    StatusCodes.Status500InternalServerError, 
-                    new ErrorResponse(e.Message)
-                );
+                var dispute = await _disputeService.GetDisputeAsync(disputeId);
+                return dispute == null ? NotFound(new ErrorResponse($"Dispute with disputeId={disputeId} not found.")) : Ok(dispute);
+            }
+            else if (requestingUser != null && requestingUser.Role.Name != Constants.AdminRoleName)
+            {
+                var dispute = await _disputeService.GetDisputeAsync(disputeId, requestingUser.UserID);
+                return dispute == null ? NotFound(new ErrorResponse($"Dispute with disputeId={disputeId} not found.")) : Ok(dispute);
+            }
+            else
+            {
+                return Unauthorized(UnauthorizedErrorResponse);
             }
         }
 
@@ -124,42 +91,25 @@ namespace Api.Controllers
             [FromQuery] int? offset = null
         )
         {
-            try
-            {
-                if (ModelState.IsValid) 
-                {
-                    Pagination? pagination = new Pagination();
-                    if (limit.HasValue) pagination.Limit = limit;
-                    if (offset.HasValue) pagination.Offset = offset;
+            Pagination? pagination = new Pagination();
+            if (limit.HasValue) pagination.Limit = limit;
+            if (offset.HasValue) pagination.Offset = offset;
 
-                    var requestingUser = await _userService.GetCurrentUser(HttpContext);
+            var requestingUser = HttpContext.GetCurrentUser();
 
-                    if (requestingUser != null && requestingUser.Role.Name == Constants.AdminRoleName)
-                    {
-                        var disputes = await _disputeService.GetDisputeHistoryAsync(pagination, disputeId);
-                        return Ok(disputes);
-                    }
-                    else if (requestingUser != null && requestingUser.Role.Name != Constants.AdminRoleName)
-                    {
-                        var disputes = await _disputeService.GetDisputeHistoryAsync(pagination, disputeId, requestingUser.UserID);
-                        return Ok(disputes);
-                    }
-                    else
-                    {
-                        return Unauthorized(UnauthorizedErrorResponse);
-                    }
-                }
-                else
-                {
-                    return BadRequest(new ErrorResponse(ModelState));
-                }
-            } 
-            catch (Exception e)
+            if (requestingUser != null && requestingUser.Role.Name == Constants.AdminRoleName)
             {
-                return StatusCode(
-                    StatusCodes.Status500InternalServerError, 
-                    new ErrorResponse(e.Message)
-                );
+                var disputes = await _disputeService.GetDisputeHistoryAsync(pagination, disputeId);
+                return Ok(disputes);
+            }
+            else if (requestingUser != null && requestingUser.Role.Name != Constants.AdminRoleName)
+            {
+                var disputes = await _disputeService.GetDisputeHistoryAsync(pagination, disputeId, requestingUser.UserID);
+                return Ok(disputes);
+            }
+            else
+            {
+                return Unauthorized(UnauthorizedErrorResponse);
             }
         }
 
@@ -168,44 +118,28 @@ namespace Api.Controllers
             int disputeId
         )
         {
-            try
-            {
-                if (ModelState.IsValid) 
-                {
-                    var requestingUser = await _userService.GetCurrentUser(HttpContext);
+            var requestingUser = HttpContext.GetCurrentUser();
 
-                    if (requestingUser != null && requestingUser.Role.Name == Constants.AdminRoleName)
-                    {
-                        var allowedNextStatuses = await _disputeService.GetAllowedNextStatusesAsync(
-                            disputeId
-                        );
-                        if (allowedNextStatuses != null && allowedNextStatuses.Any())
-                        {
-                            return Ok(allowedNextStatuses);
-                        }
-                        else
-                        {
-                            return NotFound(new ErrorResponse($"This dispute has been resolved."));
-                        }
-                    }
-                    else
-                    {
-                        return StatusCode(
-                            StatusCodes.Status403Forbidden, 
-                            ForbiddenErrorResponse
-                        );
-                    }
+            if (requestingUser != null && requestingUser.Role.Name == Constants.AdminRoleName)
+            {
+                var allowedNextStatuses = await _disputeService.GetAllowedNextStatusesAsync(
+                    disputeId
+                );
+
+                if (allowedNextStatuses != null && allowedNextStatuses.Any())
+                {
+                    return Ok(allowedNextStatuses);
                 }
                 else
                 {
-                    return BadRequest(new ErrorResponse(ModelState));
+                    return NotFound(new ErrorResponse($"This dispute has been resolved."));
                 }
-            } 
-            catch (Exception e)
+            }
+            else
             {
                 return StatusCode(
-                    StatusCodes.Status500InternalServerError, 
-                    new ErrorResponse(e.Message)
+                    StatusCodes.Status403Forbidden,
+                    ForbiddenErrorResponse
                 );
             }
         }
@@ -216,52 +150,36 @@ namespace Api.Controllers
             [FromBody] DisputeStatusUpdateRequest disputeStatusUpdateRequest
         )
         {
-            try
-            {
-                if (ModelState.IsValid) 
-                {
-                    var requestingUser = await _userService.GetCurrentUser(HttpContext);
+            var requestingUser = HttpContext.GetCurrentUser();
 
-                    if (requestingUser != null && requestingUser.Role.Name == Constants.AdminRoleName)
-                    {
-                        var createdDisputeHistoryEntry = await _disputeService.UpdateDisputeStatus(
-                            disputeId,
-                            disputeStatusUpdateRequest.NewStatusId,
-                            requestingUser.UserID
-                        );
-                        if (createdDisputeHistoryEntry != null)
-                        {
-                            return StatusCode(
-                                StatusCodes.Status201Created, 
-                                createdDisputeHistoryEntry
-                            );
-                        }
-                        else
-                        {
-                            return BadRequest(new ErrorResponse($"""
-                                Cannot update dispute status for disputeID={disputeId}.\n
-                                This dispute is not allowed to progress to dispute status disputeStatus={disputeStatusUpdateRequest.NewStatusId}.
-                            """));
-                        }
-                    }
-                    else
-                    {
-                        return StatusCode(
-                            StatusCodes.Status403Forbidden, 
-                            ForbiddenErrorResponse
-                        );
-                    }
+            if (requestingUser != null && requestingUser.Role.Name == Constants.AdminRoleName)
+            {
+                var createdDisputeHistoryEntry = await _disputeService.UpdateDisputeStatus(
+                    disputeId,
+                    disputeStatusUpdateRequest.NewStatusId,
+                    requestingUser.UserID
+                );
+
+                if (createdDisputeHistoryEntry != null)
+                {
+                    return StatusCode(
+                        StatusCodes.Status201Created,
+                        createdDisputeHistoryEntry
+                    );
                 }
                 else
                 {
-                    return BadRequest(new ErrorResponse(ModelState));
+                    return BadRequest(new ErrorResponse("Dispute progression not allowed", $"""
+                        Cannot update dispute status for disputeID={disputeId}.\n
+                        This dispute is not allowed to progress to dispute status disputeStatus={disputeStatusUpdateRequest.NewStatusId}.
+                    """, StatusCodes.Status400BadRequest));
                 }
-            } 
-            catch (Exception e)
+            }
+            else
             {
                 return StatusCode(
-                    StatusCodes.Status500InternalServerError, 
-                    new ErrorResponse(e.Message)
+                    StatusCodes.Status403Forbidden,
+                    ForbiddenErrorResponse
                 );
             }
         }
@@ -271,51 +189,56 @@ namespace Api.Controllers
             [FromBody] DisputeCreateRequest disputeCreateRequest
         )
         {
-            try
-            {
-                var requestingUser = await _userService.GetCurrentUser(HttpContext);
+            var requestingUser = HttpContext.GetCurrentUser();
 
-                if (!ModelState.IsValid)
+            if (requestingUser != null)
+            {
+                var transactionReference = await _transactionReferenceService.GetTransactionReferenceById(disputeCreateRequest.DisputedTransactionReferenceID);
+
+                if (transactionReference == null)
                 {
-                    return BadRequest(new ErrorResponse(ModelState));
-                }
-                else if (ModelState.IsValid && requestingUser != null) 
-                {
-                    var createdDispute = await _disputeService.CreateDisputeAsync(
-                        disputeCreateRequest.DisputedTransactionReferenceID,
-                        disputeCreateRequest.Reason,
-                        requestingUser.UserID
-                    );
-                    if (createdDispute != null)
-                    {
-                        return StatusCode(
-                            StatusCodes.Status201Created, 
-                            createdDispute
-                        );
-                    }
-                    else
-                    {
-                        return BadRequest(new ErrorResponse($"""
-                            Cannot dispute transactionReference={disputeCreateRequest.DisputedTransactionReferenceID}.\n
-                            This may be for numerous reasons including:
-                            1. The transaction reference transactionReference={disputeCreateRequest.DisputedTransactionReferenceID} does not exist.
-                            2. You are not involved in transactionReference={disputeCreateRequest.DisputedTransactionReferenceID}.
-                            3. There is already a dispute for transactionReference={disputeCreateRequest.DisputedTransactionReferenceID}.
-                            4. You may not dispute this type of transaction.
-                            """));
-                    }
+                    return NotFound(new ErrorResponse("Transaction reference does not exist", $"Transaction reference {disputeCreateRequest.DisputedTransactionReferenceID} does not exist", StatusCodes.Status404NotFound));
                 }
                 else
                 {
-                    return Unauthorized(UnauthorizedErrorResponse);
+
+                    var userTransactionInReference = await _transactionReferenceService.GetTransactionsByReferenceAsync(requestingUser.GoogleID, transactionReference.TransactionReferenceID);
+
+                    if (userTransactionInReference.Any())
+                    {
+                        var createdDispute = await _disputeService.CreateDisputeAsync(
+                            disputeCreateRequest.DisputedTransactionReferenceID,
+                            disputeCreateRequest.Reason,
+                            requestingUser.UserID
+                        );
+                        if (createdDispute != null)
+                        {
+                            return StatusCode(
+                                StatusCodes.Status201Created,
+                                createdDispute
+                            );
+                        }
+                        else
+                        {
+                            return BadRequest(new ErrorResponse("Transaction not disputable",
+                                $"""
+                                Cannot dispute transactionReference={disputeCreateRequest.DisputedTransactionReferenceID}.\n
+                                For one of the following reasons:
+                                1. There is already a dispute for transactionReference={disputeCreateRequest.DisputedTransactionReferenceID}.
+                                2. You may not dispute this type of transaction.
+                                """,
+                                StatusCodes.Status400BadRequest));
+                        }
+                    }
+                    else
+                    {
+                        return NotFound(new ErrorResponse("Transactions for reference not found", $"Transactions for the transaction reference {disputeCreateRequest.DisputedTransactionReferenceID} do not exist", StatusCodes.Status404NotFound));
+                    }
                 }
-            } 
-            catch (Exception e)
+            }
+            else
             {
-                return StatusCode(
-                    StatusCodes.Status500InternalServerError, 
-                    new ErrorResponse(e.Message)
-                );
+                return Unauthorized(UnauthorizedErrorResponse);
             }
         }
     }
