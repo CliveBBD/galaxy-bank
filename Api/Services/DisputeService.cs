@@ -49,7 +49,6 @@ namespace Api.Services
     public async Task<DisputeHistoryEntry?> UpdateDisputeStatus(int disputeID, int newStatusID, int updatedByID)
     {
       bool isProgressionAllowed = await _disputeRepository.IsDisputeProgressionAllowedAsync(disputeID, newStatusID);
-      Console.WriteLine("Progression allowed " + isProgressionAllowed);
       int acceptedStatusID = Constants.DisputeAcceptedId;
 
       if (isProgressionAllowed && newStatusID != acceptedStatusID)
