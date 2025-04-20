@@ -9,7 +9,6 @@ namespace Api.Controllers
     [Authorize]
     [ApiController]
     [Route("transactions")]
-    [ApiController]
     public class TransactionsController(ITransactionService transactionService, IUserService userService) : Controller
     {
         private readonly ITransactionService _transactionService = transactionService;

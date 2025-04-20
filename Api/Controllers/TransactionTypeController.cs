@@ -7,7 +7,6 @@ namespace Api.Controllers
     [Authorize]
     [ApiController]
     [Route("transaction-types")]
-    [ApiController]
     public class TransactionTypeController(ITransactionTypeService transactionTypeService) : Controller
     {
         private readonly ITransactionTypeService _transactionTypeService = transactionTypeService;
