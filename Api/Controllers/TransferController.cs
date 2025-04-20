@@ -35,8 +35,8 @@ namespace Api.Controllers
 
                 try
                 {
-                    _ = _emailService.SendEmailAsync(requestingUser.Email, TransferEmailTemplate.Subject, TransferSenderEmailTemplate.Message(requestingUser.Username, result.ReceiverName, request.Amount.ToString(), request.FromAccountNumber.ToString(), request.ToAccountNumber.ToString()));
-                    _ = _emailService.SendEmailAsync(result.ReceiverEmail, TransferEmailTemplate.Subject, TransferReceiverEmailTemplate.Message(requestingUser.Username, result.ReceiverName, request.Amount.ToString(), request.FromAccountNumber.ToString(), request.ToAccountNumber.ToString()));
+                    _ = _emailService.SendEmailAsync(requestingUser.Email, TransferSenderEmailTemplate.Subject, TransferSenderEmailTemplate.Message(requestingUser.Username, result.ReceiverName, request.Amount.ToString(), request.FromAccountNumber.ToString(), request.ToAccountNumber.ToString()));
+                    _ = _emailService.SendEmailAsync(result.ReceiverEmail, TransferReceiverEmailTemplate.Subject, TransferReceiverEmailTemplate.Message(requestingUser.Username, result.ReceiverName, request.Amount.ToString(), request.FromAccountNumber.ToString(), request.ToAccountNumber.ToString()));
                 }
                 catch
                 {

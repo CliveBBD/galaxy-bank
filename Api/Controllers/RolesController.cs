@@ -9,10 +9,9 @@ namespace Api.Controllers
     [Authorize]
     [ApiController]
     [Route("roles")]
-    public class RolesController(IRoleService roleService, IUserService userService) : Controller
+    public class RolesController(IRoleService roleService) : Controller
     {
         private readonly IRoleService _roleService = roleService;
-        private readonly IUserService _userService = userService;
 
         [HttpGet("", Name = "GetRoles")]
         public async Task<IActionResult> GetRoles()

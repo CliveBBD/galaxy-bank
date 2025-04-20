@@ -11,295 +11,6 @@ using PdfSharpCore.Pdf;
 
 namespace Cli.Commands
 {
-    public class TransferCommand : Command<TransferCommand.Settings>
-    {
-        public class Settings : CommandSettings
-        {
-        }
-
-        public override int Execute(CommandContext context, Settings settings)
-        {
-
-            if (!int.TryParse(CliWidgets.PromptText("Transaction amount"), out int amount) || amount <= 0)
-            {
-                CliWidgets.RenderError("Amount must be greater than zero.");
-                return 1;
-            }
-
-            var http = new HttpClientWrapper(Models.User.Token);
-            var requestUrl = $"{Constants.ApiBaseUrl}/accounts";
-            var response = http.httpClient.GetAsync(requestUrl).Result;
-
-            if (response.IsSuccessStatusCode)
-            {
-                var jsonResponse = response.Content.ReadAsStringAsync().Result;
-                var accountsForUser = JsonSerializer.Deserialize<IEnumerable<Api.DTOs.AccountResponse>>(jsonResponse);
-
-                if (accountsForUser != null && accountsForUser.Any())
-                {
-                    var selectedAccount = CliWidgets.RenderSelection(
-                        "Please select an account to transfer from",
-                        accountsForUser.Select(account => account.Balance < amount ? $"[red]{account.AccountNumber}: ({account.AccountType.Name}) Balance Q {account.Balance}[/]" : $"[green]{account.AccountNumber}: ({account.AccountType.Name}) Balance Q {account.Balance}[/]")
-                    );
-
-                    var fromAccount = selectedAccount!.Split(":")[0].Split("]")[1];
-                    var toAccount = CliWidgets.PromptText("To which account are transacting to");
-                    if (string.IsNullOrEmpty(fromAccount) || string.IsNullOrEmpty(toAccount))
-                    {
-                        CliWidgets.RenderError("Both from and to accounts must be specified.");
-                        return 1;
-                    }
-
-                    // Prompt user for FromReference and ToReference
-                    var fromReference = CliWidgets.PromptText("Enter a [green]reference[/] for the [blue]from account[/]:");
-                    var toReference = CliWidgets.PromptText("Enter a [green]reference[/] for the [blue]to account[/]:");
-
-                    var transferPayload = new
-                    {
-                        FromAccountNumber = fromAccount,
-                        ToAccountNumber = toAccount,
-                        Amount = amount,
-                        FromReference = fromReference,
-                        ToReference = toReference
-                    };
-
-                    var jsonPayload = JsonSerializer.Serialize(transferPayload);
-                    var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-
-                    using var httpClient = new HttpClient();
-                    httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", User.Token); // Replace with the actual token
-                    try
-                    {
-                        response = httpClient.PostAsync($"{Constants.ApiBaseUrl}/transfers", content).Result;
-
-                        if (response.IsSuccessStatusCode)
-                        {
-                            CliWidgets.RenderPanel($"[green]Successfully transferred Q {amount:n0} from {fromAccount} to {toAccount}[/]");
-                            return 0;
-                        }
-                        else
-                        {
-                            CliWidgets.RenderHttpResponseAsync(response);
-                            return 1;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        CliWidgets.RenderError($"[red]An error occurred: {ex.Message}[/]");
-                        return 1;
-                    }
-                }
-                else
-                {
-                    CliWidgets.RenderWarning("You do not have any accounts.");
-                    return 1;
-                }
-            }
-            else
-            {
-                CliWidgets.RenderHttpResponseAsync(response);
-                return 1;
-            }
-        }
-    }
-
-    public class DepositCommand : Command<DepositCommand.Settings>
-    {
-        public class Settings : CommandSettings
-        {
-        }
-
-        public override int Execute(CommandContext context, Settings settings)
-        {
-            var reference = CliWidgets.PromptText("Enter a reference for your transaction");
-            if (string.IsNullOrEmpty(reference))
-            {
-                CliWidgets.RenderError("[red]Reference must be specified.[/]");
-                return 1;
-            }
-
-            if (!int.TryParse(CliWidgets.PromptText("Transfer Amount"), out int amount))
-            {
-                CliWidgets.RenderError("Enter a valid integer");
-                return 1;
-            }
-            if (amount <= 0)
-            {
-                CliWidgets.RenderError("[red]Amount must be greater than zero.[/]");
-                return 1;
-            }
-
-            using var httpClient = new HttpClient();
-
-            // Add the Authorization header with the bearer token
-            var bearerToken = User.Token; // Replace with the actual token
-            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", bearerToken);
-
-            try
-            {
-
-                var response = httpClient.GetAsync($"{Constants.ApiBaseUrl}/accounts").Result;
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    var errorMessage = response.Content.ReadAsStringAsync().Result;
-                    CliWidgets.RenderError($"[red]Failed to fetch accounts: {response.StatusCode} - {response.ReasonPhrase} - {errorMessage}[/]");
-                    return 1;
-                }
-
-                var jsonResponse = response.Content.ReadAsStringAsync().Result;
-                var accounts = JsonSerializer.Deserialize<List<Account>>(jsonResponse);
-
-                if (accounts == null || !accounts.Any())
-                {
-                    CliWidgets.RenderWarning("[yellow]No accounts found.[/]");
-                    return 1;
-                }
-
-                // Prepare account choices
-                var accountChoices = accounts.Select(a => $"{a.AccountNumber} - {a.AccountType.Name}").ToList();
-
-                // Prompt user to select an account
-                var selectedAccount = CliWidgets.RenderSelection("Select an account", accountChoices);
-
-                // Extract AccountId from the selected choice
-                var accountNumber = selectedAccount.Split(" - ")[0];
-
-                var payload = new
-                {
-                    AccountNumber = accountNumber,
-                    Amount = amount,
-                    Reference = reference
-                };
-
-                var jsonPayload = JsonSerializer.Serialize(payload);
-                var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-
-                // Send the deposit/withdraw request
-                var endpoint = this.GetType().Name == nameof(DepositCommand) ? "deposits" : "withdraws";
-                var result = httpClient.PostAsync($"{Constants.ApiBaseUrl}/{endpoint}", content).Result;
-
-                if (result.IsSuccessStatusCode)
-                {
-                    CliWidgets.RenderPanel($"[green]{(endpoint == "deposit" ? "Deposited" : "Withdrawn")} Q {amount:n0} to account {accountNumber} with reference {reference}[/]");
-                    return 0;
-                }
-                else
-                {
-                    var errorMessage = result.Content.ReadAsStringAsync().Result;
-                    CliWidgets.RenderError($"[red]Failed to {endpoint}: {result.StatusCode} - {result.ReasonPhrase} - {errorMessage}[/]");
-                    return 1;
-                }
-            }
-            catch (Exception ex)
-            {
-                CliWidgets.RenderError($"[red]An error occurred: {ex.Message}[/]");
-                return 1;
-            }
-        }
-    }
-
-
-    public class WithdrawCommand : Command<WithdrawCommand.Settings>
-    {
-        public class Settings : CommandSettings
-        {
-
-        }
-
-        public override int Execute(CommandContext context, Settings settings)
-        {
-            var reference = CliWidgets.PromptText("Enter a reference for your transaction");
-            if (string.IsNullOrEmpty(reference))
-            {
-                CliWidgets.RenderError("[red]Reference must be specified.[/]");
-                return 1;
-            }
-
-            if (!int.TryParse(CliWidgets.PromptText("Transfer Amount"), out int amount))
-            {
-                CliWidgets.RenderError("Enter a valid integer");
-                return 1;
-            }
-            if (amount <= 0)
-            {
-                CliWidgets.RenderError("[red]Amount must be greater than zero.[/]");
-                return 1;
-            }
-            using var httpClient = new HttpClient();
-
-            // Add the Authorization header with the bearer token
-            var bearerToken = User.Token; // Replace with the actual token
-            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", bearerToken);
-
-            try
-            {
-                // Fetch accounts from the API
-                // TODO: fetch api from configuration
-                // TODO: Stop using email endpoint
-                // TODO: api endpoints should start with /api
-                // CUSTOM: Use account number instead
-                var response = httpClient.GetAsync($"{Constants.ApiBaseUrl}/accounts").Result;
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    CliWidgets.RenderError($"[red]Failed to fetch accounts: {response.StatusCode} - {response.ReasonPhrase}[/]");
-                    return 1;
-                }
-
-                var jsonResponse = response.Content.ReadAsStringAsync().Result;
-                var accounts = JsonSerializer.Deserialize<List<Account>>(jsonResponse);
-
-                if (accounts == null || !accounts.Any())
-                {
-                    CliWidgets.RenderWarning("[yellow]No accounts found.[/]");
-                    return 1;
-                }
-
-                // Prepare account choices
-                var accountChoices = accounts.Select(a => $"{a.AccountNumber} - {a.AccountType.Name}").ToList();
-
-                // Prompt user to select an account
-                var selectedAccount = CliWidgets.RenderSelection("Select an account", accountChoices);
-
-                // Extract AccountId from the selected choice
-                var accountNumber = selectedAccount.Split(" - ")[0];
-
-                var payload = new
-                {
-                    AccountNumber = accountNumber,
-                    Amount = amount,
-                    Reference = reference
-                };
-
-                var jsonPayload = JsonSerializer.Serialize(payload);
-                var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-
-                // Send the deposit/withdraw request
-                var endpoint = this.GetType().Name == nameof(DepositCommand) ? "deposits" : "withdraws";
-                var result = httpClient.PostAsync($"{Constants.ApiBaseUrl}/{endpoint}", content).Result;
-
-                if (result.IsSuccessStatusCode)
-                {
-                    CliWidgets.RenderPanel($"[green]{(endpoint == "deposit" ? "Deposited" : "Withdrawn")} Q {amount:n0} to account {accountNumber} with reference {reference}[/]");
-                    return 0;
-                }
-                else
-                {
-                    var errorMessage = result.Content.ReadAsStringAsync().Result;
-                    CliWidgets.RenderError($"[red]Failed to {endpoint}: {result.StatusCode} - {result.ReasonPhrase} - {errorMessage}[/]");
-                    return 1;
-                }
-            }
-            catch (Exception ex)
-            {
-                CliWidgets.RenderError($"[red]An error occurred: {ex.Message}[/]");
-                return 1;
-            }
-        }
-    }
-
-
     public class GetAllTransactionsCommand : Command<GetAllTransactionsCommand.Settings>
     {
         public class Settings : CommandSettings
@@ -403,7 +114,6 @@ namespace Cli.Commands
             httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", User.Token); // Replace with the actual token
             try
             {
-                // Replace with the actual API endpoint
                 var response = httpClient.GetAsync($"{Constants.ApiBaseUrl}/transaction-types").Result;
 
                 if (response.IsSuccessStatusCode)
@@ -442,12 +152,6 @@ namespace Cli.Commands
     {
         public class Settings : CommandSettings
         {
-            [CommandOption("-s|--start <YYYY-MM-DD>")]
-            public string StartDate { get; set; } = string.Empty;
-
-            [CommandOption("-e|--end <YYYY-MM-DD>")]
-            public string? EndDate { get; set; }
-
             [CommandOption("-o|--output <OutputFile>")]
             public string? OutputFile { get; set; }
 
@@ -555,6 +259,7 @@ namespace Cli.Commands
                         {
                             var pdfDocument = new PdfDocument();
                             var page = pdfDocument.AddPage();
+                            page.Orientation = PdfSharpCore.PageOrientation.Landscape;
                             var graphics = XGraphics.FromPdfPage(page);
                             var font = new XFont("Arial", 12);
 
@@ -570,6 +275,7 @@ namespace Cli.Commands
                                 if (yOffset > page.Height - 50)
                                 {
                                     page = pdfDocument.AddPage();
+                                    page.Orientation = PdfSharpCore.PageOrientation.Landscape;
                                     graphics = XGraphics.FromPdfPage(page);
                                     yOffset = 50;
                                 }
