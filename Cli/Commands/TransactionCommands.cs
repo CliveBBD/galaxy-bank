@@ -114,7 +114,6 @@ namespace Cli.Commands
             httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", User.Token); // Replace with the actual token
             try
             {
-                // Replace with the actual API endpoint
                 var response = httpClient.GetAsync($"{Constants.ApiBaseUrl}/transaction-types").Result;
 
                 if (response.IsSuccessStatusCode)
@@ -260,7 +259,7 @@ namespace Cli.Commands
                         {
                             var pdfDocument = new PdfDocument();
                             var page = pdfDocument.AddPage();
-                            page.Orientation = PdfSharpCore.PageOrientation.Landscape; // Set the page orientation to landscape
+                            page.Orientation = PdfSharpCore.PageOrientation.Landscape;
                             var graphics = XGraphics.FromPdfPage(page);
                             var font = new XFont("Arial", 12);
 
@@ -276,7 +275,7 @@ namespace Cli.Commands
                                 if (yOffset > page.Height - 50)
                                 {
                                     page = pdfDocument.AddPage();
-                                    page.Orientation = PdfSharpCore.PageOrientation.Landscape; // Ensure new pages are also in landscape
+                                    page.Orientation = PdfSharpCore.PageOrientation.Landscape;
                                     graphics = XGraphics.FromPdfPage(page);
                                     yOffset = 50;
                                 }
