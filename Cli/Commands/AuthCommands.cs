@@ -3,6 +3,8 @@ using Spectre.Console.Cli;
 using Cli.Models;
 using Cli.Services;
 using Google.Apis.Auth;
+using Newtonsoft.Json;
+using Namotion.Reflection;
 using Cli.Helpers;
 
 namespace Cli.Commands
@@ -29,10 +31,12 @@ namespace Cli.Commands
                     // get user from db if exists
 
                     User.SetUserDetails(
-                        payload.GivenName,
-                        payload.Email,
-                        payload.Subject,
-                        result.Token.IdToken
+                        payload.GivenName, 
+                        payload.Email, 
+                        payload.Subject, 
+                        result.Token.IdToken,
+                        result.Token.Role,
+                        result.Token.SessionId
                     );
                 }
 
@@ -69,10 +73,17 @@ namespace Cli.Commands
         }
     }
 
-    public class LogoutCommand : Command
+    public class LogoutCommand : AsyncCommand
     {
-        public override int Execute(CommandContext context)
+        public override async Task<int> ExecuteAsync(CommandContext context)
         {
+            var authService = new AuthService();
+            var logoutResponse = await authService.LogoutAsync(User.SessionId);
+            var logOut = JsonConvert.DeserializeObject(logoutResponse.Content.ReadAsStringAsync().Result);
+            if(!logOut.HasProperty("Error"))
+            {
+                AnsiConsole.MarkupLine($"[green]You are logged out[/]");
+            }
             User.Clear();
             CliWidgets.RenderSuccess($"[green]You are logged out[/]");
             return 0;
@@ -85,7 +96,7 @@ namespace Cli.Commands
         {
             if (User.Username.Length > 0)
             {
-                CliWidgets.RenderPanel($"You are logged in as {User.Username}\nEmail: {User.Email}\nGoogle ID: {User.GoogleId}", "whoami");
+                CliWidgets.RenderPanel($"You are logged in as {User.Username}\nEmail: {User.Email}\nGoogle ID: {User.GoogleId}\nUser Role: {User.Role}", "whoami");
             }
             else
             {

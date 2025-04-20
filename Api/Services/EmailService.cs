@@ -23,22 +23,22 @@ namespace Api.Services
 
         public async Task SendEmailAsync(string toEmail, string subject, string message)
         {
-            if (string.IsNullOrEmpty(_emailSettings.SenderEmail))
+            if (string.IsNullOrEmpty(_config["EmailSettings:SenderEmail"]))
             {
                 throw new ArgumentException("Sender email is not configured.");
             }
 
 
-            var smtpClient = new SmtpClient(_emailSettings.SmtpServer)
+            var smtpClient = new SmtpClient(_config["EmailSettings:SmtpServer"])
             {
-                Port = _emailSettings.Port,
-                Credentials = new NetworkCredential(_emailSettings.Username, _emailSettings.Password),
+                Port = Int32.Parse(_config["EmailSettings:Port"]),
+                Credentials = new NetworkCredential(_config["EmailSettings:Username"], _config["EmailSettings:Password"]),
                 EnableSsl = true,
             };
 
             var mailMessage = new MailMessage
             {
-                From = new MailAddress(_emailSettings.SenderEmail, _emailSettings.SenderName),
+                From = new MailAddress(_config["EmailSettings:SenderEmail"], _config["EmailSettings.SenderName"]),
                 Subject = subject,
                 Body = message,
                 IsBodyHtml = true

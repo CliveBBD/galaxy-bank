@@ -38,12 +38,17 @@ namespace Api.Repositories
             return await connection.QueryFirstOrDefaultAsync<AccountType>(query, new { Name = name });
         }
 
-        public async Task<IEnumerable<AccountType>> GetAllAccountTypesAsync()
+        public async Task<IEnumerable<string>> GetAllAccountTypesAsync()
         {
-            var query = $@"SELECT account_type_id AS AccountTypeId, name FROM account_types;";
+            var query = $@"SELECT account_type_id, name FROM account_types;";
 
             using var connection = new NpgsqlConnection(Constants.ConnectionString);
-            return await connection.QueryAsync<AccountType>(query);
+            return await connection.QueryAsync<string>(query);
+        }
+
+        Task<IEnumerable<AccountType>> IAccountTypeRepository.GetAllAccountTypesAsync()
+        {
+            throw new NotImplementedException();
         }
     }
 }

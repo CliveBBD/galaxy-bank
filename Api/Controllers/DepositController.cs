@@ -2,9 +2,11 @@ using Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Api.DTOs;
 using Api.Shared;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Api.Controllers
-{
+{   
+    [Authorize]
     [ApiController]
     [Route("deposits")]
     public class DepositController : Controller

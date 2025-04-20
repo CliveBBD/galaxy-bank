@@ -1,27 +1,31 @@
-using System.Text;
 using Api.DTOs;
 using Api.Helpers;
 using Api.Models;
+using Api.Repositories;
 using Api.Services;
 using Api.Shared;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers
 {
-    [Route("accounts")]
+    [Authorize]
     [ApiController]
+    [Route("accounts")]
     public class AccountsController : ControllerBase
     {
         private readonly IAccountService _accountService;
         private readonly AccountMapper _accountMapper;
         private readonly IEmailService _emailService;
         private readonly IUserService _userService;
-        public AccountsController(IAccountService accountService, AccountMapper accountMapper, IEmailService emailService, IUserService userService)
+        private readonly IAccountTypeRepository _accountTypeRepository;
+        public AccountsController(IAccountService accountService, AccountMapper accountMapper, IEmailService emailService, IUserService userService, IAccountTypeRepository accountTypeRepository)
         {
             _accountService = accountService;
             _accountMapper = accountMapper;
             _emailService = emailService;
             _userService = userService;
+            _accountTypeRepository = accountTypeRepository;
         }
 
         [HttpPost("", Name = "CreateAccount")]

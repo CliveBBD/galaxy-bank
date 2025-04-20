@@ -1,10 +1,12 @@
 using Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers
 {
-    [Route("transaction-types")]
+    [Authorize]
     [ApiController]
+    [Route("transaction-types")]
     public class TransactionTypeController(ITransactionTypeService transactionTypeService) : Controller
     {
         private readonly ITransactionTypeService _transactionTypeService = transactionTypeService;

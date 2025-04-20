@@ -2,11 +2,13 @@ using Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Api.Shared;
 using Api.DTOs;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Api.Controllers
 {
-    [Route("transactions")]
+    [Authorize]
     [ApiController]
+    [Route("transactions")]
     public class TransactionsController(ITransactionService transactionService) : Controller
     {
         private readonly ITransactionService _transactionService = transactionService;

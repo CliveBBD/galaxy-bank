@@ -17,7 +17,7 @@ namespace Tests.Services
             [SetUp]
             public void Setup()
             {
-                _roleService = new RoleService(new RoleRepository(null));
+                _roleService = new RoleService(new RoleRepository());
             }
 
             [Test]

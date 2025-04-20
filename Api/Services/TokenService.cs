@@ -20,12 +20,24 @@ public class TokenService
 
     public StoredToken? GetToken(string userKey)
     {
+        
         return _tokenStore.TryGetValue(userKey, out var token) ? token : null;
     }
  
-    public void RemoveToken(string userKey)
+    public LogOut RemoveToken(string userKey)
     {
-        _tokenStore.Remove(userKey);
+        try 
+        {
+            _tokenStore.Remove(userKey);
+            return new() { Message = "Successfully logged out!"};
+        }
+        catch(ArgumentNullException e)
+        {
+            return new() {
+                Error = e.Message,  
+            };
+        }
+        
     }
 }
  

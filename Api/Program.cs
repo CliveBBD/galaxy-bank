@@ -8,6 +8,8 @@ using Api.Services;
 using Npgsql;
 using Api.Shared;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using Api.Middleware;
 
 public class Program
@@ -21,16 +23,38 @@ public class Program
         var configurationBuilder = new ConfigurationBuilder();
         configurationBuilder.SetBasePath(Directory.GetCurrentDirectory()).AddUserSecrets<Program>();
         configurationBuilder.AddJsonFile("appsettings.json").AddEnvironmentVariables();
-        configurationBuilder.Build();
-        ConfigureServices(builder.Services);
+        var configuration = configurationBuilder.Build();
+        ConfigureServices(builder.Services, configuration);
         WebApplication app = ConfigureApp(builder);
         app.UseMiddleware<InternalServerErrorHandler>();
         app.UseMiddleware<RequestingUserHandler>();
         app.Run();            
     }
 
-    public static void ConfigureServices(IServiceCollection services)
+    public static void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddControllers().AddJsonOptions(options =>
+        {
+            options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+            options.JsonSerializerOptions.PropertyNamingPolicy = null;
+        });
+        services.AddCors();
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.Authority = configuration["Authorization:TokenAuthority"];
+            options.Audience = configuration["Authorization:Audience"];
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidIssuer = configuration["Authorization:TokenAuthority"],
+                ValidateAudience = true,
+                ValidAudiences = new[] {configuration["Authorization:Audience"]},
+                ValidateLifetime = true
+            };
+        });
+
+        services.AddAuthorization();
         services.AddScoped<InternalServerErrorHandler>();
         services.AddScoped<RequestingUserHandler>();
         services.AddHttpClient<GoogleAuthService>();
@@ -38,12 +62,6 @@ public class Program
         services.AddScoped<GoogleAuthService>();
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IRoleService, RoleService>();
-        services.AddControllers();
-        services.AddControllers().AddJsonOptions(options =>
-        {
-            options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-            options.JsonSerializerOptions.PropertyNamingPolicy = null; // Preserve original property names
-        });
         services.AddOpenApi();
         services.AddScoped<IDbConnection>(sp =>
         {
@@ -57,6 +75,7 @@ public class Program
 
             return new NpgsqlConnection(connectionString);
         });
+        
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IAccountRepository, AccountRepository>();
         services.AddScoped<IAccountTypeRepository, AccountTypeRepository>();
@@ -94,10 +113,12 @@ public class Program
             });
         }
 
-        app.UseCors();
+        app.UseRouting();
+        app.UseAuthentication();
         app.UseAuthorization();
+        app.UseCors();
         app.MapControllers();
-
+        
         return app;
     }
     

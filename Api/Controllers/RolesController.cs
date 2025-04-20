@@ -1,10 +1,12 @@
 using Api.DTOs;
 using Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Api.Shared;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("roles")]
     public class RolesController(IRoleService roleService) : Controller
