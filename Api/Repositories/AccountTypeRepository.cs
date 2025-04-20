@@ -40,7 +40,7 @@ namespace Api.Repositories
 
         public async Task<IEnumerable<string>> GetAllAccountTypesAsync()
         {
-            var query = $@"SELECT name FROM account_types;";
+            var query = $@"SELECT account_type_id, name FROM account_types;";
 
             using var connection = new NpgsqlConnection(Constants.ConnectionString);
             return await connection.QueryAsync<string>(query);
