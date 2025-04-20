@@ -153,12 +153,6 @@ namespace Cli.Commands
     {
         public class Settings : CommandSettings
         {
-            [CommandOption("-s|--start <YYYY-MM-DD>")]
-            public string StartDate { get; set; } = string.Empty;
-
-            [CommandOption("-e|--end <YYYY-MM-DD>")]
-            public string? EndDate { get; set; }
-
             [CommandOption("-o|--output <OutputFile>")]
             public string? OutputFile { get; set; }
 
@@ -266,6 +260,7 @@ namespace Cli.Commands
                         {
                             var pdfDocument = new PdfDocument();
                             var page = pdfDocument.AddPage();
+                            page.Orientation = PdfSharpCore.PageOrientation.Landscape; // Set the page orientation to landscape
                             var graphics = XGraphics.FromPdfPage(page);
                             var font = new XFont("Arial", 12);
 
@@ -281,6 +276,7 @@ namespace Cli.Commands
                                 if (yOffset > page.Height - 50)
                                 {
                                     page = pdfDocument.AddPage();
+                                    page.Orientation = PdfSharpCore.PageOrientation.Landscape; // Ensure new pages are also in landscape
                                     graphics = XGraphics.FromPdfPage(page);
                                     yOffset = 50;
                                 }
