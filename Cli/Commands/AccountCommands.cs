@@ -242,14 +242,4 @@ namespace Cli.Commands
             }
         }
     }
-
-    public class GetAccountDetailsCommand : Command
-    {
-        public override int Execute(CommandContext context)
-        {
-            // Placeholder for getting account details logic
-            AnsiConsole.MarkupLine("[green]Getting account details...[/]");
-            return 0;
-        }
-    }
 }
