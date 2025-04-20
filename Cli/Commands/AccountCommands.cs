@@ -230,7 +230,7 @@ namespace Cli.Commands
                 else
                 {
                     var errorMessage = response.Content.ReadAsStringAsync().Result;
-                    CliWidgets.RenderError($"[red]Failed to created an account, please make sure that you are passing 'checking', 'savings', or 'credit_card' as account type[/]");
+                    CliWidgets.RenderHttpResponseAsync(response);
                     return 1;
                 }
             }

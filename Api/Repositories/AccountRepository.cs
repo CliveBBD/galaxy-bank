@@ -43,6 +43,7 @@ namespace Api.Repositories
             if (!exists)
             {
                 user = await _userRepository.CreateUserAsync(newUser.GoogleID, newUser.Username, newUser.Email, "customer");
+                if(user == null) throw new Exception("Could not create user."); 
             }
             else
             {
@@ -65,7 +66,7 @@ namespace Api.Repositories
                 query,
                 new
                 {
-                    UserId = user,
+                    UserId = user.UserID,
                     AccountType = accountType.AccountTypeId,
                     Balance = openingBalance
                 }
