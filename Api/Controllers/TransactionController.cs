@@ -7,10 +7,9 @@ namespace Api.Controllers
 {
     [Route("transactions")]
     [ApiController]
-    public class TransactionsController(ITransactionService transactionService, IUserService userService) : Controller
+    public class TransactionsController(ITransactionService transactionService) : Controller
     {
         private readonly ITransactionService _transactionService = transactionService;
-        private readonly IUserService _userService = userService;
 
         [HttpGet("", Name = "GetTransactions")]
         public async Task<IActionResult> GetTransactions()
