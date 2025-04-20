@@ -7,15 +7,9 @@ namespace Api.Repositories
 {
     public interface IAccountTypeRepository
     {
-<<<<<<< HEAD
-        Task<AccountType> GetAccountTypeByIdAsync(int id);
-        Task<IEnumerable<string>> GetAllAccountTypesAsync();
-        Task<AccountType> GetAccountTypeByNameAsync(string name);
-=======
         Task<AccountType?> GetAccountTypeByIdAsync(int id);
         Task<IEnumerable<AccountType>> GetAllAccountTypesAsync();
         Task<AccountType?> GetAccountTypeByNameAsync(string name);
->>>>>>> main
     }
     public class AccountTypeRepository : IAccountTypeRepository
     {
@@ -50,6 +44,11 @@ namespace Api.Repositories
 
             using var connection = new NpgsqlConnection(Constants.ConnectionString);
             return await connection.QueryAsync<string>(query);
+        }
+
+        Task<IEnumerable<AccountType>> IAccountTypeRepository.GetAllAccountTypesAsync()
+        {
+            throw new NotImplementedException();
         }
     }
 }
