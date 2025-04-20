@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Data.Common;
 using System.Linq;
 using System.Threading.Tasks;
 using Api.Repositories;
@@ -14,11 +16,12 @@ namespace Tests.Services
         public class DisputeService_GetDisputesAsync
         {
             private IDisputeService _disputeService;
+            private IDbConnection _dbConnection;
 
             [SetUp]
             public void Setup()
             {
-                _disputeService = new DisputeService(new DisputeRepository());
+                _disputeService = new DisputeService(new DisputeRepository(), new TransactionRepository(_dbConnection));
             }
 
             [Test]

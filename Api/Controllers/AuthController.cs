@@ -29,9 +29,9 @@ namespace Api.Controllers
             {
                 return new ContentResult
                 {
-                    Content = "<h2>Either state or code is null. Please try authenticating again!</h2>",
+                    Content = "<p>Either state or code is null. Please try authenticating again!</p>",
                     ContentType = "text/html",
-                    StatusCode = 200
+                    StatusCode = StatusCodes.Status400BadRequest
                 };
             }
             try
@@ -104,14 +104,14 @@ namespace Api.Controllers
                 {
                     Content = html,
                     ContentType = "text/html",
-                    StatusCode = 200
+                    StatusCode = StatusCodes.Status200OK
                 };
             }
             catch(Exception ex)
             {
                 return new ContentResult
                 {
-                    Content = $"<h2>Authentication service unavailable: {ex}></h2>",
+                    Content = $"<p>Authentication service unavailable: {ex}></p>",
                     ContentType = "text/html",
                     StatusCode = StatusCodes.Status503ServiceUnavailable
                 };

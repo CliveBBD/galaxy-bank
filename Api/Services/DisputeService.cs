@@ -5,11 +5,11 @@ using Npgsql;
 
 namespace Api.Services
 {
-    public interface IDisputeService
-    {
-        Task<IEnumerable<Dispute>> GetAllDisputesAsync(Pagination? pagination = null, int? userId = null, string? status = null, string? email = null);
-        Task<Dispute?> GetDisputeAsync(int disputeId, int? userId = null);
-        Task<IEnumerable<DisputeHistoryEntry>> GetDisputeHistoryAsync(Pagination? pagination, int disputeId, int? userId = null);
+  public interface IDisputeService
+  {
+    Task<IEnumerable<Dispute>> GetAllDisputesAsync(Pagination? pagination = null, int? userId = null, string? status = null, string? email = null);
+    Task<Dispute?> GetDisputeAsync(int disputeId, int? userId = null);
+    Task<IEnumerable<DisputeHistoryEntry>> GetDisputeHistoryAsync(Pagination? pagination, int disputeId, int? userId = null);
     Task<Dispute?> CreateDisputeAsync(int transactionReferenceID, string reason, int userID, int disputeReasonId);
     Task<DisputeHistoryEntry?> UpdateDisputeStatus(int disputeID, int newStatusID, int updatedByID);
     Task<IEnumerable<DisputeStatus?>> GetAllowedNextStatusesAsync(int disputeID);

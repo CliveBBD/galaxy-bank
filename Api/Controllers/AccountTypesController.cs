@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers
 {
-    [Authorize]
     [ApiController]
     [Route("account_types")]
     public class AccountTypesController : ControllerBase

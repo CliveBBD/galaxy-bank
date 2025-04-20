@@ -73,7 +73,7 @@ public class Program
                 throw new InvalidOperationException("Database connection string is missing.");
             }
 
-            return new NpgsqlConnection("Host=localhost,Port=5432;Database=galaxy-bank-local;Username=postgres;Password=postgres;");
+            return new NpgsqlConnection(connectionString);
         });
         
         services.AddScoped<IRoleRepository, RoleRepository>();

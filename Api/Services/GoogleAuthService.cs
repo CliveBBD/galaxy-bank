@@ -35,8 +35,8 @@ public class GoogleAuthService
         _httpClient = httpClient;
 
 
-        _clientId =  _configuration["Authentication:Google:ClientId"];
-        _clientSecret =  _configuration["Authentication:Google:ClientSecret"];
+        _clientId = GetValueByKey(Environment.GetEnvironmentVariable("GoogleClientId") ?? _configuration["Authentication:Google:ClientId"], "GoogleClientId");
+        _clientSecret = GetValueByKey(Environment.GetEnvironmentVariable("GoogleClientSecret") ?? _configuration["Authentication:Google:ClientSecret"], "GoogleClientSecret");
 
         _redirectUri = GetValueByKey(Environment.GetEnvironmentVariable("GoogleRedirectUri") ?? _configuration["Authentication:Google:RedirectUri"], "GoogleRedirectUri") ?? $"https://localhost:7059/signin-google";
         _scopes = [
