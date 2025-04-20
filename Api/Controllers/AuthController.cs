@@ -1,10 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
 using Api.Services;
 using Api.Shared;
+using Api.Models;
+using Api.DTOs;
 
 namespace Api.Controllers
 {
     [ApiController]
+    [Route("")]
     public class AccountController : ControllerBase
     {
         private readonly GoogleAuthService _googleAuthService;
@@ -108,9 +111,9 @@ namespace Api.Controllers
             {
                 return new ContentResult
                 {
-                    Content = $"<h2>Authentication failed: {ex}></h2>",
+                    Content = $"<h2>Authentication service unavailable: {ex}></h2>",
                     ContentType = "text/html",
-                    StatusCode = 200
+                    StatusCode = StatusCodes.Status503ServiceUnavailable
                 };
             }
         }
@@ -118,19 +121,14 @@ namespace Api.Controllers
         [Route("login")]
         public IActionResult Login()
         {
-            
             // Generate a session ID to track this auth flow
             var sessionId = _googleAuthService.GenerateSessionId();
             
             // Generate the Google OAuth URL
             var authUrl = _googleAuthService.GenerateAuthUrl(sessionId);
-            
+
             // Return the auth URL and session ID to the client
-            return Ok(new
-            {
-                authUrl,
-                sessionId
-            });
+            return Ok(new LoginResponse(authUrl, sessionId));
         }
 
         [HttpGet("token/{sessionId}")]
@@ -140,9 +138,12 @@ namespace Api.Controllers
 
             if (token == null)
             {
-                return NotFound("No token found for this session.");
+                return NotFound(new ErrorResponse("Session token not found", "No token found for this session.", StatusCodes.Status404NotFound));
             }
-            return Ok(token);
+            else
+            {
+                return Ok(token);
+            }
         }
 
         [HttpPost("logout")]

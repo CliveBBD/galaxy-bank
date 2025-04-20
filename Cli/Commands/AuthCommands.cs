@@ -42,7 +42,7 @@ namespace Cli.Commands
 
                 if (result.Success)
                 {
-                    CliWidgets.RenderPanel("Authentication successful!");
+                    CliWidgets.RenderSuccess("Authentication successful!");
                 }
                 else
                 {
@@ -85,6 +85,7 @@ namespace Cli.Commands
                 AnsiConsole.MarkupLine($"[green]You are logged out[/]");
             }
             User.Clear();
+            CliWidgets.RenderSuccess($"[green]You are logged out[/]");
             return 0;
         }
     }
@@ -95,7 +96,7 @@ namespace Cli.Commands
         {
             if (User.Username.Length > 0)
             {
-                CliWidgets.RenderPanel($"You are logged in as {User.Username}\nEmail: {User.Email}\nGoogle ID: {User.GoogleId}\nJWT: {User.Token}", "whoami");
+                CliWidgets.RenderPanel($"You are logged in as {User.Username}\nEmail: {User.Email}\nGoogle ID: {User.GoogleId}", "whoami");
             }
             else
             {

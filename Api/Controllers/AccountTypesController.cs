@@ -1,3 +1,4 @@
+using Api.DTOs;
 using Api.Models;
 using Api.Repositories;
 using Microsoft.AspNetCore.Authorization;
@@ -18,14 +19,15 @@ namespace Api.Controllers
         }
 
         [HttpGet("{name}", Name = "GetAccountTypeByName")]
-        public async Task<AccountType> GetAccountTypeByName(string name)
+        [ResponseCache(Duration = 82800)] // cache for 24 hours
+        public async Task<IActionResult> GetAccountTypeByName(string name)
         {
             var accountType = await _accountTypeRepository.GetAccountTypeByNameAsync(name);
 
             if (accountType == null)
-                throw new ArgumentException($"Account type {name} does not exist, available account types are 'checking', 'savings' and 'credit_card'.");
-
-            return await _accountTypeRepository.GetAccountTypeByNameAsync(name);
+                return NotFound(new ErrorResponse("Account type not found", $"Account type {name} does not exist.", StatusCodes.Status404NotFound));
+            else
+                return Ok(accountType);
         }
     }
 }

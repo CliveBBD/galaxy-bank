@@ -1,3 +1,4 @@
+using Api.DTOs;
 using Api.Models;
 using Api.Repositories;
 
@@ -7,11 +8,6 @@ namespace Api.Helpers
     {
         private readonly IAccountTypeRepository _accountTypeRepository;
 
-
-        public AccountMapper()
-        {
-
-        }
         public AccountMapper(IAccountTypeRepository accountTypeRepository)
         {
             _accountTypeRepository = accountTypeRepository;

@@ -38,18 +38,11 @@ namespace Api.Repositories
                 FROM users
                 WHERE google_id = @GoogleId;
                 """;
-                var senderUser = await _dbConnection.QuerySingleOrDefaultAsync<dynamic>(
+                var senderUserId = await _dbConnection.ExecuteScalarAsync<int>(
                     senderUserQuery,
                     new { GoogleId = googleId },
                     transaction: transaction
                 );
-
-                if (senderUser == null)
-                {
-                    throw new InvalidOperationException("No user found with the provided Google ID.");
-                }
-
-                int senderUserId = senderUser.UserId;
 
                 // Step 2: Verify that the sender's account number belongs to the user
                 string verifyAccountOwnershipQuery = """

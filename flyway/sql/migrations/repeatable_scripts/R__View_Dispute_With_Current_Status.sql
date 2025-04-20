@@ -32,7 +32,7 @@ WITH
 	)
 	SELECT 
 		d.dispute_id,
-		d.reason,
+		dr.description AS reason,
 		d.disputed_transaction_reference_id,
 		d.created_at,
 		dsh.dispute_history_id,
@@ -46,6 +46,7 @@ WITH
 		dsh.email as involved_email,
 		dsh.username as involved_username
 	FROM disputes d
+		INNER JOIN dispute_reasons dr ON d.dispute_reason_id = dr.dispute_reason_id
 		INNER JOIN dispute_users dsh ON d.dispute_id = dsh.dispute_id
 		INNER JOIN dispute_statuses ds ON dsh.dispute_status_id = ds.dispute_status_id
 		INNER JOIN users u ON dsh.updated_by_id = u.user_id

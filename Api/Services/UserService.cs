@@ -7,7 +7,7 @@ namespace Api.Services
     public interface IUserService
     {
 
-        Task<int> CreateUserAsync(CreateUserDto dto);
+        Task<User?> CreateUserAsync(CreateUserDto dto);
         Task<User?> GetUserByIdAsync(int id);
         Task<User?> GetUserByEmailAsync(string email);
 
@@ -24,7 +24,7 @@ namespace Api.Services
             _roleService = roleService;
         }
 
-        public async Task<int> CreateUserAsync(CreateUserDto dto)
+        public async Task<User?> CreateUserAsync(CreateUserDto dto)
         {
             bool exists = await _userRepository.UserExistsAsync(dto.GoogleID, dto.Email);
 

@@ -7,34 +7,17 @@ namespace Api.Controllers
     [Authorize]
     [ApiController]
     [Route("transaction-types")]
+    [ApiController]
     public class TransactionTypeController(ITransactionTypeService transactionTypeService) : Controller
     {
         private readonly ITransactionTypeService _transactionTypeService = transactionTypeService;
 
         [HttpGet("", Name = "GetTransactionType")]
+        [ResponseCache(Duration = 82800)] // cache for 24 hours
         public async Task<IActionResult> GetTransactionType()
         {
-            try
-            {
-                var transactionTypes = await _transactionTypeService.GetTransactionTypesAsync();
-                Console.WriteLine(transactionTypes);
-                return Ok(transactionTypes);
-            }
-            catch (Exception e)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
-            }
-        }
-
-        public IActionResult Index()
-        {
-            return View();
-        }
-
-        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        public IActionResult Error()
-        {
-            return View("Error!");
+            var transactionTypes = await _transactionTypeService.GetTransactionTypesAsync();
+            return Ok(transactionTypes);
         }
     }
 }

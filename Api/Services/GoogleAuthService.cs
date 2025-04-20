@@ -6,6 +6,7 @@ using Api.Repositories;
 using Api.Shared;
 using Namotion.Reflection;
 using System.Text.Json;
+using static Api.Shared.SharedMethods;
 
 namespace Api.Services;
  
@@ -37,7 +38,7 @@ public class GoogleAuthService
         _clientId =  _configuration["Authentication:Google:ClientId"];
         _clientSecret =  _configuration["Authentication:Google:ClientSecret"];
 
-        _redirectUri = _configuration["Authentication:RedirectUri"];
+        _redirectUri = GetValueByKey(Environment.GetEnvironmentVariable("GoogleRedirectUri") ?? _configuration["Authentication:Google:RedirectUri"], "GoogleRedirectUri") ?? $"https://localhost:7059/signin-google";
         _scopes = [
             "https://www.googleapis.com/auth/userinfo.email",
             "https://www.googleapis.com/auth/userinfo.profile"
@@ -47,25 +48,6 @@ public class GoogleAuthService
         TokenEndpoint = _configuration["Authentication:TokenEndpoint"];
     }
 
-    private static string GetValueByKey(string jsonString, string key)
-    {
-        try
-        {
-            using JsonDocument doc = JsonDocument.Parse(jsonString);
-            if (doc.RootElement.TryGetProperty(key, out JsonElement value))
-            {
-                return value.ToString();
-            }
-            else
-            {
-                return null; // Key not found
-            }
-        }
-        catch (System.Text.Json.JsonException)
-        {
-            return null; // Invalid JSON
-        }
-    }
 
     public string GenerateAuthUrl(string sessionId)
     {

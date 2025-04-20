@@ -10,6 +10,7 @@ using Api.Shared;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Api.Middleware;
 
 public class Program
 {
@@ -25,6 +26,8 @@ public class Program
         var configuration = configurationBuilder.Build();
         ConfigureServices(builder.Services, configuration);
         WebApplication app = ConfigureApp(builder);
+        app.UseMiddleware<InternalServerErrorHandler>();
+        app.UseMiddleware<RequestingUserHandler>();
         app.Run();            
     }
 
@@ -52,6 +55,8 @@ public class Program
         });
 
         services.AddAuthorization();
+        services.AddScoped<InternalServerErrorHandler>();
+        services.AddScoped<RequestingUserHandler>();
         services.AddHttpClient<GoogleAuthService>();
         services.AddSingleton<TokenService>();
         services.AddScoped<GoogleAuthService>();

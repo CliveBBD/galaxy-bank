@@ -8,7 +8,7 @@ namespace Api.Controllers
 {
     [Authorize]
     [ApiController]
-    [Route("withdraw")]
+    [Route("withdrawals")]
     public class WithdrawController : Controller
     {
         private readonly IWithdrawService _withdrawService;
@@ -23,42 +23,27 @@ namespace Api.Controllers
         [HttpPost("", Name = "Withdraw")]
         public async Task<IActionResult> Withdraw([FromBody] WithdrawRequest request)
         {
-            Console.WriteLine("I'm here!");
-            if (!ModelState.IsValid)
+            var requestingUser = HttpContext.GetCurrentUser();
+            if (requestingUser == null)
             {
-                return BadRequest(ModelState);
+                return Unauthorized(new ErrorResponse("Not authorized to withdraw", "You must be logged in to make a withdrawal", StatusCodes.Status401Unauthorized));
             }
-            Console.WriteLine("I'm here! 2");
-
-            try
+            else
             {
-                var payload = await JwtDecoder.Decode(HttpContext);
-                if (payload == null)
-                {
-                    return Unauthorized("Invalid or missing token.");
-                }
-                var googleId = payload.Subject;
-
+                var googleId = requestingUser.GoogleID;
                 var result = await _withdrawService.WithdrawAsync(request, googleId);
-                await _emailService.SendEmailAsync(payload.Email, WithdrawEmailTemplate.Subject, WithdrawEmailTemplate.Message(payload.GivenName, request.AccountNumber.ToString(), request.Amount.ToString()));
-                Console.WriteLine(result);
+
+                try
+                {
+                    _ = _emailService.SendEmailAsync(requestingUser.Email, WithdrawEmailTemplate.Subject, WithdrawEmailTemplate.Message(requestingUser.Username, request.AccountNumber.ToString(), request.Amount.ToString()));
+                }
+                catch
+                {
+                    // we do not need to wait for the email to be sent out and exceptions thrown by the email service should not cause the controller to fail
+                }
+
                 return Ok(result);
             }
-            catch (Exception e)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
-            }
-        }
-
-        public IActionResult Index()
-        {
-            return View();
-        }
-
-        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        public IActionResult Error()
-        {
-            return View("Error!");
         }
     }
 }

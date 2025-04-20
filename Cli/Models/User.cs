@@ -27,8 +27,11 @@ namespace Cli.Models
             Email = string.Empty;
             GoogleId = string.Empty;
             Token = "No token";
+<<<<<<< HEAD
             Role = string.Empty;
             SessionId = string.Empty;
+=======
+>>>>>>> main
         }
     }
 }
