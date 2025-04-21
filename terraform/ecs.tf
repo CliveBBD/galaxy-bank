@@ -42,16 +42,16 @@ resource "aws_ecs_task_definition" "api" {
         },
         {
           name  = "EmailSettings__SenderEmail",
-          value = "kgotlelelomangene@gmail.com"
+          value = "galaxy.bank101@gmail.com"
         },
         {
           name  = "EmailSettings__Username",
-          value = "kgotlelelomangene@gmail.com"
+          value = "galaxy.bank101@gmail.com"
         },
         {
           name  = "EmailSettings__Password",
-          value = "yksn mcyr mpqh pmgg"
-        }
+          value = data.aws_secretsmanager_secret_version.email_password.secret_string
+        },
       ]
       secrets = [
         {

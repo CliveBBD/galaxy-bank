@@ -265,7 +265,7 @@ namespace Cli.Commands
                         {
                             var pdfDocument = new PdfDocument();
                             var page = pdfDocument.AddPage();
-                            page.Orientation = PdfSharpCore.PageOrientation.Portrait; 
+                            page.Orientation = PdfSharpCore.PageOrientation.Portrait;
 
                             var graphics = XGraphics.FromPdfPage(page);
                             var fontRegular = new XFont("Arial", 10, XFontStyle.Regular);
@@ -313,9 +313,9 @@ namespace Cli.Commands
                                     transaction.TransactionID.ToString(),
                                     transaction.Reference,
                                     transaction.AccountNumber,
-                                    transaction.Amount.ToString("C", new CultureInfo("es-GT")),
+                                    transaction.Amount.ToString("C0", new CultureInfo("es-GT")),
                                     transaction.TransactionType.Name,
-                                    transaction.BalanceAfterTransaction.ToString("C", new CultureInfo("es-GT")),
+                                    transaction.BalanceAfterTransaction.ToString("C0", new CultureInfo("es-GT")),
                                     transaction.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")
                                 };
 
@@ -335,7 +335,7 @@ namespace Cli.Commands
                                     graphics.DrawString($"Page {pdfDocument.PageCount}", fontRegular, XBrushes.Gray, new XRect(0, pageHeight - margin, pageWidth, lineHeight), XStringFormats.Center);
 
                                     page = pdfDocument.AddPage();
-                                    page.Orientation = PdfSharpCore.PageOrientation.Portrait; 
+                                    page.Orientation = PdfSharpCore.PageOrientation.Portrait;
                                     graphics = XGraphics.FromPdfPage(page);
                                     yOffset = margin;
 

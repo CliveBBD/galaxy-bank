@@ -6,6 +6,7 @@ DECLARE
     original_tx_id INT; -- ✅ declare the loop variable
     reversal_type_id INT;
     new_balance INT;
+    current_account_balance INT;
     success BOOLEAN := TRUE;
 BEGIN
     -- Get the transaction_type_id for 'reversal'
@@ -26,20 +27,21 @@ BEGIN
             FROM transactions
             WHERE transaction_id = original_tx_id;
 
+
             IF NOT FOUND THEN
                 RAISE NOTICE 'Transaction ID % not found, skipping...', original_tx_id;
                 success := FALSE;
                 CONTINUE;
             END IF;
 
-            -- Calculate new balance
-            new_balance := original_tx.balance_after_transaction - original_tx.amount;
+            -- Get the current account balance
+            select a.balance INTO current_account_balance
+            from transactions t
+            inner join accounts a ON t.account_id = a.account_id
+            where t.transaction_id = original_tx_id;
 
-            IF new_balance < 0 THEN
-                RAISE NOTICE 'Reversal would cause negative balance for account_id %', original_tx.account_id;
-                success := FALSE;
-                CONTINUE;
-            END IF;
+            -- Calculate new balance
+            new_balance := current_account_balance - original_tx.amount;
 
             -- Insert reversal transaction
             INSERT INTO transactions (
