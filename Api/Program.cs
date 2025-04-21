@@ -39,7 +39,7 @@ public class Program
             options.JsonSerializerOptions.PropertyNamingPolicy = null;
         });
         services.AddCors();
-        services.AddAuthentication();
+        // services.AddAuthentication();
 
         services.AddAuthorization();
         services.AddScoped<InternalServerErrorHandler>();
@@ -101,8 +101,8 @@ public class Program
         }
 
         app.UseRouting();
-        app.UseAuthentication();
-        app.UseAuthorization();
+        // app.UseAuthentication();
+        // app.UseAuthorization();
         app.UseCors();
         app.MapControllers();
         
