@@ -12,7 +12,7 @@ namespace Api.Tests.Services
             // Arrange
             var tokenService = new TokenService();
             var userKey = "user1";
-            var token = new StoredToken { IdToken = "abc123" };
+            var token = new StoredToken { IdToken = "abc123", Role = "customer", SessionId = "session1" };
 
             // Act
             tokenService.StoreToken(userKey, token);
@@ -29,8 +29,8 @@ namespace Api.Tests.Services
             // Arrange
             var tokenService = new TokenService();
             var userKey = "user1";
-            var initialToken = new StoredToken { IdToken = "abc123" };
-            var updatedToken = new StoredToken { IdToken = "xyz789" };
+            var initialToken = new StoredToken { IdToken = "abc123", Role = "customer", SessionId = "session1" };
+            var updatedToken = new StoredToken { IdToken = "xyz789", Role = "admin", SessionId = "session2" };
 
             tokenService.StoreToken(userKey, initialToken);
 
@@ -49,7 +49,7 @@ namespace Api.Tests.Services
             // Arrange
             var tokenService = new TokenService();
             var userKey = "user1";
-            var token = new StoredToken { IdToken = "abc123" };
+            var token = new StoredToken { IdToken = "abc123", Role = "customer", SessionId = "session1" };
 
             tokenService.StoreToken(userKey, token);
 
@@ -81,7 +81,7 @@ namespace Api.Tests.Services
             // Arrange
             var tokenService = new TokenService();
             var userKey = "user1";
-            var token = new StoredToken { IdToken = "abc123" };
+            var token = new StoredToken { IdToken = "abc123", Role = "customer", SessionId = "session1" };
 
             tokenService.StoreToken(userKey, token);
 
