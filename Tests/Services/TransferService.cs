@@ -3,6 +3,7 @@ using Api.Repositories;
 using Api.Services;
 using Moq;
 using Xunit;
+using System.ComponentModel.DataAnnotations;
 
 namespace Api.Tests.Services
 {
@@ -57,7 +58,7 @@ namespace Api.Tests.Services
             string googleId = "test-google-id";
 
             // Act & Assert
-            await Xunit.Assert.ThrowsAsync<ArgumentException>(() => _transferService.TransferAsync(transferRequest, googleId));
+            await Xunit.Assert.ThrowsAsync<ValidationException>(() => _transferService.TransferAsync(transferRequest, googleId));
         }
 
         [Fact]
@@ -73,7 +74,7 @@ namespace Api.Tests.Services
             string googleId = "test-google-id";
 
             // Act & Assert
-            await Xunit.Assert.ThrowsAsync<Exception>(() => _transferService.TransferAsync(transferRequest, googleId));
+            await Xunit.Assert.ThrowsAsync<ValidationException>(() => _transferService.TransferAsync(transferRequest, googleId));
         }
 
         [Fact]

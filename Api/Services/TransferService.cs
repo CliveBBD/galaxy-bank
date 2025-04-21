@@ -1,6 +1,6 @@
 using Api.DTOs;
-using Api.Models;
 using Api.Repositories;
+using System.ComponentModel.DataAnnotations;
 
 namespace Api.Services
 {
@@ -25,6 +25,10 @@ namespace Api.Services
             {
                 throw new ArgumentException("Invalid transfer request.");
             }
+
+            var validationContext = new ValidationContext(transferRequest);
+            Validator.ValidateObject(transferRequest, validationContext, validateAllProperties: true);
+
 
             // Call the repository to perform the transfer operation
             return await _transferRepository.TransferAsync(transferRequest, googleId);
