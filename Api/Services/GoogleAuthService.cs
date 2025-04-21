@@ -36,14 +36,9 @@ public class GoogleAuthService
         _httpClient = httpClient;
 
         // Get and log raw values
-        var rawClientId = Environment.GetEnvironmentVariable("GoogleClientId");
-        var rawClientSecret = Environment.GetEnvironmentVariable("GoogleClientSecret");
-        var rawRedirectUri = Environment.GetEnvironmentVariable("GoogleRedirectUri");
-
-        // Get secrets from environment variables and parse JSON structure
-        _clientId = SharedMethods.GetAndParseEnvironmentVariable("GoogleClientId", "GoogleClientId");
-        _clientSecret = SharedMethods.GetAndParseEnvironmentVariable("GoogleClientSecret", "GoogleClientSecret");
-        _redirectUri = SharedMethods.GetAndParseEnvironmentVariable("GoogleRedirectUri", "GoogleRedirectUri") ??
+        _clientId = Environment.GetEnvironmentVariable("GoogleClientId");
+        _clientSecret = Environment.GetEnvironmentVariable("GoogleClientSecret");
+        _redirectUri = Environment.GetEnvironmentVariable("GoogleRedirectUri") ??
                       "https://localhost:7059/signin-google";
 
         // Validate required secrets
