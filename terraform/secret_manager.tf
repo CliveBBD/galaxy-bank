@@ -8,17 +8,17 @@ resource "aws_secretsmanager_secret_version" "db_connection_version" {
 }
 
 resource "aws_secretsmanager_secret" "google_client_id" {
-  name        = "${var.app_name}/google-client-id-v2"
+  name        = "${var.app_name}/google-client-id-v1"
   description = "Google OAuth Client ID"
 }
 
 resource "aws_secretsmanager_secret" "google_client_secret" {
-  name        = "${var.app_name}/google-client-secret-v2"
+  name        = "${var.app_name}/google-client-secret-v1"
   description = "Google OAuth Client Secret"
 }
 
 resource "aws_secretsmanager_secret" "google_redirect_uri" {
-  name        = "${var.app_name}/google-client-redirect-uri-v2"
+  name        = "${var.app_name}/google-client-redirect-uri-v1"
   description = "Google OAuth Redirect URI"
 }
 
