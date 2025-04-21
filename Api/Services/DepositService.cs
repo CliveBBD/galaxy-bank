@@ -21,7 +21,7 @@ namespace Api.Services
         public async Task<int> DepositAsync(DepositRequest depositRequest, string googleId)
         {
             // Validate the request
-            if (depositRequest == null || depositRequest.Amount <= 0)
+            if (depositRequest == null || depositRequest.Amount <= 0 || depositRequest.AccountNumber == null)
             {
                 throw new ArgumentException("Invalid deposit request.");
             }

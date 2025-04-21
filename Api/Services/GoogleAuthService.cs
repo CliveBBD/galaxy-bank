@@ -18,7 +18,8 @@ public class GoogleAuthService
     private readonly string? _clientSecret;
     private readonly string? _redirectUri;
     private readonly IUserRepository _userRepository;
- 
+    private readonly ILogger<GoogleAuthService> _logger; // Add logger
+
     // Define the Google OAuth endpoints
     private readonly string? AuthorizationEndpoint;
     private readonly string? TokenEndpoint;
