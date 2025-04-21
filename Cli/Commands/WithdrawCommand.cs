@@ -69,7 +69,7 @@ namespace Cli.Commands
                 var jsonPayload = JsonSerializer.Serialize(payload);
                 var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
-                var result = httpClient.PostAsync($"{Constants.ApiBaseUrl}/withdraws", content).Result;
+                var result = httpClient.PostAsync($"{Constants.ApiBaseUrl}/withdrawals", content).Result;
 
                 if (result.IsSuccessStatusCode)
                 {

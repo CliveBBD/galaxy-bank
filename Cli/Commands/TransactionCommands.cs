@@ -79,7 +79,7 @@ namespace Cli.Commands
                                 formattedAmount,
                                 transaction.TransactionType.Name,
                                 formattedBalance,
-                                transaction.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")
+                                transaction.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")
                             );
                         }
 
@@ -248,7 +248,7 @@ namespace Cli.Commands
                                 formattedAmount,
                                 transaction.TransactionType.Name,
                                 formattedBalance,
-                                transaction.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")
+                                transaction.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")
                             );
                         }
 
@@ -268,7 +268,7 @@ namespace Cli.Commands
                             int yOffset = 50;
                             foreach (var transaction in transactions)
                             {
-                                var line = $"ID: {transaction.TransactionID}, Ref: {transaction.Reference}, Account: {transaction.AccountNumber}, Amount: {transaction.Amount}, Type: {transaction.TransactionType.Name}, Balance: {transaction.BalanceAfterTransaction}, Date: {transaction.CreatedAt:yyyy-MM-dd HH:mm:ss}";
+                                var line = $"ID: {transaction.TransactionID}, Ref: {transaction.Reference}, Account: {transaction.AccountNumber}, Amount: {transaction.Amount}, Type: {transaction.TransactionType.Name}, Balance: {transaction.BalanceAfterTransaction}, Date: {transaction.CreatedAt.ToLocalTime():yyyy-MM-dd HH:mm:ss}";
                                 graphics.DrawString(line, font, XBrushes.Black, new XRect(20, yOffset, page.Width - 40, 20), XStringFormats.TopLeft);
                                 yOffset += 20;
 
