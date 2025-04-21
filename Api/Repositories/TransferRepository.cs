@@ -87,9 +87,9 @@ namespace Api.Repositories
                     throw new InvalidOperationException("Insufficient funds. Transfer amount exceeds the sender's current balance.");
                 }
 
-                // Step 5: Retrieve the receiver's account ID
+                // Step 5: Retrieve the receiver's account ID and current balance
                 string receiverAccountQuery = """
-                SELECT account_id AS "AccountId"
+                SELECT account_id AS "AccountId", balance AS "CurrentBalance"
                 FROM accounts
                 WHERE account_number = @AccountNumber;
                 """;
@@ -105,6 +105,7 @@ namespace Api.Repositories
                 }
 
                 int receiverAccountId = receiverAccount.AccountId;
+                int receiverCurrentBalance = receiverAccount.CurrentBalance;
 
                 // Step 6: Deduct the amount from the sender's account
                 string deductBalanceQuery = """
@@ -188,7 +189,7 @@ namespace Api.Repositories
                     TransactionReferenceId = transactionReferenceId,
                     TransactionTypeId = 4, // Assuming 4 represents "Receive" in the transaction types table
                     Amount = transferRequest.Amount,
-                    BalanceAfterTransaction = receiverAccount.CurrentBalance + transferRequest.Amount,
+                    BalanceAfterTransaction = receiverCurrentBalance + transferRequest.Amount,
                     CreatedAt = DateTime.UtcNow,
                     Reference = transferRequest.ToReference
                 };

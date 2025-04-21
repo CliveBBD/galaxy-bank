@@ -9,7 +9,7 @@ using Spectre.Console;
 
 namespace Cli.Helpers
 {
-    public class TableBuilder<T> where T: notnull
+    public class TableBuilder<T> where T : notnull
     {
         public Table Table { get; }
         private IEnumerable<T> _data { get; set; }
