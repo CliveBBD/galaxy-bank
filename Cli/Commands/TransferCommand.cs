@@ -32,7 +32,7 @@ namespace Cli.Commands
                 {
                     var selectedAccount = CliWidgets.RenderSelection(
                         "Please select an account to transfer from",
-                        accountsForUser.Select(account => account.Balance < amount ? $"[red]{account.AccountNumber}: ({account.AccountType.Name}) Balance Q {account.Balance}[/]" : $"[green]{account.AccountNumber}: ({account.AccountType.Name}) Balance Q {account.Balance}[/]")
+                        accountsForUser.Select(account => $"[green]{account.AccountNumber}: ({account.AccountType.Name}) Balance Q {account.Balance}[/]")
                     );
 
                     var fromAccount = selectedAccount!.Split(":")[0].Split("]")[1];
