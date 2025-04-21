@@ -18,7 +18,8 @@ public class GoogleAuthService
     private readonly string? _clientSecret;
     private readonly string? _redirectUri;
     private readonly IUserRepository _userRepository;
- 
+    private readonly ILogger<GoogleAuthService> _logger; // Add logger
+
     // Define the Google OAuth endpoints
     private readonly string? AuthorizationEndpoint;
     private readonly string? TokenEndpoint;
@@ -33,6 +34,11 @@ public class GoogleAuthService
     {
         _configuration = configuration;
         _httpClient = httpClient;
+
+        // Get and log raw values
+        var rawClientId = Environment.GetEnvironmentVariable("GoogleClientId");
+        var rawClientSecret = Environment.GetEnvironmentVariable("GoogleClientSecret");
+        var rawRedirectUri = Environment.GetEnvironmentVariable("GoogleRedirectUri");
 
         // Get secrets from environment variables and parse JSON structure
         _clientId = SharedMethods.GetAndParseEnvironmentVariable("GoogleClientId", "GoogleClientId");
