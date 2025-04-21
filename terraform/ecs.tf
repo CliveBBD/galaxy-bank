@@ -50,7 +50,7 @@ resource "aws_ecs_task_definition" "api" {
         },
         {
           name  = "EmailSettings__Password",
-          value = data.aws_secretsmanager_secret_version.email_password.secret_string
+          value = jsondecode(data.aws_secretsmanager_secret_version.email_password.secret_string)["email_password"]
         },
       ]
       secrets = [
