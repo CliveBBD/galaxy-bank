@@ -48,6 +48,10 @@ resource "aws_ecs_task_definition" "api" {
           name  = "EmailSettings__Username",
           value = "galaxy.bank101@gmail.com"
         },
+        {
+          name  = "EmailSettings__Password",
+          value = data.aws_secretsmanager_secret_version.email_password.secret_string
+        },
       ]
       secrets = [
         {
@@ -61,10 +65,6 @@ resource "aws_ecs_task_definition" "api" {
         {
           name      = "GoogleRedirectUri"
           valueFrom = "arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}/google-client-redirect-uri-v2"
-        },
-        {
-          name      = "EmailSettings__Password"
-          valueFrom = aws_secretsmanager_secret.email_settings_password.arn
         }
       ]
       logConfiguration = {
