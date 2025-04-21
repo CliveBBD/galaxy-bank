@@ -40,6 +40,17 @@ namespace Api.Tests.Services
         }
 
         [Fact]
+        public async Task WithdrawAsync_ShouldThrowArgumentException_WhenAccountNumberIsNull()
+        {
+            // Arrange
+            var withdrawRequest = new WithdrawRequest { Amount = 100, AccountNumber = null };
+            string googleId = "test-google-id";
+
+            // Act & Assert
+            await Xunit.Assert.ThrowsAsync<ArgumentException>(() => _withdrawService.WithdrawAsync(withdrawRequest, googleId));
+        }
+
+        [Fact]
         public async Task WithdrawAsync_ShouldCallRepository_WhenRequestIsValid()
         {
             // Arrange

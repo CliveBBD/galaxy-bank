@@ -40,6 +40,17 @@ namespace Api.Tests.Services
         }
 
         [Fact]
+        public async Task DepositAsync_ShouldThrowArgumentException_WhenAccountNumberIsNull()
+        {
+            // Arrange
+            var depositRequest = new DepositRequest { Amount = 100, AccountNumber = null };
+            string googleId = "test-google-id";
+
+            // Act & Assert
+            await Xunit.Assert.ThrowsAsync<ArgumentException>(() => _depositService.DepositAsync(depositRequest, googleId));
+        }
+
+        [Fact]
         public async Task DepositAsync_ShouldCallRepository_WhenRequestIsValid()
         {
             // Arrange
