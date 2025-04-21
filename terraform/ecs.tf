@@ -56,15 +56,15 @@ resource "aws_ecs_task_definition" "api" {
       secrets = [
         {
           name      = "GoogleClientId"
-          valueFrom = "arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}/google-client-id-v1"
+          valueFrom = "arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}/google-client-id-v2"
         },
         {
           name      = "GoogleClientSecret"
-          valueFrom = "arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}/google-client-secret-v1"
+          valueFrom = "arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}/google-client-secret-v2"
         },
         {
           name      = "GoogleRedirectUri"
-          valueFrom = "arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}/google-client-redirect-uri-v1"
+          valueFrom = "arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}/google-client-redirect-uri-v2"
         }
       ]
       logConfiguration = {
