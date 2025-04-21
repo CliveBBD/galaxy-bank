@@ -43,7 +43,10 @@ data "aws_iam_policy_document" "ecs_task_execution_policy" {
       "ssm:GetParameter"
     ]
     resources = [
-      aws_secretsmanager_secret.db_connection.arn
+      aws_secretsmanager_secret.db_connection.arn,
+      "arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}/google-client-id-v1-*",
+      "arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}/google-client-secret-v1-*",
+      "arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}/google-client-redirect-uri-v1-*"
     ]
   }
 }
@@ -96,9 +99,9 @@ resource "aws_iam_policy" "ecs_task_secrets_policy" {
           "secretsmanager:ListSecretVersionIds"
         ],
         Resource = [
-          aws_secretsmanager_secret.google_client_secret.arn,
-          aws_secretsmanager_secret.google_client_id.arn,
-          aws_secretsmanager_secret.google_redirect_uri.arn
+          "arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}/google-client-id-v1-*",
+          "arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}/google-client-secret-v1-*",
+          "arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}/google-client-redirect-uri-v1-*"
         ]
       },
       {

@@ -34,15 +34,23 @@ public class GoogleAuthService
         _configuration = configuration;
         _httpClient = httpClient;
 
+        // Get secrets directly from environment variables (set by ECS from Secrets Manager)
+        _clientId = Environment.GetEnvironmentVariable("GoogleClientId");
+        _clientSecret = Environment.GetEnvironmentVariable("GoogleClientSecret");
+        _redirectUri = Environment.GetEnvironmentVariable("GoogleRedirectUri") ??
+                      "https://localhost:7059/signin-google";
 
-        _clientId = GetValueByKey(Environment.GetEnvironmentVariable("GoogleClientId") ?? _configuration["Authentication:Google:ClientId"], "GoogleClientId");
-        _clientSecret = GetValueByKey(Environment.GetEnvironmentVariable("GoogleClientSecret") ?? _configuration["Authentication:Google:ClientSecret"], "GoogleClientSecret");
+        // Validate required secrets
+        if (string.IsNullOrEmpty(_clientId))
+            throw new InvalidOperationException("GoogleClientId secret is not configured");
+        if (string.IsNullOrEmpty(_clientSecret))
+            throw new InvalidOperationException("GoogleClientSecret secret is not configured");
 
-        _redirectUri = GetValueByKey(Environment.GetEnvironmentVariable("GoogleRedirectUri") ?? _configuration["Authentication:Google:RedirectUri"], "GoogleRedirectUri") ?? $"https://localhost:7059/signin-google";
         _scopes = [
             "https://www.googleapis.com/auth/userinfo.email",
             "https://www.googleapis.com/auth/userinfo.profile"
-            ];
+        ];
+
         _userRepository = userRepository;
         AuthorizationEndpoint = _configuration["Authentication:AuthorizationEndpoint"];
         TokenEndpoint = _configuration["Authentication:TokenEndpoint"];
