@@ -42,7 +42,13 @@ namespace Api.Repositories
                         VALUES (@GoogleID, @Username, @Email, @RoleId)
                         RETURNING user_id, google_id, username, email, role_id
                     )
-                    SELECT u.user_id, u.google_id, u.username, u.email, r.role_id, r.name
+                    SELECT 
+                        u.user_id as {nameof(User.UserID)}, 
+                        u.google_id as {nameof(User.GoogleID)}, 
+                        u.username as {nameof(User.Username)}, 
+                        u.email as {nameof(User.Email)}, 
+                        r.role_id as {nameof(User.Role.RoleID)}, 
+                        r.name as {nameof(User.Role.Name)}
                     FROM inserted_user u
                     INNER JOIN roles r ON u.role_id = r.role_id
             ";
@@ -50,7 +56,11 @@ namespace Api.Repositories
             using var connection = new NpgsqlConnection(Constants.ConnectionString);
             var user = await connection.QueryAsync<User, Role, User>(
                 sql,
-                (user, role) => { user.Role = role; return user; },
+                (user, role) =>
+                {
+                    user.Role = role;
+                    return user;
+                },
                 new
                 {
                     GoogleID = googleID,
