@@ -39,20 +39,7 @@ public class Program
             options.JsonSerializerOptions.PropertyNamingPolicy = null;
         });
         services.AddCors();
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-        .AddJwtBearer(options =>
-        {
-            options.Authority = configuration["Authorization:TokenAuthority"];
-            options.Audience = configuration["Authorization:Audience"];
-            options.TokenValidationParameters = new TokenValidationParameters
-            {
-                ValidateIssuer = true,
-                ValidIssuer = configuration["Authorization:TokenAuthority"],
-                ValidateAudience = true,
-                ValidAudiences = new[] {configuration["Authorization:Audience"]},
-                ValidateLifetime = true
-            };
-        });
+        services.AddAuthentication();
 
         services.AddAuthorization();
         services.AddScoped<InternalServerErrorHandler>();
