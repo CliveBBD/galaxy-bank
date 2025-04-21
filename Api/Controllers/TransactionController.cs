@@ -37,7 +37,7 @@ namespace Api.Controllers
                 var transactions = await _transactionService.GetDisputableTransactionsAsync();
                 return Ok(transactions);
             }
-            else if (requestingUser != null && requestingUser.Role.Name != Constants.DisputeOfficerRoleName)
+            else if (requestingUser != null)
             {
                 var transactions = await _transactionService.GetDisputableTransactionsAsync(requestingUser.UserID);
                 return Ok(transactions);
