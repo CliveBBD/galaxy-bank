@@ -12,6 +12,7 @@ namespace Api.Services
         Task<User?> GetUserByEmailAsync(string email);
 
         Task<User?> GetCurrentUser(HttpContext httpContext);
+        Task<User?> UpdateUserRoleByEmail(string email, int newUserRoleId);
 
     }
     public class UserService : IUserService
@@ -64,6 +65,9 @@ namespace Api.Services
             }
         }
 
-
+        public async Task<User?> UpdateUserRoleByEmail(string email, int newUserRoleId)
+        {
+            return await _userRepository.UpdateUserRoleByEmail(email, newUserRoleId);
+        }
     }
 }

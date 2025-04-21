@@ -12,6 +12,7 @@ namespace Api.Repositories
         Task<User?> GetUserByIdAsync(int userId);
         Task<User?> GetUserByEmailAsync(string email);
         Task<bool> UserExistsAsync(string googleId, string email);
+        Task<User?> UpdateUserRoleByEmail(string email, int newRoleId);
 
 
     }
@@ -136,5 +137,37 @@ namespace Api.Repositories
             return result.HasValue;
         }
 
+        public async Task<User?> UpdateUserRoleByEmail(string email, int newRoleId)
+        {
+            var sql = @$"
+                WITH
+                    updated_user AS (
+                        UPDATE users
+                        SET role_id = @newRoleId
+                        WHERE email = @Email
+                        RETURNING user_id, google_id, username, email, role_id
+                    )
+                    SELECT 
+                        u.user_id AS {nameof(User.UserID)},
+                        u.google_id AS {nameof(User.GoogleID)},
+                        u.username AS {nameof(User.Username)},
+                        u.email AS {nameof(User.Email)}, 
+                        r.role_id AS {nameof(User.Role.RoleID)}, 
+                        r.name AS {nameof(User.Role.Name)}
+                    FROM updated_user u
+                    INNER JOIN roles r ON u.role_id = r.role_id
+                    WHERE u.email = @Email";
+
+            using var connection = new NpgsqlConnection(Constants.ConnectionString);
+
+            var results = await connection.QueryAsync<User, Role, User>(
+                sql,
+                (user, role) => { user.Role = role; return user; },
+                new { Email = email, newRoleId },
+                splitOn: "RoleID"
+            );
+
+            return results.FirstOrDefault();
+        }
     }
 }

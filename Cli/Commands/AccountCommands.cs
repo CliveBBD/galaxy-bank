@@ -1,6 +1,7 @@
 using System.Text;
 using Cli.Helpers;
 using Cli.Models;
+using PdfSharpCore.Pdf.Content.Objects;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
@@ -225,6 +226,68 @@ namespace Cli.Commands
                 if (response.IsSuccessStatusCode)
                 {
                     CliWidgets.RenderPanel($"[green]Successfully created a {accountType} account[/]");
+                    return 0;
+                }
+                else
+                {
+                    var errorMessage = response.Content.ReadAsStringAsync().Result;
+                    CliWidgets.RenderHttpResponseAsync(response);
+                    return 1;
+                }
+            }
+            catch (Exception ex)
+            {
+                CliWidgets.RenderError($"[red]An error occurred: {ex.Message}[/]");
+                return 1;
+            }
+        }
+    }
+
+    public class UpdateUserRoleCommand : Command<UpdateUserRoleCommand.Settings>
+    {
+        public class Settings : CommandSettings
+        {
+        }
+
+        public override int Execute(CommandContext context, Settings settings)
+        {
+
+            var email = CliWidgets.PromptText("Enter the email of the user who's role you would like to update");
+            if (string.IsNullOrEmpty(email))
+            {
+                CliWidgets.RenderError("[red]Email must be specified.[/]");
+                return 1;
+            }
+
+            using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", User.Token);
+
+            string rolesEndpoint = $"{Constants.ApiBaseUrl}/roles";
+
+            var rolesResponse = httpClient.GetAsync(rolesEndpoint).Result;
+
+            if (!rolesResponse.IsSuccessStatusCode)
+            {
+                CliWidgets.RenderHttpResponseAsync(rolesResponse);
+                return 1;
+            }
+
+            var jsonRolesResponse = rolesResponse.Content.ReadAsStringAsync().Result;
+
+            var roles = System.Text.Json.JsonSerializer.Deserialize<IEnumerable<Api.Models.Role>>(jsonRolesResponse);
+
+            var selectedRolesPrompt = CliWidgets.RenderSelection("Select the user's new role", roles.Select(role => $"{role.RoleID}: {role.Name}"));
+            var selectedRoleId = selectedRolesPrompt.Split(":")[0];
+
+            try
+            {
+                var jsonPayload = System.Text.Json.JsonSerializer.Serialize(new { });
+                var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+                var response = httpClient.PostAsync($"{Constants.ApiBaseUrl}/users/{email.Trim()}?newRoleId={selectedRoleId}", content).Result;
+
+                if (response.IsSuccessStatusCode)
+                {
+                    CliWidgets.RenderPanel($"[green]Successfully updated the user's role[/]");
                     return 0;
                 }
                 else
