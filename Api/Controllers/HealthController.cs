@@ -7,6 +7,6 @@ public class HealthController : ControllerBase
     [HttpGet("")]
     public IActionResult GetHealth()
     {
-        return Ok("Healthy");
+        return Ok("We are Healthy");
     }
 }
