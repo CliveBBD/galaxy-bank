@@ -5,8 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Api.DTOs;
 
 namespace Api.Controllers
-{   
-    [Authorize]
+{
     [ApiController]
     [Route("transaction-references")]
     public class TransactionReferencesController(ITransactionReferenceService transactionReferenceService) : Controller
