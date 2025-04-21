@@ -8,36 +8,30 @@ namespace Api.Shared
 {
     public static class SharedMethods
     {
-        public static string? GetAndParseEnvironmentVariable(string key, string defaultValue)
+        public static string? GetAndParseEnvironmentVariable(string key, string jsonKey)
         {
-            return GetValueByKey(Environment.GetEnvironmentVariable(key), key) ?? default;
-        }
-
-        public static string? GetValueByKey(string? jsonStringOrTextValue, string key)
-        {
-            if (jsonStringOrTextValue == null)
+            var value = Environment.GetEnvironmentVariable(key);
+            if (string.IsNullOrEmpty(value))
             {
                 return null;
             }
-            else
+
+            try
             {
-                try
+                using JsonDocument doc = JsonDocument.Parse(value);
+                if (doc.RootElement.TryGetProperty(jsonKey, out JsonElement jsonValue))
                 {
-                    using JsonDocument doc = JsonDocument.Parse(jsonStringOrTextValue);
-                    if (doc.RootElement.TryGetProperty(key, out JsonElement value))
-                    {
-                        return value.ToString();
-                    }
-                    else
-                    {
-                        return null;
-                    }
-                }
-                catch (System.Text.Json.JsonException)
-                {
-                    return jsonStringOrTextValue;
+                    return jsonValue.GetString();
                 }
             }
+            catch (JsonException)
+            {
+                // If parsing fails, return the original value
+                // This handles cases where the value is not JSON
+                return value;
+            }
+
+            return value;
         }
     }
 }
