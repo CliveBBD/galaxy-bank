@@ -40,7 +40,7 @@ namespace Cli.Commands
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorMessage = response.Content.ReadAsStringAsync().Result;
-                    CliWidgets.RenderError($"[red]Failed to fetch accounts: {(int)response.StatusCode} - {response.ReasonPhrase} - {errorMessage}[/]");
+                    CliWidgets.RenderHttpResponseAsync(response);
                     return 1;
                 }
 
@@ -79,7 +79,7 @@ namespace Cli.Commands
                 else
                 {
                     var errorMessage = result.Content.ReadAsStringAsync().Result;
-                    CliWidgets.RenderError($"[red]Failed to withdraw: {(int)result.StatusCode} - {result.ReasonPhrase} - {errorMessage}[/]");
+                    CliWidgets.RenderHttpResponseAsync(result);
                     return 1;
                 }
             }
