@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Api.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("transactions")]
     public class TransactionsController(ITransactionService transactionService) : Controller

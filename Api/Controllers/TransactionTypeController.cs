@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("transaction-types")]
     public class TransactionTypeController(ITransactionTypeService transactionTypeService) : Controller
