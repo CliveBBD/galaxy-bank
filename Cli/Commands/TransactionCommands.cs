@@ -49,6 +49,12 @@ namespace Cli.Commands
                                 .Take(settings.Top.Value)
                                 .ToList();
                         }
+                        else
+                        {
+                            transactions = transactions
+                                .OrderByDescending(t => t.CreatedAt)
+                                .ToList();
+                        }
 
                         // Display transactions in a table
                         var table = new Table();
@@ -205,7 +211,7 @@ namespace Cli.Commands
                         // Filter transactions by date range
                         transactions = transactions
                             .Where(t => t.CreatedAt >= startDate && (!endDate.HasValue || t.CreatedAt <= endDate.Value))
-                            .ToList();
+                            .OrderByDescending(t => t.CreatedAt).ToList();
 
                         // Filter by AccountID if provided
                         if (!string.IsNullOrEmpty(settings.AccountNumber))

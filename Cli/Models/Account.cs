@@ -4,7 +4,7 @@ namespace Cli.Models
     {
         public int UserId { get; set; }
         public required AccountType AccountType { get; set; }
-        public decimal Balance { get; set; }
+        public int Balance { get; set; }
         public DateTime CreatedAt { get; set; }
         public required string AccountNumber { get; set; }
     }

@@ -6,9 +6,9 @@ namespace Cli.Models
         public int TransactionReferenceID { get; set; }
         public string Reference { get; set; } = string.Empty;
         public required string AccountNumber { get; set; }
-        public decimal Amount { get; set; }
+        public int Amount { get; set; }
         public TransactionType TransactionType { get; set; } = new TransactionType();
-        public decimal BalanceAfterTransaction { get; set; }
+        public int BalanceAfterTransaction { get; set; }
         public DateTime CreatedAt { get; set; }
     }
 }
