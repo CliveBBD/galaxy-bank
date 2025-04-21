@@ -64,7 +64,7 @@ namespace Cli.Commands
                                 account.UserId.ToString(),
                                 account.AccountType.Name,
                                 formattedBalance,
-                                account.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"),
+                                account.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"),
                                 account.AccountNumber
                             );
                         }
@@ -181,7 +181,7 @@ namespace Cli.Commands
                     account.UserId.ToString(),
                     account.AccountType?.Name ?? "N/A",
                     formattedBalance,
-                    account.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"),
+                    account.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"),
                     account.AccountNumber
                 );
             }
