@@ -21,7 +21,7 @@ namespace Api.Services
         public async Task<int> WithdrawAsync(WithdrawRequest withdrawRequest, string googleId)
         {
             // Validate the request
-            if (withdrawRequest == null || withdrawRequest.Amount <= 0)
+            if (withdrawRequest == null || withdrawRequest.Amount <= 0 || withdrawRequest.AccountNumber == null)
             {
                 throw new ArgumentException("Invalid withdraw request.");
             }

@@ -9,7 +9,8 @@ using Api.Repositories;
 namespace Tests.Services
 {
     namespace Tests.Services.RoleServiceTests {
-        
+
+
         public class RoleService_GetRolesAsync
         {
             private IRoleService _roleService;
@@ -19,6 +20,7 @@ namespace Tests.Services
             {
                 _roleService = new RoleService(new RoleRepository());
             }
+
 
             [Test]
             public async Task GetRolesAsync_NoInput_ReturnRoles()
