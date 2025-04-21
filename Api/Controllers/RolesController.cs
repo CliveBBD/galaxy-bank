@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers
 {
-    [Authorize]
     [ApiController]
     [Route("roles")]
     public class RolesController(IRoleService roleService) : Controller

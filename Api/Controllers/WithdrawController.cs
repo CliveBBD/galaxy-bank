@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Api.Controllers
 {
-    [Authorize]
     [ApiController]
     [Route("withdrawals")]
     public class WithdrawController : Controller

@@ -5,8 +5,7 @@ using Api.Shared;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Api.Controllers
-{   
-    [Authorize]
+{
     [ApiController]
     [Route("transfers")]
     public class TransferController : Controller
