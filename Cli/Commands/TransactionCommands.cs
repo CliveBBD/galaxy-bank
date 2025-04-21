@@ -259,27 +259,92 @@ namespace Cli.Commands
                         {
                             var pdfDocument = new PdfDocument();
                             var page = pdfDocument.AddPage();
-                            page.Orientation = PdfSharpCore.PageOrientation.Landscape;
+                            page.Orientation = PdfSharpCore.PageOrientation.Portrait; 
+
                             var graphics = XGraphics.FromPdfPage(page);
-                            var font = new XFont("Arial", 12);
+                            var fontRegular = new XFont("Arial", 10, XFontStyle.Regular);
+                            var fontBold = new XFont("Arial", 10, XFontStyle.Bold);
+                            var titleFont = new XFont("Arial", 14, XFontStyle.Bold);
 
-                            graphics.DrawString("Transaction Statement", font, XBrushes.Black, new XRect(0, 0, page.Width, 50), XStringFormats.TopCenter);
+                            double margin = 40;
+                            double yOffset = margin;
+                            double lineHeight = 20;
+                            double pageWidth = page.Width;
+                            double pageHeight = page.Height;
 
-                            int yOffset = 50;
+                            graphics.DrawString("Account Statement", titleFont, XBrushes.Black, new XRect(0, yOffset, pageWidth, lineHeight), XStringFormats.TopCenter);
+                            yOffset += lineHeight * 2;
+
+                            var columns = new[]
+                            {
+                                new { Header = "ID", Width = 40.0 },
+                                new { Header = "Reference", Width = 80.0 },
+                                new { Header = "Account", Width = 80.0 },
+                                new { Header = "Amount", Width = 60.0 },
+                                new { Header = "Type", Width = 60.0 },
+                                new { Header = "Balance", Width = 60.0 },
+                                new { Header = "Date", Width = 100.0 }
+                            };
+
+                            double x = margin;
+                            foreach (var col in columns)
+                            {
+                                graphics.DrawRectangle(XBrushes.LightGray, x, yOffset, col.Width, lineHeight);
+                                graphics.DrawString(col.Header, fontBold, XBrushes.Black, new XRect(x + 5, yOffset + 5, col.Width, lineHeight), XStringFormats.TopLeft);
+                                x += col.Width;
+                            }
+                            yOffset += lineHeight;
+
+                            int rowIndex = 0;
                             foreach (var transaction in transactions)
                             {
-                                var line = $"ID: {transaction.TransactionID}, Ref: {transaction.Reference}, Account: {transaction.AccountNumber}, Amount: {transaction.Amount}, Type: {transaction.TransactionType.Name}, Balance: {transaction.BalanceAfterTransaction}, Date: {transaction.CreatedAt.ToLocalTime():yyyy-MM-dd HH:mm:ss}";
-                                graphics.DrawString(line, font, XBrushes.Black, new XRect(20, yOffset, page.Width - 40, 20), XStringFormats.TopLeft);
-                                yOffset += 20;
+                                x = margin;
+                                var backgroundBrush = rowIndex % 2 == 0 ? XBrushes.White : XBrushes.LightYellow;
+                                double rowHeight = lineHeight;
 
-                                if (yOffset > page.Height - 50)
+                                var rowData = new[]
                                 {
+                                    transaction.TransactionID.ToString(),
+                                    transaction.Reference,
+                                    transaction.AccountNumber,
+                                    transaction.Amount.ToString("C", new CultureInfo("es-GT")),
+                                    transaction.TransactionType.Name,
+                                    transaction.BalanceAfterTransaction.ToString("C", new CultureInfo("es-GT")),
+                                    transaction.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")
+                                };
+
+                                graphics.DrawRectangle(backgroundBrush, margin, yOffset, columns.Sum(c => c.Width), rowHeight);
+
+                                for (int i = 0; i < columns.Length; i++)
+                                {
+                                    graphics.DrawString(rowData[i], fontRegular, XBrushes.Black, new XRect(x + 5, yOffset + 5, columns[i].Width, rowHeight), XStringFormats.TopLeft);
+                                    x += columns[i].Width;
+                                }
+
+                                yOffset += rowHeight;
+                                rowIndex++;
+
+                                if (yOffset + lineHeight > pageHeight - margin)
+                                {
+                                    graphics.DrawString($"Page {pdfDocument.PageCount}", fontRegular, XBrushes.Gray, new XRect(0, pageHeight - margin, pageWidth, lineHeight), XStringFormats.Center);
+
                                     page = pdfDocument.AddPage();
-                                    page.Orientation = PdfSharpCore.PageOrientation.Landscape;
+                                    page.Orientation = PdfSharpCore.PageOrientation.Portrait; 
                                     graphics = XGraphics.FromPdfPage(page);
-                                    yOffset = 50;
+                                    yOffset = margin;
+
+                                    x = margin;
+                                    foreach (var col in columns)
+                                    {
+                                        graphics.DrawRectangle(XBrushes.LightGray, x, yOffset, col.Width, lineHeight);
+                                        graphics.DrawString(col.Header, fontBold, XBrushes.Black, new XRect(x + 5, yOffset + 5, col.Width, lineHeight), XStringFormats.TopLeft);
+                                        x += col.Width;
+                                    }
+                                    yOffset += lineHeight;
                                 }
                             }
+
+                            graphics.DrawString($"Page {pdfDocument.PageCount}", fontRegular, XBrushes.Gray, new XRect(0, pageHeight - margin, pageWidth, lineHeight), XStringFormats.Center);
 
                             pdfDocument.Save(settings.OutputFile);
                             CliWidgets.RenderPanel($"[green]Statement saved to {settings.OutputFile}[/]");
