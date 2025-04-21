@@ -1,23 +1,12 @@
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
 using Api.DTOs;
-using Api.Helpers;
-using Api.Models;
 using Api.Services;
 using Api.Shared;
-using Google.Apis.Auth;
-using Google.Apis.Auth.OAuth2.Responses;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 
 namespace Api.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("disputes")]
     public class DisputesController(IDisputeService disputeService, IUserService userService, ITransactionReferenceService transactionReferenceService) : ControllerBase

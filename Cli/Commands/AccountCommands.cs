@@ -1,5 +1,4 @@
 using System.Text;
-using System.Text.Json;
 using Cli.Helpers;
 using Cli.Models;
 using Spectre.Console;
@@ -21,7 +20,7 @@ namespace Cli.Commands
         public override int Execute(CommandContext context, Settings settings)
         {
             using var httpClient = new HttpClient();
-            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", User.Token);
+            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer ", User.Token);
             try
             {
                 string endpoint = !string.IsNullOrWhiteSpace(settings.AccountNumber)
@@ -33,7 +32,7 @@ namespace Cli.Commands
                 if (response.IsSuccessStatusCode)
                 {
                     var jsonResponse = response.Content.ReadAsStringAsync().Result;
-                    var accounts = JsonSerializer.Deserialize<List<Account>>(jsonResponse);
+                    var accounts = System.Text.Json.JsonSerializer.Deserialize<List<Account>>(jsonResponse);
 
                     if (accounts != null && accounts.Any())
                     {
@@ -129,12 +128,12 @@ namespace Cli.Commands
 
                 if (!string.IsNullOrWhiteSpace(settings.AccountNumber))
                 {
-                    var account = JsonSerializer.Deserialize<Account>(jsonResponse);
+                    var account = System.Text.Json.JsonSerializer.Deserialize<Account>(jsonResponse);
                     accounts = account != null ? new List<Account> { account } : new List<Account>();
                 }
                 else
                 {
-                    accounts = JsonSerializer.Deserialize<List<Account>>(jsonResponse) ?? new List<Account>();
+                    accounts = System.Text.Json.JsonSerializer.Deserialize<List<Account>>(jsonResponse) ?? new List<Account>();
                 }
 
                 if (settings.Top.HasValue)
@@ -213,7 +212,7 @@ namespace Cli.Commands
                 AccountTypeName = accountType
             };
 
-            var jsonPayload = JsonSerializer.Serialize(accountCreationPayload);
+            var jsonPayload = System.Text.Json.JsonSerializer.Serialize(accountCreationPayload);
             var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
             using var httpClient = new HttpClient();
@@ -231,7 +230,7 @@ namespace Cli.Commands
                 else
                 {
                     var errorMessage = response.Content.ReadAsStringAsync().Result;
-                    CliWidgets.RenderError($"[red]Failed to created an account, please make sure that you are passing 'checking', 'savings', or 'credit_card' as account type[/]");
+                    CliWidgets.RenderHttpResponseAsync(response);
                     return 1;
                 }
             }

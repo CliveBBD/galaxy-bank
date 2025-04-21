@@ -2,11 +2,13 @@ using Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Api.DTOs;
 using Api.Shared;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Api.Controllers
-{
-    [Route("transfers")]
+{   
+    [Authorize]
     [ApiController]
+    [Route("transfers")]
     public class TransferController : Controller
     {
         private readonly ITransferService _transferService;

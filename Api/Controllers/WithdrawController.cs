@@ -2,11 +2,13 @@ using Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Api.DTOs;
 using Api.Shared;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Api.Controllers
 {
-    [Route("withdraws")]
+    [Authorize]
     [ApiController]
+    [Route("withdrawals")]
     public class WithdrawController : Controller
     {
         private readonly IWithdrawService _withdrawService;

@@ -2,6 +2,8 @@ using Google.Apis.Auth.OAuth2.Responses;
 using System.Security.Cryptography;
 using Api.Models;
 using Newtonsoft.Json;
+using Api.Repositories;
+using Api.Shared;
 using Namotion.Reflection;
 using System.Text.Json;
 using static Api.Shared.SharedMethods;
@@ -12,15 +14,15 @@ public class GoogleAuthService
 {
     private readonly IConfiguration _configuration;
     private readonly HttpClient _httpClient;
-    private readonly TokenService _tokenService;
     private readonly string? _clientId;
     private readonly string? _clientSecret;
     private readonly string? _redirectUri;
- 
+    private readonly IUserRepository _userRepository;
+    private readonly ILogger<GoogleAuthService> _logger; // Add logger
+
     // Define the Google OAuth endpoints
     private readonly string? AuthorizationEndpoint;
     private readonly string? TokenEndpoint;
-    private readonly string? TokenInfoEndpoint;
  
     // Define the required scopes
     private readonly string[]? _scopes;
@@ -28,25 +30,36 @@ public class GoogleAuthService
     public GoogleAuthService(
         IConfiguration configuration,
         HttpClient httpClient,
-        TokenService tokenService)
+        IUserRepository userRepository)
     {
         _configuration = configuration;
         _httpClient = httpClient;
-        _tokenService = tokenService;
 
+        // Get and log raw values
+        var rawClientId = Environment.GetEnvironmentVariable("GoogleClientId");
+        var rawClientSecret = Environment.GetEnvironmentVariable("GoogleClientSecret");
+        var rawRedirectUri = Environment.GetEnvironmentVariable("GoogleRedirectUri");
 
-        _clientId = GetValueByKey(Environment.GetEnvironmentVariable("GoogleClientId") ?? _configuration["Authentication:Google:ClientId"], "GoogleClientId");
-        _clientSecret = GetValueByKey(Environment.GetEnvironmentVariable("GoogleClientSecret") ?? _configuration["Authentication:Google:ClientSecret"], "GoogleClientSecret");
+        // Get secrets from environment variables and parse JSON structure
+        _clientId = SharedMethods.GetAndParseEnvironmentVariable("GoogleClientId", "GoogleClientId");
+        _clientSecret = SharedMethods.GetAndParseEnvironmentVariable("GoogleClientSecret", "GoogleClientSecret");
+        _redirectUri = SharedMethods.GetAndParseEnvironmentVariable("GoogleRedirectUri", "GoogleRedirectUri") ??
+                      "https://localhost:7059/signin-google";
 
-        _redirectUri = GetValueByKey(Environment.GetEnvironmentVariable("GoogleRedirectUri") ?? _configuration["Authentication:Google:RedirectUri"], "GoogleRedirectUri") ?? $"https://localhost:7059/signin-google";
+        // Validate required secrets
+        if (string.IsNullOrEmpty(_clientId))
+            throw new InvalidOperationException("GoogleClientId secret is not configured");
+        if (string.IsNullOrEmpty(_clientSecret))
+            throw new InvalidOperationException("GoogleClientSecret secret is not configured");
+
         _scopes = [
             "https://www.googleapis.com/auth/userinfo.email",
             "https://www.googleapis.com/auth/userinfo.profile"
-            ];
+        ];
 
+        _userRepository = userRepository;
         AuthorizationEndpoint = _configuration["Authentication:AuthorizationEndpoint"];
         TokenEndpoint = _configuration["Authentication:TokenEndpoint"];
-        TokenInfoEndpoint = _configuration["Authentication:TokenInfoEndpoint"];
     }
 
 
@@ -68,7 +81,7 @@ public class GoogleAuthService
         return authorizationUrl;
     }
  
-    public async Task<StoredToken?> ExchangeCodeForTokenAsync(string code)
+    public async Task<StoredToken?> ExchangeCodeForTokenAsync(string code, string state)
     {
         // Set up the token request parameters
         var tokenRequest = new FormUrlEncodedContent(new Dictionary<string, string>
@@ -87,13 +100,17 @@ public class GoogleAuthService
         // Parse the token response
         var responseContent = await response.Content.ReadAsStringAsync();
         var tokenResponse = JsonConvert.DeserializeObject<TokenResponse>(responseContent);
+        var payload = await JwtDecoder.Decode(tokenResponse.IdToken);
+        var user = await _userRepository.GetUserByEmailAsync(payload.Email) ?? null;
  
         var token = new StoredToken
         {
-            IdToken = tokenResponse != null ? tokenResponse.IdToken: ""
+            IdToken = tokenResponse != null ? tokenResponse.IdToken : "",
+            Role = user != null ? user.Role.Name : "No role yet",
+            SessionId = state,
         };
  
-        return token ?? new() { IdToken = "" };
+        return token ?? new() { IdToken = "", Role = "", SessionId = "" };
     }
  
     public string GenerateSessionId()
@@ -102,20 +119,5 @@ public class GoogleAuthService
         var bytes = new byte[32];
         randomNumberGenerated.GetBytes(bytes);
         return Convert.ToBase64String(bytes).Replace("+", "-").Replace("/", "_").Replace("=", "");
-    }
-
-    public bool IsNotNull(object obj)
-    {
-        return obj != null;
-    }
-
-    public async Task<bool> IsValidToken(string jwt)
-    {
-        string verifyRequestUrl = $"{TokenInfoEndpoint}?id_token={jwt}";
-        var tokenVerification = await _httpClient.GetAsync(verifyRequestUrl);
-        tokenVerification.EnsureSuccessStatusCode();
-        var tokenVerificationContent = await tokenVerification.Content.ReadAsStringAsync();
-        var json = JsonConvert.DeserializeObject(tokenVerificationContent);
-        return !json.HasProperty("error");
     }
 }

@@ -1,12 +1,14 @@
 using Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Api.Shared;
+using Microsoft.AspNetCore.Authorization;
 using Api.DTOs;
 
 namespace Api.Controllers
-{
-    [Route("transaction-references")]
+{   
+    [Authorize]
     [ApiController]
+    [Route("transaction-references")]
     public class TransactionReferencesController(ITransactionReferenceService transactionReferenceService) : Controller
     {
         private readonly ITransactionReferenceService _transactionReferenceService = transactionReferenceService;
