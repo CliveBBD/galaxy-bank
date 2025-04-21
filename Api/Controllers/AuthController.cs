@@ -1,7 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using Api.Services;
-using Api.Shared;
-using Api.Models;
 using Api.DTOs;
 
 namespace Api.Controllers

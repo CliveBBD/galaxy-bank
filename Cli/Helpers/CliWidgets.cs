@@ -296,6 +296,17 @@ namespace Cli.Helpers
 
                 AnsiConsole.Write(panel);
             }
+            else if ((int)response.StatusCode == 401)
+            {
+                var panel = new Panel($"[red]You are not logged in. Please log in before trying that command again.[/]")
+                    .Border(BoxBorder.Rounded)
+                    .BorderStyle(new Style(foreground: Color.Red))
+                    .Padding(1, 1)
+                    .Header("Unauthorized", Justify.Center)
+                    .Expand();
+
+                AnsiConsole.Write(panel);
+            }
             else
             {
                 string title = "An error occurred.";

@@ -21,7 +21,7 @@ public class Program
         builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
         builder.Configuration.AddEnvironmentVariables();
         var configurationBuilder = new ConfigurationBuilder();
-        configurationBuilder.SetBasePath(Directory.GetCurrentDirectory()).AddUserSecrets<Program>();
+        configurationBuilder.SetBasePath(Directory.GetCurrentDirectory());
         configurationBuilder.AddJsonFile("appsettings.json").AddEnvironmentVariables();
         var configuration = configurationBuilder.Build();
         ConfigureServices(builder.Services, configuration);
@@ -33,13 +33,27 @@ public class Program
 
     public static void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
+        
         services.AddControllers().AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
             options.JsonSerializerOptions.PropertyNamingPolicy = null;
         });
         services.AddCors();
-        // services.AddAuthentication();
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.Authority = configuration["Authentication:TokenAuthority"];
+            options.Audience = configuration["Authentication:Audience"];
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidIssuer = configuration["Authentication:TokenAuthority"],
+                ValidateAudience = true,
+                ValidAudiences = new[] {configuration["Authentication:Audience"]},
+                ValidateLifetime = true
+            };
+        });
 
         services.AddAuthorization();
         services.AddScoped<InternalServerErrorHandler>();
@@ -101,8 +115,8 @@ public class Program
         }
 
         app.UseRouting();
-        // app.UseAuthentication();
-        // app.UseAuthorization();
+        app.UseAuthentication();
+        app.UseAuthorization();
         app.UseCors();
         app.MapControllers();
         

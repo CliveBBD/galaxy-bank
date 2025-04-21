@@ -20,7 +20,7 @@ namespace Cli.Commands
         public override int Execute(CommandContext context, Settings settings)
         {
             using var httpClient = new HttpClient();
-            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer ", User.Token);
+            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", User.Token);
             try
             {
                 string endpoint = !string.IsNullOrWhiteSpace(settings.AccountNumber)

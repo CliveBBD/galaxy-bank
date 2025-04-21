@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("disputes")]
     public class DisputesController(IDisputeService disputeService, IUserService userService, ITransactionReferenceService transactionReferenceService) : ControllerBase
