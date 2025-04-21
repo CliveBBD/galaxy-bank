@@ -13,3 +13,7 @@ data "aws_secretsmanager_secret_version" "google_redirect_uri" {
 data "aws_cloudfront_cache_policy" "caching_policy" {
   name = "Managed-CachingDisabled"
 }
+
+data "aws_cloudfront_origin_request_policy" "all_viewer" {
+  name = "Managed-AllViewer"
+}
