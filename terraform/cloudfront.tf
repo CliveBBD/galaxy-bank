@@ -19,18 +19,8 @@ resource "aws_cloudfront_distribution" "api_distribution" {
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = "alb-origin"
 
-    forwarded_values {
-      query_string = true
-
-      cookies {
-        forward = "all"
-      }
-    }
-
     viewer_protocol_policy = "redirect-to-https"
-    min_ttl                = 0
-    default_ttl            = 3600
-    max_ttl                = 86400
+    cache_policy_id        = data.aws_cloudfront_cache_policy.caching_policy.id
   }
 
   price_class = "PriceClass_200"
