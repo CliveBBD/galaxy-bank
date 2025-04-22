@@ -1,0 +1,57 @@
+@startuml
+title GET /disputes/{disputeId} - Get Dispute Details
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "DisputeController" as DC
+participant "IDisputeService" as DS
+participant "IDisputeRepository" as DR
+participant "IAccountRepository" as AR 
+' For permission check
+participant "ITransactionRepository" as TR 
+' For permission check
+participant "[DB]" as DB
+
+C -> Auth: GET /disputes/{disputeId} \nAuthorization: Bearer <token>
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> DC: Forward Request (with authenticatedUserId, isAdmin flag)
+deactivate Auth
+activate DC
+DC -> DS: GetDisputeById(disputeId, authenticatedUserId, isAdmin)
+activate DS
+DS -> DR: FindDisputeById(disputeId) 
+' Joins status
+activate DR
+DR -> DB: Execute SELECT Dispute query (join Status)
+activate DB
+DB --> DR: Dispute Record (or null)
+deactivate DB
+alt Dispute Not Found
+    DR --> DS: null
+    deactivate DR
+    DS --> DC: Error Result (NotFoundException)
+    deactivate DS
+    DC -> C: 404 Not Found \nContent: ErrorDto
+    deactivate DC
+else Dispute Found
+    DR --> DS: DisputeModel
+    deactivate DR
+
+    ref over DS, TR, AR: Check Dispute Involvement(disputeModel, authenticatedUserId, isAdmin)
+
+    alt Access Denied
+        DS --> DC: Error Result (ForbiddenException)
+        deactivate DS
+        DC -> C: 403 Forbidden \nContent: ErrorDto
+        deactivate DC
+    else Access Granted
+        DS -> DS: Map DisputeModel to DisputeDto
+        DS --> DC: DisputeDto
+        deactivate DS
+        DC -> C: 200 OK \nContent: DisputeDto
+        deactivate DC
+    end
+end
+
+@enduml

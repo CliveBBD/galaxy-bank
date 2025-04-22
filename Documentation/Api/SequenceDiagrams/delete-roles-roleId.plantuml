@@ -1,0 +1,73 @@
+@startuml
+title DELETE /roles/{roleId} - Delete Role (Admin Only)
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "RoleController" as RC
+participant "IRoleService" as RS
+participant "IRoleRepository" as RR
+participant "IUserRepository" as UR
+participant "[DB]" as DB
+
+C -> Auth: DELETE /roles/{roleId} \nAuthorization: Bearer <token>
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> Auth: Check Admin Role
+Auth -> RC: Forward Request
+deactivate Auth
+activate RC
+RC -> RS: DeleteRole(roleId)
+activate RS
+RS -> RR: FindRoleById(roleId)
+activate RR
+RR -> DB: Execute SELECT query for Role
+activate DB
+DB --> RR: Role Record (or null)
+deactivate DB
+alt Role Not Found
+    RR --> RS: null
+    deactivate RR
+    RS --> RC: Error Result (NotFoundException)
+    deactivate RS
+    RC -> C: 404 Not Found \nContent: ErrorDto
+    deactivate RC
+else Role Found
+    RR --> RS: RoleModel
+    deactivate RR
+    RS -> UR: CountUsersByRoleId(roleId) ' Check if role is in use
+    activate UR
+    UR -> DB: Execute SELECT COUNT(*) query on Users where role_id = ?
+    activate DB
+    DB --> UR: User Count (e.g., 0, 5)
+    deactivate DB
+    UR --> RS: User Count
+    deactivate UR
+    alt Role Is In Use
+        RS --> RC: Error Result (ConflictException)
+        deactivate RS
+        RC -> C: 409 Conflict \nContent: ErrorDto (Role in use)
+        deactivate RC
+    else Role Not In Use
+        RS -> RR: DeleteRole(roleId)
+        activate RR
+        RR -> DB: Execute DELETE query for Role
+        activate DB
+        DB --> RR: Delete Success
+        deactivate DB
+        RR --> RS: Success confirmation
+        deactivate RR
+        RS --> RC: Success
+        deactivate RS
+        RC -> C: 204 No Content
+        deactivate RC
+    end
+end
+
+alt Auth Error
+  Auth --> C: 401/403 Unauthorized/Forbidden
+end
+alt Server Error
+  RC --> C: 500 Internal Server Error
+end
+
+@enduml

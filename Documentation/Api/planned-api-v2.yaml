@@ -1,0 +1,1949 @@
+# Recommended VS Code extension: https://marketplace.visualstudio.com/items?itemName=42Crunch.vscode-openapi
+openapi: 3.0.3
+info:
+  title: Universal Peer-to-Peer Banking API
+  description: |-
+    API specification for a  universe-wide peer-to-peer banking system.
+    Handles user management, accounts, transactions, loans, disputes, and administrative functions.
+  version: 1.0.0
+servers:
+  - url: https://example.com
+    description: Production Server
+  - url: http://example.com
+    description: Local Development Server
+
+tags:
+  - name: User Management
+    description: Operations related to user creation, retrieval, updates, and deletion.
+  - name: Role Management
+    description: Managing user roles and permissions within the system (Admin restricted). 
+    # TODO: rework description
+  - name: Account Management
+    description: Operations for managing user financial accounts.
+  - name: Transaction System
+    description: Endpoints for creating, searching, and managing financial transactions.
+  - name: Dispute Resolution
+    description: Handling transaction disputes and their lifecycle.
+  - name: Reference Data
+    description: Accessing static or semi-static system reference data (planets, types, etc.).
+  - name: Statements & Reporting
+    description: Generating financial statements and system reports.
+
+paths:
+  # User Management
+  /users:
+    get:
+      tags:
+        - User Management
+      summary: List all users
+      description: |-
+        Retrieves a paginated list of users.
+        Allows filtering by role and active status (users who have not been soft-deleted).
+        **Business Rules:**
+        *   Must be an administrator
+      operationId: listUsers
+      parameters:
+        - $ref: '#/components/parameters/QueryLimit'
+        - $ref: '#/components/parameters/QueryOffset'
+        - name: role
+          in: query
+          description: Filter users by role ID.
+          required: false
+          schema:
+            type: integer
+            example: 2
+        - name: active
+          in: query
+          description: Filter by active status (true = not deleted, false = soft-deleted).
+          required: false
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: A list of users matching the criteria.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - BearerAuth: []
+    post:
+      tags:
+        - User Management
+      summary: Create new user via Google SSO
+      description: |-
+        Creates a new user in the system after successful authentication via Google SSO.
+        The request should contain the Google ID token obtained from the frontend SSO flow.
+        The system verifies the token, extracts the Google ID, and creates the user with a default role (e.g., 'Standard User').
+        **Business Rules:**
+        *   A user with the provided Google ID must not already exist.
+        *   The Google ID token must be valid.
+      operationId: createUser
+      requestBody:
+        required: true
+        description: Google ID token for user creation.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+      responses:
+        '201':
+          description: User created successfully. Returns the newly created user object.
+          headers:
+            Location:
+              description: URL of the newly created user resource.
+              schema:
+                type: string
+                format: url
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Bad Request - Invalid Google token, Google ID already exists, or invalid input.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized' # Could be used if token validation fails at API gateway level
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      # No explicit security here if this endpoint handles the *initial* creation based on an external token.
+      # Subsequent calls *would* require BearerAuth. Consider API gateway handling of token validation.
+
+  /users/{userId}:
+    get:
+      tags:
+        - User Management
+      summary: Get user details
+      description: |-
+        Retrieves detailed information for a specific user by their internal ID.
+        **Business Rules:**
+        *   Must be an administrator OR Currently logged-in user
+      operationId: getUserById
+      parameters:
+        - $ref: '#/components/parameters/PathUserId'
+      responses:
+        '200':
+          description: User details retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - BearerAuth: []
+    put:
+      tags:
+        - User Management
+      summary: Update user role
+      description: |-
+        Updates the role assigned to a specific user.
+        **Business Rules:**
+        *   Requires administrative privileges.
+        *   The target role ID must exist.
+        *   Cannot change the role of the last remaining administrator (system integrity rule).
+      operationId: updateUserRole
+      parameters:
+        - $ref: '#/components/parameters/PathUserId'
+      requestBody:
+        required: true
+        description: The new role ID for the user.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRoleRequest'
+      responses:
+        '200':
+          description: User role updated successfully. Returns the updated user object.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Bad Request - Invalid role ID or business rule violation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: User or Role not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - BearerAuth: [] # Requires Admin role checked internally
+
+  # Role Management
+  /roles:
+    get:
+      tags:
+        - Role Management
+      summary: List all system roles
+      description: Retrieves a list of all available roles in the system.
+      operationId: listRoles
+      responses:
+        '200':
+          description: A list of system roles.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Role'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - BearerAuth: [] # Accessible to authenticated users
+    post:
+      tags:
+        - Role Management
+      summary: Create new role (admin only)
+      description: |-
+        Creates a new user role.
+        **Business Rules:**
+        *   Requires administrative privileges.
+        *   Role name must be unique.
+      operationId: createRole
+      requestBody:
+        required: true
+        description: The details of the new role to create.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleCreateRequest'
+      responses:
+        '201':
+          description: Role created successfully.
+          headers:
+            Location:
+              description: URL of the newly created role resource.
+              schema:
+                type: string
+                format: url
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+        '400':
+          description: Bad Request - Role name already exists or invalid input.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - BearerAuth: [] # Requires Admin role checked internally
+
+  /roles/{roleId}:
+    delete:
+      tags:
+        - Role Management
+      summary: Delete role (if unused) (admin only)
+      description: |-
+        Deletes a role from the system.
+        **Business Rules:**
+        *   Requires administrative privileges.
+        *   The role can only be deleted if no users are currently assigned to it.
+      operationId: deleteRole
+      parameters:
+        - $ref: '#/components/parameters/PathRoleId'
+      responses:
+        '204':
+          description: Role deleted successfully.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Role not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict - Role is currently in use by one or more users.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - BearerAuth: [] # Requires Admin role checked internally
+
+  # Account Management
+  /accounts:
+    get:
+      tags:
+        - Account Management
+      summary: List accounts
+      description: |-
+        Retrieves a paginated list of accounts.
+        Allows filtering by user ID, account type, and status (open/closed).
+        Admins can list all accounts; regular users can only list their own.
+        **Business Rules:**
+        *   Only admins can view all accounts
+        *   Users can only view their own accounts
+      operationId: listAccounts
+      parameters:
+        - $ref: '#/components/parameters/QueryLimit'
+        - $ref: '#/components/parameters/QueryOffset'
+        - name: userId
+          in: query
+          description: Filter accounts by user ID (Admin only). If omitted for non-admins, defaults to the current user.
+          required: false
+          schema:
+            type: integer
+            example: 123
+        - name: type
+          in: query
+          description: Filter accounts by account type ID.
+          required: false
+          schema:
+            type: integer
+            example: 1
+        - name: status
+          in: query
+          description: Filter accounts by status ('open' or 'closed').
+          required: false
+          schema:
+            type: string
+            enum: [open, closed]
+            default: open
+      responses:
+        '200':
+          description: A list of accounts matching the criteria.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Account'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden' # If non-admin tries to query another user's accounts
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - BearerAuth: []
+    post:
+      tags:
+        - Account Management
+      summary: Create new account
+      description: |-
+        Creates a new financial account for the logged-in user (or specified user if Admin).
+        **Business Rules:**
+        *   User must exist and be active.
+        *   Account type must be valid.
+        *   Base planet must be valid.
+        *   Initial balances are set to 0.
+      operationId: createAccount
+      requestBody:
+        required: true
+        description: Details for the new account. `userId` might be implicit from auth token or explicit for admins.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountCreateRequest'
+      responses:
+        '201':
+          description: Account created successfully.
+          headers:
+            Location:
+              description: URL of the newly created account resource.
+              schema:
+                type: string
+                format: url
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '400':
+          description: Bad Request - Invalid user ID, account type, planet, or other input validation error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden' # If trying to create account for another user without permission
+        '404':
+          description: User, Account Type, or Planet not found for provided IDs.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - BearerAuth: []
+
+  /accounts/{accountId}:
+    get:
+      tags:
+        - Account Management
+      summary: Get account details
+      description: |-
+        Retrieves detailed information for a specific account, including balances and associated entities.
+        **Business Rules:**
+        *   User must be admin or owner of account
+      operationId: getAccountById
+      parameters:
+        - $ref: '#/components/parameters/PathAccountId'
+      responses:
+        '200':
+          description: Account details retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountDetail' # Potentially more detailed than the list schema
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden' # User must own the account or be admin
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - BearerAuth: []
+
+  # Transaction System
+  /transactions/deposit:
+    post:
+      tags:
+        - Transaction System
+      summary: Create deposit transaction
+      description: |-
+        Creates a deposit transaction into a specified account.
+        Increases both available and current balances.
+        **Business Rules:**
+        *   Account must exist and be open.
+        *   Amount must be positive.
+        *   Generates a single transaction record.
+        *   A user may only deposit into one of their own accounts (admins may not deposit on behalf of other users)
+        *   Transfer clears immediately.
+      operationId: createDeposit
+      requestBody:
+        required: true
+        description: Details of the deposit.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepositRequest'
+      responses:
+        '201':
+          description: Deposit transaction created successfully. Returns the created transaction.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '400':
+          description: Bad Request - Invalid amount, account closed, or other input error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Account not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - BearerAuth: [] # Or potentially a specific service/system token
+
+  /transactions/withdrawal:
+    post:
+      tags:
+        - Transaction System
+      summary: Create withdrawal transaction
+      description: |-
+        Creates a withdrawal transaction from a specified account.
+        Decreases available balance immediately. Current balance decreases once cleared (or immediately based on system config).
+        **Business Rules:**
+        *   Account must exist and be open.
+        *   Amount must be positive.
+        *   Requested amount must be less than or equal to the account's available balance.
+        *   Generates a single transaction record.
+        *   A normal user may only withdraw from one of their own account (admins may not make withdrawals on behalf of other users)
+        *   Transfer clears immediately.
+      operationId: createWithdrawal
+      requestBody:
+        required: true
+        description: Details of the withdrawal.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WithdrawalRequest'
+      responses:
+        '201':
+          description: Withdrawal transaction created successfully. Returns the created transaction.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '400':
+          description: Bad Request - Insufficient funds, invalid amount, account closed, or other input error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Account not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - BearerAuth: []
+
+  /transactions/transfer:
+    post:
+      tags:
+        - Transaction System
+      summary: Create transfer between accounts
+      description: |-
+        Creates a transfer between two accounts within the system.
+        Generates two linked transaction records (one debit, one credit) sharing the same `transaction_reference_id`.
+        **Business Rules:**
+        *   Both source and destination accounts must exist and be open.
+        *   Source account must have sufficient available balance.
+        *   Amount must be positive.
+        *   A user cannot transfer funds to the same account.
+        *   Updates balances on both accounts accordingly.
+        *   Transfer clears immediately.
+      operationId: createTransfer
+      requestBody:
+        required: true
+        description: Details of the transfer.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferRequest'
+      responses:
+        '201':
+          description: Transfer initiated successfully. Returns the transaction reference ID linking the two transactions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionReferenceIdResponse' # Contains the ref ID
+        '400':
+          description: Bad Request - Insufficient funds, invalid amount, account(s) closed/invalid, transfer to self.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden' # User must own the source account or have permission
+        '404':
+          description: Source or Destination Account not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - BearerAuth: []
+
+  /transactions:
+    get:
+      tags:
+        - Transaction System
+      summary: Search transactions
+      description: |-
+        Retrieves a paginated list of transactions based on search criteria.
+        Allows filtering by account, date range, and transaction type.
+        Users can typically only search their own accounts unless they are an admin.
+        **Business Rules:**
+        *   A normal user may only view their own transactions
+      operationId: searchTransactions
+      parameters:
+        - $ref: '#/components/parameters/QueryLimit'
+        - $ref: '#/components/parameters/QueryOffset'
+        - name: accountId
+          in: query
+          description: Filter transactions by account ID. If omitted for non-admins, defaults to user's accounts.
+          required: false
+          schema:
+            type: integer
+            example: 456
+        - name: startDate
+          in: query
+          description: Filter transactions created on or after this date (inclusive, ISO 8601 format YYYY-MM-DD).
+          required: false
+          schema:
+            type: string
+            format: date
+            example: '2024-01-01'
+        - name: endDate
+          in: query
+          description: Filter transactions created on or before this date (inclusive, ISO 8601 format YYYY-MM-DD).
+          required: false
+          schema:
+            type: string
+            format: date
+            example: '2024-01-31'
+        - name: type
+          in: query
+          description: Filter transactions by transaction type ID.
+          required: false
+          schema:
+            type: integer
+            example: 3 # e.g., Transfer
+      responses:
+        '200':
+          description: A list of transactions matching the criteria.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transaction'
+        '400':
+          description: Bad Request - Invalid date format or parameter value.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden' # If non-admin tries viewing transactions for account they don't own
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - BearerAuth: []
+
+  /transaction-references/{refId}:
+    get:
+      tags:
+        - Transaction System
+      summary: Get all linked transactions
+      description: |-
+        Retrieves all individual transaction records that are linked by a common `transaction_reference_id`.
+        Useful for viewing both sides of a transfer or related payments.
+        **Business Rules:**
+        *   User must own at least one account involved in the reference group or be admin
+      operationId: getTransactionsByReferenceId
+      parameters:
+        - $ref: '#/components/parameters/PathTransactionReferenceId'
+      responses:
+        '200':
+          description: A list of linked transactions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RedactedTransaction'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden' 
+        '404':
+          description: Transaction reference ID not found or no transactions associated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - BearerAuth: []
+
+  # Dispute Resolution
+  /disputes:
+    post:
+      tags:
+        - Dispute Resolution
+      summary: Create new dispute
+      description: |-
+        Creates a new dispute record for a specific group of transactions (linked by `transaction_reference_id`).
+        **Business Rules:**
+        *   The `transaction_reference_id` must exist and correspond to actual transactions.
+        *   The user initiating the dispute must be associated with one of the accounts involved in the referenced transactions.
+        *   A dispute cannot be filed against transactions that are already part of an existing, unresolved dispute.
+        *   Cannot dispute certain transaction types (reversals from prior disputes).
+        *   Sets the initial status (e.g., 'open') and logs the creation in `dispute_history`.
+      operationId: createDispute
+      requestBody:
+        required: true
+        description: Details of the dispute.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DisputeCreateRequest'
+      responses:
+        '201':
+          description: Dispute created successfully. Returns the new dispute details.
+          headers:
+            Location:
+              description: URL of the newly created dispute resource.
+              schema:
+                type: string
+                format: url
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dispute'
+        '400':
+          description: Bad Request - Invalid transaction reference ID, dispute already exists, cannot dispute this transaction type.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Transaction Reference ID not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict - A dispute for this reference ID already exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - BearerAuth: []
+    get:
+      tags:
+        - Dispute Resolution
+      summary: List disputes by status
+      description: |-
+        Retrieves a paginated list of disputes, filterable by status.
+        **Business Rules:**
+        *   User may only view disputes that they are involved in.
+        *   Admins may view all disputes
+      operationId: listDisputesByStatus
+      parameters:
+        - $ref: '#/components/parameters/QueryLimit'
+        - $ref: '#/components/parameters/QueryOffset'
+        - name: status
+          in: query
+          description: Filter disputes by status description (e.g., 'open', 'resolved'). Matches `dispute_statuses.description`.
+          required: false
+          schema:
+            type: string
+            example: open
+        - name: userId
+          in: query
+          description: Filter disputes involving a specific user ID (Admin or self).
+          required: false
+          schema:
+             type: integer
+      responses:
+        '200':
+          description: A list of disputes matching the criteria.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Dispute'
+        '400':
+           description: Bad Request - Invalid status value.
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - BearerAuth: []
+
+  /disputes/{disputeId}:
+    get:
+      tags:
+        - Dispute Resolution
+      summary: Get dispute details
+      description: |-
+        Retrieves detailed information about a specific dispute, including its current status and related transaction reference.
+        **Business Rules:**
+        *   User may only view disputes that they are involved in.
+        *   Admins may view all disputes
+      operationId: getDisputeById
+      parameters:
+        - $ref: '#/components/parameters/PathDisputeId'
+      responses:
+        '200':
+          description: Dispute details retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dispute'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - BearerAuth: []
+
+  /disputes/{disputeId}/status:
+    post:
+      tags:
+        - Dispute Resolution
+      summary: Update dispute status
+      description: |-
+        Updates the status of an existing dispute.
+        Logs the change in the `dispute_history` table.
+        **Business Rules:**
+        *   Requires specific permissions (e.g., Dispute Resolution Officer role, Admin).
+        *   The target `dispute_status_id` must be valid.
+        *   Status transitions must follow predefined workflow rules (e.g., 'open' -> 'resolved'/'rejected').
+        *   If a dispute is approved, the system must create reciprocal transactions for each transaction in the transaction reference
+        *   The transaction type should be 'reversal'
+        *   Updating to a final status (resolved/rejected) may trigger consequential actions (e.g., reversing transactions).
+      operationId: updateDisputeStatus
+      parameters:
+        - $ref: '#/components/parameters/PathDisputeId'
+      requestBody:
+        required: true
+        description: The new status ID and potentially comments or resolution details. User performing update implicitly recorded.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DisputeStatusUpdateRequest'
+      responses:
+        '200':
+          description: Dispute status updated successfully. Returns the updated dispute object.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dispute'
+        '400':
+          description: Bad Request - Invalid status ID, invalid status transition, or other input error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Dispute or Dispute Status ID not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+           description: Conflict - Invalid status transition according to workflow rules.
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - BearerAuth: [] # Requires specific role/permission
+
+  /disputes/{disputeId}/history:
+    get:
+      tags:
+        - Dispute Resolution
+      summary: Get status history
+      description: |- 
+        Retrieves the chronological history of status changes for a specific dispute.
+        **Business Rules:**
+        *   Admin or Dispute Resolution Officer may view all histories
+        *   User may only see history of disputes they are involved in
+      operationId: getDisputeHistory
+      parameters:
+        - $ref: '#/components/parameters/PathDisputeId'
+        - $ref: '#/components/parameters/QueryLimit'
+        - $ref: '#/components/parameters/QueryOffset'
+      responses:
+        '200':
+          description: A list of dispute status history entries.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DisputeHistoryEntry'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden' # User must be involved or admin
+        '404':
+          description: Dispute not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - BearerAuth: []
+
+  # Reference Data
+  /account-types:
+    get:
+      tags:
+        - Reference Data
+      summary: Available account types
+      description: Retrieves a list of all available account types (e.g., savings, checking, galactic credits).
+      operationId: listAccountTypes
+      responses:
+        '200':
+          description: A list of account types.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccountType'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      # No specific auth needed usually
+  /transaction-types:
+    get:
+      tags:
+        - Reference Data
+      summary: Valid transaction types
+      description: Retrieves a list of all valid transaction types (e.g., deposit, withdrawal, transfer, loan_principal, loan_payment).
+      operationId: listTransactionTypes
+      responses:
+        '200':
+          description: A list of transaction types.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TransactionType'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      # No specific auth needed usually
+  /dispute-statuses:
+    get:
+      tags:
+        - Reference Data
+      summary: Possible dispute states
+      description: Retrieves a list of all possible statuses a dispute can be in (e.g., open, under_review, resolved, rejected).
+      operationId: listDisputeStatuses
+      responses:
+        '200':
+          description: A list of dispute statuses.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DisputeStatus'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      # No specific auth needed usually
+
+  # Statements & Reporting
+  /accounts/{accountId}/statements:
+    post:
+      tags:
+        - Statements & Reporting
+      summary: Generate account statement (JSON)
+      description: |-
+        Generates a financial statement for a specific account within a given date range.
+        Returns the statement data in JSON format.
+        **Business Rules:**
+        *   User must own the account or be an admin.
+        *   Date range must be valid.
+        # Removed format rule
+      operationId: generateAccountStatement
+      parameters:
+        - $ref: '#/components/parameters/PathAccountId'
+      requestBody:
+        required: true
+        description: Specifies the date range for the statement.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatementRequest' # Request body still defines the date range
+      responses:
+        '200':
+          description: Account statement generated successfully. The response body contains the statement data in JSON format.
+          content:
+            # Removed text/csv content type
+            application/json: # Changed content type to JSON
+              schema:
+                $ref: '#/components/schemas/AccountStatement' # Reference the new JSON statement schema
+        '400':
+          description: Bad Request - Invalid date range. # Removed unsupported format error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Account not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - BearerAuth: []
+  
+  /system-reports/daily-transactions:
+    get:
+      tags:
+        - Statements & Reporting
+      summary: Admin daily transaction volume report
+      description: |-
+        Retrieves a summary report of transaction volumes for the current or a specified day.
+        Includes counts and total amounts for different transaction types.
+        **Business Rules:**
+        *   Requires administrative privileges.
+      operationId: getDailyTransactionReport
+      parameters:
+        - name: date
+          in: query
+          description: The date for the report (YYYY-MM-DD). Defaults to the current date if omitted.
+          required: false
+          schema:
+            type: string
+            format: date
+            example: '2024-03-15'
+      responses:
+        '200':
+          description: Daily transaction report generated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyTransactionReport' # Define this schema based on required report fields
+        '400':
+           description: Bad Request - Invalid date format.
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - BearerAuth: [] # Requires Admin role checked internally
+
+  /users/{userId}/net-worth:
+    get:
+      tags:
+        - Statements & Reporting
+      summary: Calculate user's net worth
+      description: |-
+        Calculates the approximate net worth of a specific user based on their assets (account balances) and liabilities (loan balances where they are the borrower).
+        Net Worth = Sum(current_balance of owned accounts) - Sum(remaining_balance of loans where user's account is to_account_id).
+        **Business Rules:**
+        *   User can calculate their own net worth, or an admin can calculate for any user.
+      operationId: getUserNetWorth
+      parameters:
+        - $ref: '#/components/parameters/PathUserId'
+      responses:
+        '200':
+          description: User's net worth calculated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetWorth'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden' # If non-admin tries to get another user's net worth
+        '404':
+          description: User not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - BearerAuth: []
+
+components:
+  # Reusable Parameters (Unchanged from original, assuming they are still valid)
+  parameters:
+    PathUserId:
+      name: userId
+      in: path
+      required: true
+      description: The unique identifier of the user.
+      schema:
+        type: integer
+        format: int64
+        example: 12345
+    PathRoleId:
+      name: roleId
+      in: path
+      required: true
+      description: The unique identifier of the role.
+      schema:
+        type: integer
+        format: int64
+        example: 2
+    PathAccountId:
+      name: accountId
+      in: path
+      required: true
+      description: The unique identifier of the account.
+      schema:
+        type: integer
+        format: int64
+        example: 98765
+    PathTransactionId:
+      name: txId
+      in: path
+      required: true
+      description: The unique identifier of the transaction.
+      schema:
+        type: integer
+        format: int64
+        example: 12345678
+    PathTransactionReferenceId:
+      name: refId
+      in: path
+      required: true
+      description: The unique identifier linking related transactions (e.g., a transfer).
+      schema:
+        type: integer
+        format: int64
+        example: 55555
+    # PathLoanId removed as Loans are removed
+    PathDisputeId:
+      name: disputeId
+      in: path
+      required: true
+      description: The unique identifier of the dispute.
+      schema:
+        type: integer
+        format: int64
+        example: 33333
+    QueryLimit:
+      name: limit
+      in: query
+      description: Maximum number of records to return.
+      required: false
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        maximum: 100
+        default: 20
+    QueryOffset:
+      name: offset
+      in: query
+      description: Number of records to skip for pagination.
+      required: false
+      schema:
+        type: integer
+        format: int32
+        minimum: 0
+        default: 0
+
+  # Reusable Schemas (Data Models) - UPDATED
+  schemas:
+    # Core Entities
+    User:
+      type: object
+      description: Application user with assigned role.
+      properties:
+        userId:
+          type: integer
+          format: int64
+          description: Unique identifier for the user.
+          readOnly: true
+          example: 12345
+        googleId:
+          type: string
+          description: External unique Google account ID for SSO.
+          readOnly: true # Usually set during creation, not updated directly
+          example: '109876543210987654321'
+        username:
+          type: string
+          description: User's display name.
+          example: 'jeb_kerman'
+        email:
+          type: string
+          format: email # Added format for validation
+          description: User's contact email address.
+          example: 'jeb@ksp.org'
+        role:
+          description: The role assigned to the user.
+          $ref: '#/components/schemas/Role'
+        # deletedAt: # Soft deletion is mentioned in DBML notes but not explicitly columned. Assuming it's handled internally or column is missing. Add back if needed.
+        #   type: string
+        #   format: date-time
+        #   nullable: true
+        #   description: Timestamp when the user was soft-deleted. Null if active.
+        #   readOnly: true
+        #   example: null
+        # createdAt: # Not present in DBML users table
+        #   type: string
+        #   format: date-time
+        #   description: Timestamp when the user was created.
+        #   readOnly: true
+        #   example: '2024-01-01T10:00:00Z'
+      required:
+        - userId
+        - googleId
+        - username
+        - email
+        - role
+
+    Role:
+      type: object
+      description: Defines user roles within the application.
+      properties:
+        roleId:
+          type: integer
+          format: int64
+          description: Unique identifier for the role.
+          readOnly: true
+          example: 2
+        name:
+          type: string
+          description: Name of the role (e.g., 'Admin', 'Standard User'). Must be unique.
+          example: 'Standard User'
+      required:
+        - roleId
+        - name
+
+    Account:
+      type: object
+      description: Represents a user's financial account.
+      properties:
+        accountId:
+          type: integer
+          format: int64
+          description: Unique identifier for the account.
+          readOnly: true
+          example: 98765
+        userId:
+          type: integer
+          format: int64
+          description: ID of the user who owns the account.
+          readOnly: true # Typically set on creation
+          example: 12345
+        accountType:
+          description: The type defining the characteristics of this account.
+          $ref: '#/components/schemas/AccountType'
+        balance:
+          # Note: DBML uses 'int'. Assuming this means smallest currency unit (e.g., cents).
+          # API might still use number/double for convenience, backend handles conversion.
+          # Using number/double as per original spec examples. Clarify this requirement if needed.
+          type: number
+          format: double # Or potentially integer if representing smallest unit like cents
+          description: Current funds in the account. (Maps to DBML `balance`)
+          example: 100050 # Example assuming cents if integer type
+          # example: 1000.50 # Example assuming double type
+        # availableBalance: # Not directly in DBML `accounts` table. May be calculated or derived. Removed from base schema.
+        #   type: number
+        #   format: double
+        #   description: Funds immediately available for withdrawal or transfer (may differ from balance due to holds).
+        #   example: 950.75
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the account was created.
+          readOnly: true
+          example: '2024-01-05T12:00:00Z'
+        # status, closedAt, updatedAt, basePlanet removed as they are not in the DBML `accounts` table.
+      required:
+        - accountId
+        - userId
+        - accountType
+        - balance
+        - createdAt
+
+    AccountDetail: # Keeping this structure, assumes endpoint might join/add more data
+      allOf:
+        - $ref: '#/components/schemas/Account'
+        # Add any additional fields specific to the detail view if needed later
+        # Example: potentially add back availableBalance if calculated by the detail endpoint
+        # properties:
+        #   availableBalance:
+        #     type: number
+        #     format: double
+        #     description: Funds immediately available (calculated). Shown in detail view.
+        #     example: 950.75
+
+    # Planet Schema Removed - Not present in DBML
+
+    AccountType:
+      type: object
+      description: Defines a type of account (e.g., checking, savings).
+      properties:
+        accountTypeId:
+          type: integer
+          format: int64
+          description: Unique identifier for the account type.
+          readOnly: true
+          example: 1
+        name:
+          type: string
+          description: Label for the account type (e.g., 'Galactic Checking').
+          example: 'Galactic Checking'
+        # createdAt removed - not in DBML account_types table
+      required:
+        - accountTypeId
+        - name
+
+    Transaction:
+      type: object
+      description: Represents a single leg of a financial activity affecting an account.
+      properties:
+        transactionId:
+          type: integer
+          format: int64
+          description: Unique identifier for this specific transaction leg.
+          readOnly: true
+          example: 12345678
+        transactionReferenceId:
+          type: integer
+          format: int64
+          description: Identifier linking related transaction legs (e.g., both sides of a transfer). References `transaction_references.transaction_reference_id`.
+          readOnly: true # Set during creation
+          example: 55555
+        reference:
+          type: string
+          nullable: true # DBML doesn't specify not null
+          description: User-facing reference or description for this transaction leg on their statement.
+          example: 'Transfer to Bob Kerman'
+        accountId:
+          type: integer
+          format: int64
+          description: ID of the account this transaction leg belongs to.
+          readOnly: true # Set during creation
+          example: 98765
+        amount:
+          # Note: DBML uses 'int'. See note in Account schema. Using number/double based on original examples.
+          type: number
+          format: double # Or integer
+          description: Value of the transaction (+ for credit, - for debit to the specified accountId).
+          example: -50.00 # Example assuming double type
+        transactionType:
+          description: The type of this transaction leg.
+          $ref: '#/components/schemas/TransactionType'
+        balanceAfterTransaction:
+          # Note: DBML uses 'int'. See note in Account schema. Using number/double based on original examples.
+          type: number
+          format: double # Or integer
+          nullable: true # DBML doesn't specify not null
+          description: Account's balance immediately after this transaction occurred.
+          readOnly: true
+          example: 950.50 # Example assuming double type
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the transaction was recorded.
+          readOnly: true
+          example: '2024-03-15T09:30:00Z'
+        # cleared, clearedAt, updatedAt removed - not present in DBML transactions table.
+      required:
+        - transactionId
+        - transactionReferenceId
+        # - reference (nullable)
+        - accountId
+        - amount
+        - transactionType
+        # - balanceAfterTransaction (nullable)
+        - createdAt
+
+    RedactedTransaction: # Used when showing linked transactions where user might not own both accounts
+      type: object
+      description: A simplified view of a transaction, often used when showing linked transactions where full details aren't necessary or permitted.
+      properties:
+        transactionId:
+          type: integer
+          format: int64
+          description: Unique identifier for the transaction leg.
+          readOnly: true
+          example: 12345678
+        transactionReferenceId:
+          type: integer
+          format: int64
+          description: Identifier linking related transaction legs.
+          readOnly: true
+          example: 55555
+        accountId:
+          type: integer
+          format: int64
+          description: ID of the account this transaction leg belongs to.
+          example: 98765
+        amount:
+          type: number
+          format: double # Or integer
+          description: Value of the transaction (+ for credit, - for debit).
+          example: -50.00
+        transactionType:
+          $ref: '#/components/schemas/TransactionType'
+        # Reference removed as it might contain private info not relevant to the other party
+      required:
+        - transactionId
+        - transactionReferenceId
+        - accountId
+        - amount
+        - transactionType
+
+
+    AccountStatement:
+      type: object
+      description: Represents a financial statement for an account over a specific period.
+      properties:
+        accountId:
+          type: integer
+          format: int64
+          description: The account ID for which the statement was generated.
+          example: 98765
+        statementPeriodStart:
+          type: string
+          format: date
+          description: The start date of the statement period (inclusive).
+          example: '2024-02-01'
+        statementPeriodEnd:
+          type: string
+          format: date
+          description: The end date of the statement period (inclusive).
+          example: '2024-02-29'
+        generatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the statement was generated.
+          example: '2024-03-17T10:30:00Z'
+        openingBalance:
+          type: number # Or integer - match the type used in Account.balance
+          format: double
+          description: The account balance at the beginning of the statement period.
+          example: 1250.75
+        closingBalance:
+          type: number # Or integer - match the type used in Account.balance
+          format: double
+          description: The account balance at the end of the statement period.
+          example: 1875.25
+        transactions:
+          type: array
+          description: List of transactions that occurred within the statement period.
+          items:
+            $ref: '#/components/schemas/Transaction' # Reuse the existing Transaction schema
+      required:
+        - accountId
+        - statementPeriodStart
+        - statementPeriodEnd
+        - generatedAt
+        - openingBalance
+        - closingBalance
+        - transactions
+
+
+    TransactionType:
+      type: object
+      description: Enumerates valid types of financial activities (e.g., deposit, withdrawal).
+      properties:
+        transactionTypeId:
+          type: integer
+          format: int64
+          description: Unique identifier for the transaction type.
+          readOnly: true
+          example: 3
+        name:
+          type: string
+          description: Label for the transaction type (e.g., 'Transfer'). Must be unique.
+          example: 'Transfer'
+      required:
+        - transactionTypeId
+        - name
+
+    # Loan, LoanDetail, LoanInterestAccrual Schemas Removed - Not present in DBML
+
+    Dispute:
+      type: object
+      description: Represents a user's dispute filed against a transaction or group of transactions.
+      properties:
+        disputeId:
+          type: integer
+          format: int64
+          description: Unique identifier for the dispute.
+          readOnly: true
+          example: 33333
+        reason:
+          type: string
+          description: User-provided reason for filing the dispute.
+          example: 'Unauthorized transaction'
+        disputedTransactionReferenceId:
+          type: integer
+          format: int64
+          description: ID linking the transaction(s) under dispute via `transaction_references`.
+          example: 55555
+        currentStatus: # Note: This field is dynamically populated by API logic from the latest dispute_status_history entry.
+           description: The current status derived from the dispute history.
+           $ref: '#/components/schemas/DisputeStatus'
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the dispute was created.
+          readOnly: true
+          example: '2024-03-16T10:00:00Z'
+      required:
+        - disputeId
+        - reason
+        - disputedTransactionReferenceId
+        - currentStatus # Included as it's expected in the API response, even if derived
+        - createdAt
+
+    DisputeStatus:
+      type: object
+      description: Represents a possible status within the dispute lifecycle.
+      properties:
+        disputeStatusId:
+          type: integer
+          format: int64
+          description: Unique identifier for the dispute status.
+          readOnly: true
+          example: 1
+        name:
+          type: string
+          description: Label for the dispute status (e.g., 'open', 'resolved'). Must be unique.
+          example: 'open'
+      required:
+        - disputeStatusId
+        - name
+
+    DisputeHistoryEntry:
+      type: object
+      description: Records a change in a dispute's status over time.
+      properties:
+        disputeHistoryId:
+          type: integer
+          format: int64
+          description: Unique identifier for this history record.
+          readOnly: true
+          example: 201
+        # disputeId: # Removed - context is usually provided by the endpoint path
+        status:
+          description: The status that was set at this point in time.
+          $ref: '#/components/schemas/DisputeStatus'
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when this status was set.
+          readOnly: true
+          example: '2024-03-16T10:00:00Z'
+        updatedById: # Changed from embedded object to ID to match DBML
+          type: integer
+          format: int64
+          description: ID of the user or system process that performed the update.
+          readOnly: true
+          example: 100 # Admin or system user ID
+      required:
+        - disputeHistoryId
+        - status
+        - updatedAt
+        - updatedById
+
+    NetWorth: # Unchanged - Derived value, not direct DB mapping
+      type: object
+      properties:
+        totalAssets:
+          type: number
+          format: double # Consider string
+          description: Sum of current balances across all owned accounts.
+          example: 15000.75
+        totalLiabilities:
+          type: number
+          format: double # Consider string
+          description: |-
+            Sum of remaining balances on loans where the user is the borrower. (Note: Loan functionality removed based on DBML). Set to 0 if no loans.
+          example: 0.00 # Updated example as loans removed
+        netWorth:
+          type: number
+          format: double # Consider string
+          description: Calculated net worth (Assets - Liabilities).
+          example: 15000.75 # Updated example
+        calculationTimestamp:
+           type: string
+           format: date-time
+           description: Timestamp when the net worth was calculated.
+           example: '2024-03-16T11:00:00Z'
+      required:
+        - totalAssets
+        - totalLiabilities
+        - netWorth
+        - calculationTimestamp
+
+    DailyTransactionReport: # Unchanged - Derived report, not direct DB mapping
+      type: object
+      properties:
+        reportDate:
+          type: string
+          format: date
+          example: '2024-03-15'
+        totalTransactions:
+          type: integer
+          example: 1502
+        totalVolume:
+          type: number
+          format: double # Consider string
+          example: 75890.50
+        volumeByType:
+          type: array
+          items:
+            type: object
+            properties:
+              transactionType:
+                $ref: '#/components/schemas/TransactionType'
+              count:
+                type: integer
+                example: 500
+              totalAmount:
+                type: number
+                format: double # Consider string
+                example: 25000.00
+      required:
+        - reportDate
+        - totalTransactions
+        - totalVolume
+        - volumeByType
+
+    TransactionReferenceIdResponse: # Unchanged - Simple response structure
+      type: object
+      properties:
+        transactionReferenceId:
+          type: integer
+          format: int64
+          description: The reference ID linking the generated transaction(s).
+          example: 55556
+      required:
+        - transactionReferenceId
+
+    # Request Body Schemas - UPDATED
+    UserCreateRequest: # Unchanged
+      type: object
+      properties:
+        googleIdToken:
+          type: string
+          description: The ID token obtained from Google Sign-In on the client side.
+          example: 'eyJhbGciOiJSUzI1NiIsImtpZCI6Ij...'
+      required:
+        - googleIdToken
+
+    UserUpdateRoleRequest: # Unchanged
+      type: object
+      properties:
+        roleId:
+          type: integer
+          format: int64
+          description: The ID of the new role to assign to the user.
+          example: 3
+      required:
+        - roleId
+
+    RoleCreateRequest: # Unchanged
+      type: object
+      properties:
+        name:
+          type: string
+          description: The unique name for the new role.
+          minLength: 3
+          maxLength: 50
+          example: 'Support Agent'
+      required:
+        - name
+
+    # RoleUpdateRequest Removed - No corresponding endpoint found
+
+    AccountCreateRequest: # UPDATED
+      type: object
+      properties:
+        userId: # Keep for Admin use cases
+          type: integer
+          format: int64
+          description: ID of the user for whom to create the account (Required if called by Admin). Omit or use self-identifier if called by user.
+          example: 12345
+        accountTypeName: # Changed from accountType object/ID to name for creation convenience
+          type: string
+          description: Name of the desired account type (e.g., 'Galactic Checking'). Must match an existing AccountType name.
+          example: "Galactic Checking"
+        # basePlanet Removed - field removed from Account schema
+      required:
+        # userId might be context-dependent
+        - accountTypeName
+
+    # AccountUpdateRequest Removed - No corresponding endpoint found
+
+    DepositRequest: # Unchanged - Fields still relevant
+      type: object
+      properties:
+        accountId:
+          type: integer
+          format: int64
+          description: The ID of the account to deposit into.
+          example: 98765
+        amount:
+          type: number
+          format: double # Or integer
+          description: The positive amount to deposit.
+          minimum: 0.01
+          example: 100.00
+        description: # Maps conceptually to transaction `reference`
+          type: string
+          description: Optional description for the deposit, used as the transaction reference.
+          maxLength: 100
+          example: 'Salary deposit March'
+      required:
+        - accountId
+        - amount
+
+    WithdrawalRequest: # Unchanged - Fields still relevant
+      type: object
+      properties:
+        accountId:
+          type: integer
+          format: int64
+          description: The ID of the account to withdraw from.
+          example: 98765
+        amount:
+          type: number
+          format: double # Or integer
+          description: The positive amount to withdraw. Must be <= available balance (logic checked server-side).
+          minimum: 0.01
+          example: 50.00
+        description: # Maps conceptually to transaction `reference`
+          type: string
+          description: Optional description for the withdrawal, used as the transaction reference.
+          maxLength: 100
+          example: 'ATM Withdrawal'
+      required:
+        - accountId
+        - amount
+
+    TransferRequest: # Unchanged - Fields still relevant
+      type: object
+      properties:
+        fromAccountId:
+          type: integer
+          format: int64
+          description: The ID of the account sending the funds.
+          example: 98765
+        toAccountId:
+          type: integer
+          format: int64
+          description: The ID of the account receiving the funds.
+          example: 98766
+        amount:
+          type: number
+          format: double # Or integer
+          description: The positive amount to transfer. Must be <= available balance of fromAccountId (logic checked server-side).
+          minimum: 0.01
+          example: 25.50
+        description: # Maps conceptually to transaction `reference` on both legs
+          type: string
+          description: Description for the transfer (visible to both parties).
+          maxLength: 100
+          example: 'Reimbursement for lunch'
+      required:
+        - fromAccountId
+        - toAccountId
+        - amount
+        - description
+
+    # LoanCreateRequest, LoanPaymentRequest, LoanUpdateInterestRateRequest Removed - Loan functionality removed
+
+    DisputeCreateRequest: # Unchanged
+      type: object
+      properties:
+        disputedTransactionReferenceId:
+          type: integer
+          format: int64
+          description: The reference ID of the transaction(s) being disputed.
+          example: 55555
+        reason:
+          type: string
+          description: Detailed reason for the dispute.
+          minLength: 10
+          maxLength: 500
+          example: 'I did not authorize this transfer.'
+      required:
+        - disputedTransactionReferenceId
+        - reason
+
+    DisputeStatusUpdateRequest: # Unchanged
+      type: object
+      properties:
+        newStatusId:
+          type: integer
+          format: int64
+          description: The ID of the new status (from DisputeStatus) to apply to the dispute.
+          example: 2 # e.g., 'under_review'
+        comments: # Comments are not stored in DBML history table, but useful for the API call context/audit
+          type: string
+          description: Optional comments regarding the status change (may be logged elsewhere).
+          maxLength: 500
+          example: 'Assigning to review team.'
+      required:
+        - newStatusId
+
+    StatementRequest:
+      type: object
+      properties:
+        startDate:
+          type: string
+          format: date
+          description: Start date for the statement period (inclusive).
+          example: '2024-02-01'
+        endDate:
+          type: string
+          format: date
+          description: End date for the statement period (inclusive).
+          example: '2024-02-29'
+        # format: # Removed this field as JSON is now the only format
+        #   type: string
+        #   enum: [csv]
+        #   description: Desired output format for the statement. Currently only CSV supported.
+        #   default: csv
+        #   example: csv
+      required:
+        - startDate
+        - endDate
+    
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          description: An application-specific error code.
+          example: 'INSUFFICIENT_FUNDS'
+        message:
+          type: string
+          description: A human-readable description of the error.
+          example: 'Withdrawal amount exceeds available balance.'
+        details:
+          type: string # Or object for more structured details
+          description: Optional further details about the error.
+          example: 'Account 98765 has available balance 50.00, requested 75.00.'
+      required:
+        - code
+        - message
+
+  # Reusable Responses (Unchanged)
+  responses:
+    BadRequest:
+      description: Bad Request - The request payload is malformed, missing required fields, or contains invalid values.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Unauthorized - Authentication credentials are required or invalid.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Forbidden - The authenticated user does not have permission to perform this action.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Not Found - The requested resource could not be found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+       description: Conflict - The request could not be completed due to a conflict with the current state of the resource (e.g., business rule violation).
+       content:
+         application/json:
+           schema:
+             $ref: '#/components/schemas/Error'
+    InternalServerError:
+      description: Internal Server Error - An unexpected error occurred on the server.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  # Security Schemes (Unchanged)
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |-
+        Authentication token (JWT) obtained after successful login (e.g., via Google SSO flow completion).
+        Include the token in the Authorization header as 'Bearer <token>'.

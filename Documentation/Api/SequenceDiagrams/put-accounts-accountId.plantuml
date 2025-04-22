@@ -1,0 +1,100 @@
+@startuml
+title PUT /accounts/{accountId} - Update Account (Admin Only)
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "AccountController" as AC
+participant "IAccountService" as ASvc
+participant "IAccountRepository" as AR
+participant "IPlanetRepository" as PR
+participant "[DB]" as DB
+
+C -> Auth: PUT /accounts/{accountId} \nAuthorization: Bearer <token> \nContent: AccountUpdateRequestDto
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> Auth: Check Admin Role
+Auth -> AC: Forward Request
+deactivate Auth
+activate AC
+AC -> ASvc: UpdateAccount(accountId, AccountUpdateRequestDto)
+activate ASvc
+ASvc -> AR: FindAccountById(accountId)
+activate AR
+AR -> DB: Execute SELECT Account query
+activate DB
+DB --> AR: Account Record (or null)
+deactivate DB
+alt Account Not Found
+  AR --> ASvc: null
+  deactivate AR
+  ASvc --> AC: Error Result (NotFoundException)
+  deactivate ASvc
+  AC -> C: 404 Not Found \nContent: ErrorDto (Account)
+  deactivate AC
+else Account Found
+  AR --> ASvc: AccountModel
+  deactivate AR
+
+  opt Update Base Planet
+    ASvc -> PR: FindPlanetByName(dto.basePlanet)
+    activate PR
+    PR -> DB: Execute SELECT Planet query
+    activate DB
+    DB --> PR: Planet Record (or null)
+    deactivate DB
+    PR --> ASvc: PlanetModel (or null)
+    deactivate PR
+    alt Planet Not Found
+      ASvc --> AC: Error Result (NotFound / BadRequest)
+      deactivate ASvc
+      AC -> C: 404 Not Found / 400 Bad Request \nContent: ErrorDto (Planet)
+      deactivate AC
+    else Planet Found
+      ASvc -> ASvc: Check Base Planet Change Constraints (if any)
+      alt Constraint Violation
+        ASvc --> AC: Error Result (ConflictException)
+        deactivate ASvc
+        AC -> C: 409 Conflict \nContent: ErrorDto
+        deactivate AC
+      else Constraint OK
+        ASvc -> ASvc: Update AccountModel basePlanetId
+      end
+    end
+  end
+
+  opt Close Account
+    ASvc -> ASvc: Check Closure Constraints (Balance == 0, No active loans as debtor?)
+    ' (May need call to LoanRepository)
+    alt Constraint Violation
+      ASvc --> AC: Error Result (ConflictException / BadRequest)
+      deactivate ASvc
+      AC -> C: 409 Conflict / 400 Bad Request \nContent: ErrorDto (Cannot close)
+      deactivate AC
+    else Constraint OK
+      ASvc -> ASvc: Update AccountModel closedAt timestamp
+    end
+  end
+
+  ASvc -> AR: UpdateAccount(updatedAccountModel)
+  activate AR
+  AR -> DB: Execute UPDATE query for Account
+  activate DB
+  DB --> AR: Update Success
+  deactivate DB
+  AR -> ASvc: Updated AccountModel
+  deactivate AR
+  ASvc -> ASvc: Map AccountModel to AccountDetailDto
+  ASvc --> AC: AccountDetailDto
+  deactivate ASvc
+  AC -> C: 200 OK \nContent: AccountDetailDto
+  deactivate AC
+end
+
+alt Auth Error
+  Auth --> C: 401/403 Unauthorized/Forbidden
+end
+alt Server Error
+  AC --> C: 500 Internal Server Error
+end
+
+@enduml

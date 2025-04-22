@@ -1,0 +1,66 @@
+@startuml
+title DELETE /users/{userId} - Soft Delete User (Admin Only)
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "UserController" as UC
+participant "IUserService" as US
+participant "IUserRepository" as UR
+participant "[DB]" as DB
+
+C -> Auth: DELETE /users/{userId} \nAuthorization: Bearer <token>
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> Auth: Check Admin Role
+Auth -> UC: Forward Request (with authenticatedUserId)
+deactivate Auth
+activate UC
+UC -> US: DeleteUser(userId, authenticatedUserId)
+activate US
+US -> US: Check Business Rules (e.g., cannot delete self)
+alt Business Rule Violation
+    US --> UC: Error Result (ValidationException)
+    deactivate US
+    UC -> C: 400 Bad Request \nContent: ErrorDto
+    deactivate UC
+else Rules Pass
+    US -> UR: FindUserById(userId)
+    activate UR
+    UR -> DB: Execute SELECT query
+    activate DB
+    DB --> UR: User Record (or null)
+    deactivate DB
+    alt User Not Found
+        UR --> US: null
+        deactivate UR
+        US --> UC: Error Result (NotFoundException)
+        deactivate US
+        UC -> C: 404 Not Found \nContent: ErrorDto
+        deactivate UC
+    else User Found
+        UR --> US: UserModel
+        deactivate UR
+        US -> US: Check Deletion Constraints (e.g., active loans - may need LoanRepo call)
+        alt Cannot Delete (Constraints)
+             US --> UC: Error Result (ConflictException)
+             deactivate US
+             UC -> C: 409 Conflict \nContent: ErrorDto
+             deactivate UC
+        else Can Delete
+            US -> UR: SoftDeleteUser(userId)
+            activate UR
+            UR -> DB: Execute UPDATE query (set deleted_at)
+            activate DB
+            DB --> UR: Update Success
+            deactivate DB
+            UR --> US: Success confirmation
+            deactivate UR
+            US --> UC: Success
+            deactivate US
+            UC -> C: 204 No Content
+            deactivate UC
+        end
+    end
+end
+
+@enduml

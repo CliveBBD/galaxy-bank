@@ -1,0 +1,68 @@
+@startuml
+title GET /transaction-references/{refId} - Get Linked Transactions
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "TransactionController" as TC
+participant "ITransactionService" as TS
+participant "ITransactionRepository" as TR
+participant "IAccountRepository" as AR
+participant "[DB]" as DB
+
+C -> Auth: GET /transaction-references/{refId} \nAuthorization: Bearer <token>
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> TC: Forward Request (with authenticatedUserId, isAdmin flag)
+deactivate Auth
+activate TC
+TC -> TS: GetTransactionsByReferenceId(refId, authenticatedUserId, isAdmin)
+activate TS
+TS -> TR: FindTransactionsByReferenceId(refId)
+activate TR
+TR -> DB: Execute SELECT query for Transactions where transaction_reference_id = refId
+activate DB
+DB --> TR: Transaction Records (or empty list)
+deactivate DB
+alt No Transactions Found for RefId
+    TR --> TS: Empty List<TransactionModel>
+    deactivate TR
+    TS --> TC: Error Result (NotFoundException) ' Or return empty 200 OK? Spec implies 404
+    deactivate TS
+    TC -> C: 404 Not Found \nContent: ErrorDto
+    deactivate TC
+else Transactions Found
+    TR -> TR: Map Records to List<TransactionModel>
+    TR --> TS: List<TransactionModel>
+    deactivate TR
+    TS -> TS: Get involved accountIds from transactions
+    TS -> AR: FindAccountsByIds(involvedAccountIds) ' Needed for ownership check
+    activate AR
+    AR -> DB: Execute SELECT Account query (with User info)
+    activate DB
+    DB --> AR: Account Records
+    deactivate DB
+    AR --> TS: List<AccountModel>
+    deactivate AR
+    TS -> TS: Check Permission (Is Admin or Owns at least one involved account?)
+    alt Permission Denied
+        TS --> TC: Error Result (ForbiddenException)
+        deactivate TS
+        TC -> C: 403 Forbidden \nContent: ErrorDto
+        deactivate TC
+    else Permission Granted
+        TS -> TS: Map List<TransactionModel> to List<RedactedTransactionDto>
+        TS --> TC: List<RedactedTransactionDto>
+        deactivate TS
+        TC -> C: 200 OK \nContent: List<RedactedTransactionDto>
+        deactivate TC
+    end
+end
+
+alt Auth Error
+  Auth --> C: 401 Unauthorized
+end
+alt Server Error
+  TC --> C: 500 Internal Server Error
+end
+
+@enduml

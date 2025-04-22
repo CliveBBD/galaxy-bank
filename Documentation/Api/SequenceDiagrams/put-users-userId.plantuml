@@ -1,0 +1,77 @@
+@startuml
+title PUT /users/{userId} - Update User Role (Admin Only)
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "UserController" as UC
+participant "IUserService" as US
+participant "IUserRepository" as UR
+participant "IRoleRepository" as RR
+participant "[DB]" as DB
+
+C -> Auth: PUT /users/{userId} \nAuthorization: Bearer <token> \nContent: UserUpdateRoleRequestDto
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> Auth: Check Admin Role
+Auth -> UC: Forward Request
+deactivate Auth
+activate UC
+UC -> US: UpdateUserRole(userId, UserUpdateRoleRequestDto)
+activate US
+US -> UR: FindUserById(userId)
+activate UR
+UR -> DB: Execute SELECT query for User
+activate DB
+DB --> UR: User Record (or null)
+deactivate DB
+alt User Not Found
+    UR --> US: null
+    deactivate UR
+    US --> UC: Error Result (NotFoundException)
+    deactivate US
+    UC -> C: 404 Not Found \nContent: ErrorDto (User)
+    deactivate UC
+else User Found
+    UR --> US: UserModel
+    deactivate UR
+    US -> RR: FindRoleById(roleId from DTO)
+    activate RR
+    RR -> DB: Execute SELECT query for Role
+    activate DB
+    DB --> RR: Role Record (or null)
+    deactivate DB
+    alt Role Not Found
+        RR --> US: null
+        deactivate RR
+        US --> UC: Error Result (NotFoundException / BadRequest)
+        deactivate US
+        UC -> C: 404 Not Found / 400 Bad Request \nContent: ErrorDto (Role)
+        deactivate UC
+    else Role Found
+        RR --> US: RoleModel
+        deactivate RR
+        US -> US: Check Business Rules (e.g., not last admin)
+        alt Business Rule Violation
+            US --> UC: Error Result (ValidationException / Conflict)
+            deactivate US
+            UC -> C: 400 Bad Request / 409 Conflict \nContent: ErrorDto
+            deactivate UC
+        else Rules Pass
+            US -> US: Update UserModel role
+            US -> UR: UpdateUser(userModel)
+            activate UR
+            UR -> DB: Execute UPDATE query for User (set role_id)
+            activate DB
+            DB --> UR: Update Success
+            deactivate DB
+            UR --> US: Updated UserModel
+            deactivate UR
+            US -> US: Map UserModel to UserDto
+            US --> UC: UserDto
+            deactivate US
+            UC -> C: 200 OK \nContent: UserDto
+            deactivate UC
+        end
+    end
+end
+@enduml

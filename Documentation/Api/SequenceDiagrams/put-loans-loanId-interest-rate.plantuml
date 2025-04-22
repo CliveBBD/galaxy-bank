@@ -1,0 +1,67 @@
+@startuml
+title PUT /loans/{loanId}/interest-rate - Update Interest Rate (Admin Only)
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "LoanController" as LC
+participant "ILoanService" as LS
+participant "ILoanRepository" as LR
+participant "[DB]" as DB
+
+C -> Auth: PUT /loans/{loanId}/interest-rate \nAuthorization: Bearer <token> \nContent: LoanUpdateInterestRateRequestDto
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> Auth: Check Admin Role
+Auth -> LC: Forward Request
+deactivate Auth
+activate LC
+LC -> LS: UpdateLoanInterestRate(loanId, LoanUpdateInterestRateRequestDto)
+activate LS
+LS -> LS: Validate Rate (Non-negative?)
+alt Invalid Rate
+    LS --> LC: Error Result (ValidationException)
+    deactivate LS
+    LC -> C: 400 Bad Request \nContent: ErrorDto
+    deactivate LC
+else Rate Valid
+    LS -> LR: FindLoanById(loanId)
+    activate LR
+    LR -> DB: Execute SELECT Loan query
+    activate DB
+    DB --> LR: Loan Record (or null)
+    deactivate DB
+    alt Loan Not Found
+      LR --> LS: null
+      deactivate LR
+      LS --> LC: Error Result (NotFoundException)
+      deactivate LS
+      LC -> C: 404 Not Found \nContent: ErrorDto
+      deactivate LC
+    else Loan Found
+      LR --> LS: LoanModel
+      deactivate LR
+      LS -> LS: Update loanModel.interestRate
+      LS -> LR: UpdateLoan(loanModel)
+      activate LR
+      LR -> DB: Execute UPDATE Loan query (set interest_rate)
+      activate DB
+      DB --> LR: Update Success
+      deactivate DB
+      LR --> LS: Updated LoanModel
+      deactivate LR
+      LS -> LS: Map LoanModel to LoanDetailDto
+      LS --> LC: LoanDetailDto
+      deactivate LS
+      LC -> C: 200 OK \nContent: LoanDetailDto
+      deactivate LC
+    end
+end
+
+alt Auth Error
+  Auth --> C: 401/403 Unauthorized/Forbidden
+end
+alt Server Error
+  LC --> C: 500 Internal Server Error
+end
+
+@enduml

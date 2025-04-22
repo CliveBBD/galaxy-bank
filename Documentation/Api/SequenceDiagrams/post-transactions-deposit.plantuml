@@ -1,0 +1,100 @@
+@startuml
+title POST /transactions/deposit - Create Deposit
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "TransactionController" as TC
+participant "ITransactionService" as TS
+participant "IAccountRepository" as AR
+participant "ITransactionRepository" as TR
+participant "ITransactionRefRepository" as TRR
+participant "[DB]" as DB
+
+C -> Auth: POST /transactions/deposit \nAuthorization: Bearer <token> \nContent: DepositRequestDto
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> TC: Forward Request (with authenticatedUserId)
+deactivate Auth
+activate TC
+TC -> TS: CreateDeposit(DepositRequestDto, authenticatedUserId)
+activate TS
+TS -> AR: FindAccountById(dto.accountId)
+activate AR
+AR -> DB: Execute SELECT Account query (with User info)
+activate DB
+DB --> AR: Account Record (or null)
+deactivate DB
+alt Account Not Found or Closed
+  AR --> TS: null / AccountModel (closed)
+  deactivate AR
+  TS --> TC: Error Result (NotFound / Validation)
+  deactivate TS
+  TC -> C: 404 Not Found / 400 Bad Request \nContent: ErrorDto
+  deactivate TC
+else Account Valid
+  AR --> TS: AccountModel
+  deactivate AR
+  TS -> TS: Check Permission (User owns Account?)
+  alt Permission Denied
+    TS --> TC: Error Result (ForbiddenException)
+    deactivate TS
+    TC -> C: 403 Forbidden \nContent: ErrorDto
+    deactivate TC
+  else Permission Granted
+    TS -> TS: Validate Amount (Positive?)
+    alt Invalid Amount
+      TS --> TC: Error Result (ValidationException)
+      deactivate TS
+      TC -> C: 400 Bad Request \nContent: ErrorDto
+      deactivate TC
+    else Amount Valid
+      TS -> TRR: CreateTransactionReference() ' Get a new reference ID
+      activate TRR
+      TRR -> DB: Execute INSERT TransactionReference, get ID
+      activate DB
+      DB --> TRR: New transactionReferenceId
+      deactivate DB
+      TRR --> TS: transactionReferenceId
+      deactivate TRR
+
+      note over TS, AR: Begin Database Transaction
+
+      TS -> AR: UpdateAccountBalance(accountId, amount) ' Increase Available & Current
+      activate AR
+      AR -> DB: Execute UPDATE Account query
+      activate DB
+      DB --> AR: Update Success, New Balance
+      deactivate DB
+      AR --> TS: Updated AccountModel (with new balance)
+      deactivate AR
+
+      TS -> TS: Create TransactionModel (Deposit type, cleared=true, clearedAt=now)
+      TS -> TR: CreateTransaction(newTransactionModel)
+      activate TR
+      TR -> DB: Execute INSERT Transaction query
+      activate DB
+      DB --> TR: Inserted Transaction Record (with txId)
+      deactivate DB
+      TR --> TS: Created TransactionModel (with txId)
+      deactivate TR
+
+      note over TS, AR: Commit Database Transaction
+
+      TS -> TS: Map TransactionModel to TransactionDto
+      TS --> TC: TransactionDto
+      deactivate TS
+      TC -> C: 201 Created \nContent: TransactionDto
+      deactivate TC
+
+      alt Database Transaction Fails
+          note over TS, AR: Rollback Database Transaction
+          TS --> TC: Error Result (e.g., InternalServerError)
+          deactivate TS
+          TC -> C: 500 Internal Server Error \nContent: ErrorDto
+          deactivate TC
+      end
+    end
+  end
+end
+
+@enduml

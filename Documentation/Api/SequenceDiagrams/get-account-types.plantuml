@@ -1,0 +1,32 @@
+@startuml
+title GET /account-types - List Account Types
+
+participant "Client" as C
+participant "ReferenceDataController" as RDC
+participant "IReferenceDataService" as RDS
+participant "IAccountTypeRepository" as ATR
+participant "[DB]" as DB
+
+C -> RDC: GET /account-types
+activate RDC
+RDC -> RDS: ListAccountTypes()
+activate RDS
+RDS -> ATR: FindAllAccountTypes()
+activate ATR
+ATR -> DB: Execute SELECT query for all account_types
+activate DB
+DB --> ATR: AccountType Records
+deactivate DB
+ATR -> ATR: Map Records to List<AccountTypeModel>
+ATR --> RDS: List<AccountTypeModel>
+deactivate ATR
+RDS -> RDS: Map Models to List<AccountTypeDto>
+RDS --> RDC: List<AccountTypeDto>
+deactivate RDS
+RDC -> C: 200 OK \nContent: List<AccountTypeDto>
+deactivate RDC
+
+alt Error
+    RDC -> C: 500 Internal Server Error
+end
+@enduml

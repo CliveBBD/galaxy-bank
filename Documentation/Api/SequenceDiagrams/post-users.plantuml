@@ -1,0 +1,73 @@
+@startuml
+title POST /users - Create User (Google SSO)
+
+participant "Client" as C
+participant "UserController" as UC
+participant "IUserService" as US
+participant "IGoogleAuthService" as GAS 
+' Assumed external service interaction wrapper
+participant "IUserRepository" as UR
+participant "IRoleRepository" as RR
+participant "[DB]" as DB
+participant "Google Identity Platform" as GIDP
+
+C -> UC: POST /users \nContent: UserCreateRequestDto (with googleIdToken)
+activate UC
+UC -> US: CreateUser(UserCreateRequestDto)
+activate US
+US -> GAS: VerifyGoogleToken(googleIdToken)
+activate GAS
+GAS -> GIDP: Send token for verification
+activate GIDP
+GIDP --> GAS: Verification Result (success/failure, googleId, email etc.)
+deactivate GIDP
+alt Token Invalid
+  GAS --> US: Error: Invalid Token
+  deactivate GAS
+  US --> UC: Error Result (e.g., ValidationException)
+  deactivate US
+  UC -> C: 400 Bad Request \nContent: ErrorDto
+  deactivate UC
+else Token Valid
+  GAS --> US: Verified googleId
+  deactivate GAS
+  US -> UR: FindUserByGoogleId(googleId)
+  activate UR
+  UR -> DB: Execute SELECT query
+  activate DB
+  DB --> UR: Existing User Record (or null)
+  deactivate DB
+  UR --> US: Existing UserModel (or null)
+  deactivate UR
+  alt User Already Exists
+    US --> UC: Error Result (e.g., ConflictException)
+    deactivate US
+    UC -> C: 400 Bad Request \nContent: ErrorDto (Google ID exists)
+    deactivate UC
+  else User Does Not Exist
+    US -> RR: GetDefaultRole() ' Assume fetches 'Standard User' role
+    activate RR
+    RR -> DB: Execute SELECT query for default role
+    activate DB
+    DB --> RR: Role Record
+    deactivate DB
+    RR --> US: RoleModel (Default)
+    deactivate RR
+    US -> US: Create UserModel (googleId, defaultRole)
+    US -> UR: CreateUser(newUserModel)
+    activate UR
+    UR -> DB: Execute INSERT query for User
+    activate DB
+    DB --> UR: Inserted User Record (with userId)
+    deactivate DB
+    UR --> US: Created UserModel (with userId)
+    deactivate UR
+    US -> US: Map UserModel to UserDto
+    US --> UC: UserDto
+    deactivate US
+    UC -> C: 201 Created \nLocation: /users/{userId} \nContent: UserDto
+    deactivate UC
+  end
+end
+
+@enduml

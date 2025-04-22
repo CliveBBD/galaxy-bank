@@ -1,0 +1,47 @@
+@startuml
+title GET /disputes - List Disputes By Status
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "DisputeController" as DC
+participant "IDisputeService" as DS
+participant "IDisputeRepository" as DR
+participant "[DB]" as DB
+
+C -> Auth: GET /disputes?status=X&userId=Y&limit=N&offset=M \nAuthorization: Bearer <token>
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> DC: Forward Request (with authenticatedUserId, isAdmin flag)
+deactivate Auth
+activate DC
+DC -> DS: ListDisputes(statusFilter, userIdFilter, limit, offset, authenticatedUserId, isAdmin)
+activate DS
+DS -> DS: Determine effective userId, check permissions (Admin all, User involved only)
+alt Permission logic complex/error path
+    '...(Permission check might involve fetching user's accounts, then checking dispute involvement)...'
+    DS --> DC: Error Result (Forbidden / InternalError)
+    deactivate DS
+    DC -> C: 403/500 Error
+    deactivate DC
+else Permission OK
+    DS -> DR: FindDisputes(effectiveUserId, statusDescription, limit, offset)
+    activate DR
+    DR -> DB: Execute SELECT Dispute query (filtered, join Status, potentially involved accounts)
+    activate DB
+    DB --> DR: Dispute Records
+    deactivate DB
+    DR -> DR: Map Records to List<DisputeModel>
+    DR --> DS: List<DisputeModel>
+    deactivate DR
+    DS -> DS: Map List<DisputeModel> to List<DisputeDto>
+    DS --> DC: List<DisputeDto>
+    deactivate DS
+    DC -> C: 200 OK \nContent: List<DisputeDto>
+    deactivate DC
+end
+
+alt Bad Request (Invalid Status)
+    DC -> C: 400 Bad Request
+end
+
+@enduml

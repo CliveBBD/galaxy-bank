@@ -1,0 +1,50 @@
+@startuml
+title GET /system-reports/daily-transactions - Admin Daily Transaction Report
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "StatementReportController" as SRC
+participant "IReportService" as RSvc
+participant "ITransactionRepository" as TR
+participant "[DB]" as DB
+
+C -> Auth: GET /system-reports/daily-transactions?date=YYYY-MM-DD \nAuthorization: Bearer <token>
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> Auth: Check Admin Role
+Auth -> SRC: Forward Request
+deactivate Auth
+activate SRC
+SRC -> RSvc: GetDailyTransactionReport(date)
+activate RSvc
+RSvc -> RSvc: Validate date parameter (default to today if null)
+alt Invalid Date Format
+    RSvc --> SRC: Error Result (ValidationException)
+    deactivate RSvc
+    SRC -> C: 400 Bad Request \nContent: ErrorDto
+    deactivate SRC
+else Date Valid
+    RSvc -> TR: GetTransactionSummaryByDate(reportDate) ' Repository method to aggregate data
+    activate TR
+    TR -> DB: Execute SELECT query (GROUP BY type, COUNT, SUM amount WHERE date(createdAt) = ?)
+    activate DB
+    DB --> TR: Aggregated Summary Data
+    deactivate DB
+    TR --> RSvc: Summary Data (e.g., List of {TypeId, Count, TotalAmount})
+    deactivate TR
+    RSvc -> RSvc: Calculate total volume, total count
+    RSvc -> RSvc: Map Summary Data to DailyTransactionReportDto
+    RSvc --> SRC: DailyTransactionReportDto
+    deactivate RSvc
+    SRC -> C: 200 OK \nContent: DailyTransactionReportDto
+    deactivate SRC
+end
+
+alt Auth Error
+  Auth --> C: 401/403 Unauthorized/Forbidden
+end
+alt Server Error
+  SRC --> C: 500 Internal Server Error
+end
+
+@enduml

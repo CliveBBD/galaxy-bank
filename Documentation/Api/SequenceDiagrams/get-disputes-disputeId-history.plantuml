@@ -1,0 +1,50 @@
+@startuml
+title GET /disputes/{disputeId}/history - Get Dispute Status History
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "DisputeController" as DC
+participant "IDisputeService" as DS
+participant "IDisputeRepository" as DR 
+' Needed for main dispute info/permission check
+participant "IDisputeHistoryRepository" as DHR
+participant "IAccountRepository" as AR 
+' For permission check
+participant "ITransactionRepository" as TR 
+' For permission check
+participant "[DB]" as DB
+
+C -> Auth: GET /disputes/{disputeId}/history?limit=N&offset=M \nAuthorization: Bearer <token>
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> DC: Forward Request (with authenticatedUserId, isAdmin flag, isDisputeOfficer flag)
+deactivate Auth
+activate DC
+DC -> DS: GetDisputeHistory(disputeId, limit, offset, authenticatedUserId, isAdmin, isDisputeOfficer)
+activate DS
+
+ref over DS, DR, TR, AR: GetDisputeAndCheckAccess(disputeId, authenticatedUserId, isAdmin, isDisputeOfficer)
+
+alt Dispute Not Found or Access Denied
+    DS --> DC: Error Result (NotFound / Forbidden)
+    deactivate DS
+    DC -> C: 404 Not Found / 403 Forbidden \nContent: ErrorDto
+    deactivate DC
+else Dispute Found and Access Granted
+    DS -> DHR: FindHistoryByDisputeId(disputeId, limit, offset)
+    activate DHR
+    DHR -> DB: Execute SELECT DisputeHistory query (join Status, User)
+    activate DB
+    DB --> DHR: History Records
+    deactivate DB
+    DHR -> DHR: Map Records to List<DisputeHistoryModel>
+    DHR --> DS: List<DisputeHistoryModel>
+    deactivate DHR
+    DS -> DS: Map List<Model> to List<DisputeHistoryEntryDto>
+    DS --> DC: List<DisputeHistoryEntryDto>
+    deactivate DS
+    DC -> C: 200 OK \nContent: List<DisputeHistoryEntryDto>
+    deactivate DC
+end
+
+@enduml

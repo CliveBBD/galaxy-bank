@@ -1,0 +1,80 @@
+@startuml
+title GET /users/{userId}/net-worth - Calculate User Net Worth
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "StatementReportController" as SRC
+participant "IReportService" as RSvc
+participant "IUserRepository" as UR
+participant "IAccountRepository" as AR
+participant "ILoanRepository" as LR
+participant "[DB]" as DB
+
+C -> Auth: GET /users/{userId}/net-worth \nAuthorization: Bearer <token>
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> SRC: Forward Request (with authenticatedUserId, isAdmin flag)
+deactivate Auth
+activate SRC
+SRC -> RSvc: CalculateNetWorth(userId, authenticatedUserId, isAdmin)
+activate RSvc
+RSvc -> UR: FindUserById(userId)
+activate UR
+UR -> DB: Execute SELECT User query
+activate DB
+DB --> UR: User Record (or null)
+deactivate DB
+alt User Not Found
+    UR --> RSvc: null
+    deactivate UR
+    RSvc --> SRC: Error Result (NotFoundException)
+    deactivate RSvc
+    SRC -> C: 404 Not Found \nContent: ErrorDto
+    deactivate SRC
+else User Found
+    UR --> RSvc: UserModel
+    deactivate UR
+    RSvc -> RSvc: Check Permission (Is Admin or Is Self?)
+    alt Permission Denied
+        RSvc --> SRC: Error Result (ForbiddenException)
+        deactivate RSvc
+        SRC -> C: 403 Forbidden \nContent: ErrorDto
+        deactivate SRC
+    else Permission Granted
+        RSvc -> AR: FindAccountsByUserId(userId)
+        activate AR
+        AR -> DB: Execute SELECT Account query
+        activate DB
+        DB --> AR: List of Account Records
+        deactivate DB
+        AR --> RSvc: List<AccountModel> userAccounts
+        deactivate AR
+        RSvc -> RSvc: totalAssets = SUM(account.currentBalance for account in userAccounts)
+
+        RSvc -> LR: FindLoansByBorrowerUserId(userId) ' Needs repo method joining Loan -> Account -> User
+        activate LR
+        LR -> DB: Execute SELECT Loan query (where to_account.user_id = ?)
+        activate DB
+        DB --> LR: List of Loan Records where user is borrower
+        deactivate DB
+        LR --> RSvc: List<LoanModel> userLiabilities
+        deactivate LR
+        RSvc -> RSvc: totalLiabilities = SUM(loan.remainingBalance for loan in userLiabilities)
+
+        RSvc -> RSvc: netWorth = totalAssets - totalLiabilities
+        RSvc -> RSvc: Create NetWorthDto(totalAssets, totalLiabilities, netWorth, now)
+        RSvc --> SRC: NetWorthDto
+        deactivate RSvc
+        SRC -> C: 200 OK \nContent: NetWorthDto
+        deactivate SRC
+    end
+end
+
+alt Auth Error
+  Auth --> C: 401 Unauthorized
+end
+alt Server Error
+  SRC --> C: 500 Internal Server Error
+end
+
+@enduml

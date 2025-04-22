@@ -1,0 +1,117 @@
+@startuml
+title POST /disputes/{disputeId}/status - Update Dispute Status
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "DisputeController" as DC
+participant "IDisputeService" as DS
+participant "IDisputeRepository" as DR
+participant "IDisputeHistoryRepository" as DHR
+participant "IDisputeStatusRepository" as DSR
+participant "ITransactionService" as TS 
+' For reversals
+participant "[DB]" as DB
+
+C -> Auth: POST /disputes/{disputeId}/status \nAuthorization: Bearer <token> \nContent: DisputeStatusUpdateRequestDto
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> Auth: Check Permissions (Admin / Dispute Officer Role)
+Auth -> DC: Forward Request (with authenticatedUserId)
+deactivate Auth
+activate DC
+DC -> DS: UpdateDisputeStatus(disputeId, DisputeStatusUpdateRequestDto, authenticatedUserId)
+activate DS
+DS -> DR: FindDisputeById(disputeId)
+activate DR
+DR -> DB: Execute SELECT Dispute query (join current Status)
+activate DB
+DB --> DR: Dispute Record (or null)
+deactivate DB
+alt Dispute Not Found
+  DR --> DS: null
+  deactivate DR
+  DS --> DC: Error Result (NotFoundException)
+  deactivate DS
+  DC -> C: 404 Not Found \nContent: ErrorDto (Dispute)
+  deactivate DC
+else Dispute Found
+  DR --> DS: DisputeModel (with currentStatus)
+  deactivate DR
+  DS -> DSR: FindDisputeStatusById(dto.newStatusId)
+  activate DSR
+  DSR -> DB: Execute SELECT DisputeStatus query
+  activate DB
+  DB --> DSR: New Status Record (or null)
+  deactivate DB
+  alt New Status Not Found
+    DSR --> DS: null
+    deactivate DSR
+    DS --> DC: Error Result (NotFoundException / BadRequest)
+    deactivate DS
+    DC -> C: 404 Not Found / 400 Bad Request \nContent: ErrorDto (Status ID)
+    deactivate DC
+  else New Status Found
+    DSR --> DS: newStatusModel
+    deactivate DSR
+    DS -> DS: Validate Status Transition (currentStatus -> newStatus)
+    alt Invalid Transition
+      DS --> DC: Error Result (ConflictException / Validation)
+      deactivate DS
+      DC -> C: 409 Conflict / 400 Bad Request \nContent: ErrorDto (Invalid transition)
+      deactivate DC
+    else Transition Valid
+      note over DS, DHR: Begin DB Transaction
+
+      DS -> DS: Update DisputeModel currentStatusId
+      DS -> DR: UpdateDispute(disputeModel)
+      activate DR
+      DR -> DB: Execute UPDATE Dispute query (set current_status_id)
+      activate DB
+      DB --> DR: Update Success
+      deactivate DB
+      DR --> DS: Updated DisputeModel
+      deactivate DR
+
+      DS -> DS: Create DisputeHistoryModel (disputeId, newStatusId, updatedById=authUserId, comments)
+      DS -> DHR: CreateDisputeHistory(newHistoryModel)
+      activate DHR
+      DHR -> DB: Execute INSERT DisputeHistory query
+      activate DB
+      DB --> DHR: Insert Success
+      deactivate DB
+      DHR --> DS: Success
+      deactivate DHR
+
+      alt New Status Requires Reversal (e.g., "Resolved - Approved")
+        ref over DS, TS: Perform Reversal Transactions(disputeModel.disputedTransactionReferenceId)
+        alt Reversal Fails
+            note over DS, DHR: Rollback DB Transaction
+            DS --> DC: Error Result (InternalServerError / BadRequest)
+            deactivate DS
+            DC -> C: 500/400 Error \nContent: ErrorDto
+            deactivate DC
+        else Reversal Succeeds
+            note over DS, DHR: Commit DB Transaction
+            DS -> DS: Map Updated DisputeModel to DisputeDto
+            DS --> DC: DisputeDto
+            deactivate DS
+            DC -> C: 200 OK \nContent: DisputeDto
+            deactivate DC
+        end
+      else No Reversal Needed
+         note over DS, DHR: Commit DB Transaction
+         DS -> DS: Map Updated DisputeModel to DisputeDto
+         DS --> DC: DisputeDto
+         deactivate DS
+         DC -> C: 200 OK \nContent: DisputeDto
+         deactivate DC
+      end
+    end
+  end
+end
+
+alt Auth Error
+  Auth --> C: 401/403 Unauthorized/Forbidden
+end
+
+@enduml

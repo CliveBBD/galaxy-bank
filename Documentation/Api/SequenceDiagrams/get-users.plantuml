@@ -1,0 +1,40 @@
+@startuml
+title GET /users - List Users (Admin Only)
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "UserController" as UC
+participant "IUserService" as US
+participant "IUserRepository" as UR
+participant "[DB]" as DB
+
+C -> Auth: GET /users?role=X&active=true&limit=Y&offset=Z \nAuthorization: Bearer <token>
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> Auth: Check Admin Role
+Auth -> UC: Forward Request
+deactivate Auth
+activate UC
+UC -> US: ListUsers(roleId, active, limit, offset)
+activate US
+US -> UR: FindUsers(roleId, active, limit, offset)
+activate UR
+UR -> DB: Execute SELECT query (filtered)
+activate DB
+DB --> UR: User Records
+deactivate DB
+UR -> UR: Map Records to List<UserModel>
+UR --> US: List<UserModel>
+deactivate UR
+US -> US: Map List<UserModel> to List<UserDto>
+US --> UC: List<UserDto>
+deactivate US
+UC -> C: 200 OK \nContent: List<UserDto>
+deactivate UC
+
+alt Error (e.g., Auth Failed, DB Error)
+  Auth --> C: 401/403 Unauthorized/Forbidden
+  UC --> C: 500 Internal Server Error
+end
+
+@enduml

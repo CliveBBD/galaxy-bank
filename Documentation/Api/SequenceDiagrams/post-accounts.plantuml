@@ -1,0 +1,83 @@
+@startuml
+title POST /accounts - Create Account
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "AccountController" as AC
+participant "IAccountService" as ASvc
+participant "IAccountRepository" as AR
+participant "IUserRepository" as UR
+participant "IAccountTypeRepository" as ATR
+participant "IPlanetRepository" as PR
+participant "[DB]" as DB
+
+C -> Auth: POST /accounts \nAuthorization: Bearer <token> \nContent: AccountCreateRequestDto
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> AC: Forward Request (with authenticatedUserId, isAdmin flag)
+deactivate Auth
+activate AC
+AC -> ASvc: CreateAccount(AccountCreateRequestDto, authenticatedUserId, isAdmin)
+activate ASvc
+ASvc -> ASvc: Determine targetUserId (from DTO if admin, else authUserId)
+ASvc -> UR: FindUserById(targetUserId) ' Check user exists and is active
+activate UR
+UR -> DB: Execute SELECT User query
+activate DB
+DB --> UR: User Record (or null)
+deactivate DB
+UR --> ASvc: UserModel (or null/inactive)
+deactivate UR
+alt User Invalid/Not Found
+  ASvc --> AC: Error Result (NotFound / Validation)
+  deactivate ASvc
+  AC -> C: 404 Not Found / 400 Bad Request \nContent: ErrorDto (User)
+  deactivate AC
+else User Valid
+  ASvc -> ATR: FindAccountTypeByName(dto.accountType)
+  activate ATR
+  ATR -> DB: Execute SELECT AccountType query
+  activate DB
+  DB --> ATR: AccountType Record (or null)
+  deactivate DB
+  ATR --> ASvc: AccountTypeModel (or null)
+  deactivate ATR
+  alt AccountType Invalid
+      ASvc --> AC: Error Result (NotFound / Validation)
+      deactivate ASvc
+      AC -> C: 404 Not Found / 400 Bad Request \nContent: ErrorDto (AccountType)
+      deactivate AC
+  else AccountType Valid
+      ASvc -> PR: FindPlanetByName(dto.basePlanet)
+      activate PR
+      PR -> DB: Execute SELECT Planet query
+      activate DB
+      DB --> PR: Planet Record (or null)
+      deactivate DB
+      PR --> ASvc: PlanetModel (or null)
+      deactivate PR
+      alt Planet Invalid
+          ASvc --> AC: Error Result (NotFound / Validation)
+          deactivate ASvc
+          AC -> C: 404 Not Found / 400 Bad Request \nContent: ErrorDto (Planet)
+          deactivate AC
+      else Planet Valid
+          ASvc -> ASvc: Create AccountModel (userId, typeId, planetId, initial balances=0)
+          ASvc -> AR: CreateAccount(newAccountModel)
+          activate AR
+          AR -> DB: Execute INSERT query for Account
+          activate DB
+          DB --> AR: Inserted Account Record (with accountId)
+          deactivate DB
+          AR --> ASvc: Created AccountModel (with accountId)
+          deactivate AR
+          ASvc -> ASvc: Map AccountModel to AccountDto
+          ASvc --> AC: AccountDto
+          deactivate ASvc
+          AC -> C: 201 Created \nLocation: /accounts/{accountId} \nContent: AccountDto
+          deactivate AC
+      end
+    end
+end
+
+@enduml

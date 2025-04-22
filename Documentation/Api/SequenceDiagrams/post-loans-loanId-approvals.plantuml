@@ -1,0 +1,125 @@
+@startuml
+title POST /loans/{loanId}/approvals - Approve Loan Agreement
+
+participant "Client" as C
+participant "API Gateway / Auth Middleware" as Auth
+participant "LoanController" as LC
+participant "ILoanService" as LS
+participant "ILoanRepository" as LR
+participant "IAccountRepository" as AR
+participant "ITransactionService" as TS 
+' Needed for activation transfer
+participant "[DB]" as DB
+
+C -> Auth: POST /loans/{loanId}/approvals \nAuthorization: Bearer <token>
+activate Auth
+Auth -> Auth: Validate Token
+Auth -> LC: Forward Request (with authenticatedUserId)
+deactivate Auth
+activate LC
+LC -> LS: ApproveLoan(loanId, authenticatedUserId)
+activate LS
+LS -> LR: FindLoanById(loanId)
+activate LR
+LR -> DB: Execute SELECT Loan query
+activate DB
+DB --> LR: Loan Record (or null)
+deactivate DB
+alt Loan Not Found
+  LR --> LS: null
+  deactivate LR
+  LS --> LC: Error Result (NotFoundException)
+  deactivate LS
+  LC -> C: 404 Not Found \nContent: ErrorDto
+  deactivate LC
+else Loan Found
+  LR --> LS: LoanModel
+  deactivate LR
+  LS -> AR: FindAccountsByIds([loan.fromAccountId, loan.toAccountId]) ' Check ownership
+  activate AR
+  AR -> DB: Execute SELECT Account query (with User info)
+  activate DB
+  DB --> AR: Account Records
+  deactivate DB
+  AR --> LS: fromAccountModel, toAccountModel
+  deactivate AR
+
+  LS -> LS: Determine User Role (Lender or Borrower?) based on authenticatedUserId and account ownership
+  alt User is Neither Lender nor Borrower
+    LS --> LC: Error Result (ForbiddenException)
+    deactivate LS
+    LC -> C: 403 Forbidden \nContent: ErrorDto
+    deactivate LC
+  else User is Lender or Borrower
+    LS -> LS: Check Loan Status (Is Pending? Is this side already approved?)
+    alt Loan Not Pending or Already Approved by User
+        LS --> LC: Error Result (ConflictException)
+        deactivate LS
+        LC -> C: 409 Conflict \nContent: ErrorDto
+        deactivate LC
+    else Can Approve
+        LS -> LS: Set appropriate approval flag (fromAccountApproved or toAccountApproved) = true
+        LS -> LR: UpdateLoan(loanModel) ' Persist the approval flag
+        activate LR
+        LR -> DB: Execute UPDATE Loan query (set approval flag)
+        activate DB
+        DB --> LR: Update Success
+        deactivate DB
+        LR --> LS: Updated LoanModel
+        deactivate LR
+
+        alt Both Sides Now Approved
+            note over LS: Loan Activation Triggered
+            LS -> AR: FindAccountById(fromAccountId) ' Re-fetch lender account for current balance check
+            activate AR
+            AR -> DB: Execute SELECT query
+            activate DB
+            DB --> AR: Lender AccountModel
+            deactivate DB
+            AR --> LS: Lender AccountModel
+            deactivate AR
+            LS -> LS: Check Lender Funds (>= principalAmount?)
+            alt Insufficient Funds at Activation
+                LS --> LC: Error Result (BadRequest - Insufficient Funds)
+                ' Note: Loan approval flag might already be saved, need clear state handling
+                deactivate LS
+                LC -> C: 400 Bad Request \nContent: ErrorDto (Insufficient Funds)
+                deactivate LC
+            else Sufficient Funds
+                ref over LS, TS: Perform Transfer(fromAccountId, toAccountId, principalAmount, "Loan Principal")
+                alt Transfer Fails (DB Error etc)
+                    LS --> LC: Error Result (InternalServerError)
+                    ' Note: Handle potential partial state change
+                    deactivate LS
+                    LC -> C: 500 Internal Server Error \nContent: ErrorDto
+                    deactivate LC
+                else Transfer Succeeds
+                    LS -> LS: Get TransactionReferenceId from Transfer result
+                    LS -> LR: AddLoanTransactionHistory(loanId, transactionReferenceId)
+                    activate LR
+                    LR -> DB: Execute INSERT into loan_transactions_history
+                    activate DB
+                    DB --> LR: Insert Success
+                    deactivate DB
+                    LR --> LS: Success
+                    deactivate LR
+                    ' Loan is now active
+                    LS -> LS: Map Updated LoanModel to LoanDetailDto
+                    LS --> LC: LoanDetailDto
+                    deactivate LS
+                    LC -> C: 200 OK \nContent: LoanDetailDto (Loan now active)
+                    deactivate LC
+                end
+            end
+        else Only One Side Approved (Still Pending)
+             LS -> LS: Map Updated LoanModel to LoanDetailDto
+             LS --> LC: LoanDetailDto
+             deactivate LS
+             LC -> C: 200 OK \nContent: LoanDetailDto (Loan still pending)
+             deactivate LC
+        end
+    end
+  end
+end
+
+@enduml
