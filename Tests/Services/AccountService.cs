@@ -32,7 +32,7 @@ namespace Api.Tests.Services
 
             var result = await _accountService.CreateAccount(accountTypeName, createUserDto);
 
-            Assert.Equal(expectedAccountNumber, result);
+            Xunit.Assert.Equal(expectedAccountNumber, result);
             _mockRepo.Verify(r => r.CreateAccountAsync(accountTypeName, createUserDto), Times.Once);
         }
 
@@ -67,7 +67,7 @@ namespace Api.Tests.Services
 
             var result = await _accountService.GetAccounts(googleId);
 
-            Assert.Equal(expectedAccounts.Count, ((List<Account>)result).Count);
+            Xunit.Assert.Equal(expectedAccounts.Count, ((List<Account>)result).Count);
             _mockRepo.Verify(r => r.GetAccountsAsync(googleId), Times.Once);
         }
 
@@ -90,8 +90,8 @@ namespace Api.Tests.Services
 
             var result = await _accountService.GetAccountByAccountNumber(accountNumber);
 
-            Assert.NotNull(result);
-            Assert.Equal(accountNumber, result.AccountNumber);
+            Xunit.Assert.NotNull(result);
+            Xunit.Assert.Equal(accountNumber, result.AccountNumber);
             _mockRepo.Verify(r => r.GetAccountByAccountNumberAsync(accountNumber), Times.Once);
         }
 
@@ -117,7 +117,7 @@ namespace Api.Tests.Services
 
             var result = await _accountService.GetAccountsByUserEmail(email);
 
-            Assert.Single(result);
+            Xunit.Assert.Single(result);
             _mockRepo.Verify(r => r.GetAccountsByUserEmailAsync(email), Times.Once);
         }
     }
