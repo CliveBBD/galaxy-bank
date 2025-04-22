@@ -74,5 +74,26 @@ namespace Api.Controllers
             }
         }
 
+        [HttpPost("{email}", Name = "UpdateUserRoleByEmail")]
+        public async Task<IActionResult> UpdateUserRoleByEmail([FromQuery] int newRoleId, string email)
+        {
+            var requestingUser = HttpContext.GetCurrentUser();
+            if (requestingUser == null || requestingUser.Role.Name != Constants.SystemAdminRoleName)
+            {
+                return Unauthorized(new ErrorResponse("Not authorized to view users", "You must be logged in to view users by user id", StatusCodes.Status401Unauthorized));
+            }
+            else
+            {
+                var user = await _userService.GetUserByEmailAsync(email);
+                if (user == null)
+                    return NotFound(new ErrorResponse("User not found", $"Could not find a user with the specified email '{email}'", StatusCodes.Status404NotFound));
+                else
+                {
+                    var updatedUser = await _userService.UpdateUserRoleByEmail(email, newRoleId);
+                    return Ok(updatedUser);
+                }
+            }
+        }
+
     }
 }

@@ -27,6 +27,7 @@ namespace Cli.Helpers
             new() {Name="transaction-types", Description="List all transaction types", CommandType = typeof(GetAllTransactionTypesCommand) },
             new() {Name="show-transactions", Description="Get all transactions", CommandType = typeof(GetAllTransactionsCommand) },
             new() {Name="show-statement", Description="Get account statement", CommandType = typeof(GetStatementCommand) },
+            new() {Name="update-role", Description="Update a user's role", CommandType = typeof(UpdateUserRoleCommand) },
         };
         public static IReadOnlyList<CommandInfo> Commands => commands;
     }
